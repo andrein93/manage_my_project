@@ -1,0 +1,81 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/schibsted-grotesk';
+@import '@fontsource/fragment-mono';
+
+:root {
+  --paper: #eef1f4;
+  --surface: #f8f9fb;
+  --ink: #1c2430;
+  --muted: #5b6675;
+  --line: #cdd3db;
+  --action: #3a3fbf;
+  --action-ink: #ffffff;
+  --fresh: #1f9d6b;
+  --aging: #b8901a;
+  --dormant: #8a94a3;
+  --danger: #b4372f;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #151b24;
+    --surface: #1c2430;
+    --ink: #e6eaf0;
+    --muted: #97a1b0;
+    --line: #2e3947;
+    --action: #8c90ff;
+    --action-ink: #12161d;
+    --fresh: #3ccf92;
+    --aging: #e0b53c;
+    --dormant: #6f7a8a;
+    --danger: #f0776e;
+    color-scheme: dark;
+  }
+}
+
+@theme {
+  --font-sans: 'Schibsted Grotesk Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Fragment Mono', ui-monospace, monospace;
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-action: var(--action);
+  --color-action-ink: var(--action-ink);
+  --color-fresh: var(--fresh);
+  --color-aging: var(--aging);
+  --color-dormant: var(--dormant);
+  --color-danger: var(--danger);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
+}
+
+@layer components {
+  .field {
+    @apply w-full min-w-0 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-muted;
+  }
+  .btn {
+    @apply inline-flex items-center gap-2 rounded-md border border-line bg-surface px-3 py-2 text-sm font-medium text-ink hover:border-ink disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply border-action bg-action text-action-ink hover:border-action hover:opacity-90;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

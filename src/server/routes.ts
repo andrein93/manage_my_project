@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify'
+import { join } from 'node:path'
 import { z } from 'zod'
 import type { App } from '../core/app.js'
 import { PROJECT_STATUSES, UserError } from '../core/types.js'
@@ -96,6 +97,7 @@ export function registerRoutes(api: FastifyInstance, app: App, opener: Opener): 
     const all = app.projects.list({ all: true })
     return {
       version: VERSION,
+      mcpCommand: `claude mcp add --scope user mmp -- node "${join(app.config.installDir, 'bin', 'mmp.js').replace(/\\/g, '/')}" mcp`,
       statuses: PROJECT_STATUSES,
       stacks: [...new Set(all.flatMap((p) => p.stack))].sort(),
       tags: app.projects.allTags(),

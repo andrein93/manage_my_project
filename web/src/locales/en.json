@@ -1,0 +1,85 @@
+{
+  "app": {
+    "projects": "Projects",
+    "settings": "Settings",
+    "rescan": "Rescan",
+    "scanning": "Scanning…",
+    "scanDone": "Scan finished: {added} new, {missing} missing, {total} total"
+  },
+  "status": {
+    "active": "Active",
+    "paused": "Paused",
+    "archived": "Archived",
+    "ignored": "Ignored"
+  },
+  "list": {
+    "search": "Search name, description, path or tag",
+    "anyStatus": "Active & paused",
+    "allStatuses": "Everything",
+    "anyStack": "Any stack",
+    "anyTag": "Any tag",
+    "anyActivity": "Any activity",
+    "inactiveFor": "Untouched for {days}+ days",
+    "sortActivity": "Recent first",
+    "sortName": "By name",
+    "count": "No projects | 1 project | {n} projects",
+    "emptyTitle": "No projects match these filters",
+    "emptyHint": "Clear the filters, or add a workspace in Settings.",
+    "clear": "Clear filters",
+    "missing": "folder missing",
+    "uncommitted": "uncommitted changes"
+  },
+  "fresh": {
+    "today": "today",
+    "days": "{n}d ago",
+    "months": "{n}mo ago",
+    "years": "{n}y ago",
+    "never": "no activity"
+  },
+  "detail": {
+    "back": "All projects",
+    "openFolder": "Open folder",
+    "openVscode": "Open in VS Code",
+    "name": "Name",
+    "description": "Description",
+    "descriptionHint": "What is this project, who is it for?",
+    "status": "Status",
+    "tags": "Tags",
+    "addTag": "Add a tag and press Enter",
+    "save": "Save changes",
+    "saved": "Changes saved",
+    "facts": "Detected",
+    "stack": "Stack",
+    "branch": "Branch",
+    "remote": "Remote",
+    "lastCommit": "Last commit",
+    "lastActivity": "Last activity",
+    "path": "Path",
+    "source": "Added by",
+    "sourceScan": "workspace scan",
+    "sourceManual": "you, manually",
+    "noGit": "Not a git repository",
+    "missingBanner": "This folder no longer exists on disk. Its data is kept; it comes back automatically if the folder reappears."
+  },
+  "settings": {
+    "workspaces": "Workspaces",
+    "workspacesHint": "Every folder directly inside a workspace is treated as a project.",
+    "addWorkspace": "Add workspace",
+    "workspacePath": "Absolute folder path",
+    "remove": "Remove",
+    "removeConfirm": "Click again to remove",
+    "addProject": "Add a single project",
+    "addProjectHint": "For a project that lives outside your workspaces.",
+    "projectPath": "Absolute project folder path",
+    "add": "Add",
+    "ignore": "Ignored folder names",
+    "ignoreHint": "Folders with these names are never registered. One per line.",
+    "saveIgnore": "Save list",
+    "mcp": "Connect your AI",
+    "mcpHint": "Register mmp as an MCP server so Claude Code (or any MCP client) can read and manage your projects:"
+  },
+  "error": {
+    "generic": "Something went wrong: {message}",
+    "offline": "Cannot reach the mmp server. Is `mmp start` still running?"
+  }
+}
