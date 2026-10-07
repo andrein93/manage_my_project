@@ -44,9 +44,8 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
 export const api = {
   projects: (params: Record<string, string>) => request<Project[]>('GET', `/projects?${new URLSearchParams(params)}`),
   project: (id: string) => request<Project>('GET', `/projects/${id}`),
-  updateProject: (id: string, patch: Partial<Pick<Project, 'name' | 'description' | 'status'>>) =>
+  updateProject: (id: string, patch: Partial<Pick<Project, 'name' | 'description' | 'status' | 'tags'>>) =>
     request<Project>('PATCH', `/projects/${id}`, patch),
-  setTags: (id: string, tags: string[]) => request<Project>('PUT', `/projects/${id}/tags`, { tags }),
   open: (id: string, target: 'folder' | 'vscode') => request<void>('POST', `/projects/${id}/open`, { target }),
   addProject: (path: string) => request<Project>('POST', '/projects', { path }),
   scan: () => request<ScanResult>('POST', '/scan', {}),

@@ -26,6 +26,11 @@ interface Candidate {
   workspaceId: string
 }
 
+interface Job {
+  path: string
+  run: () => Promise<void>
+}
+
 export async function detect(dir: string): Promise<DetectedFields> {
   const [stack, git] = await Promise.all([detectStack(dir), readGit(dir)])
   return { stack, git, lastActivityAt: await lastActivity(dir, git?.lastCommitAt ?? null) }
@@ -41,8 +46,7 @@ export async function scan(deps: ScannerDeps): Promise<ScanResult> {
   const candidates = new Map<string, Candidate>()
   for (const workspace of deps.workspaces.list()) {
     try {
-      for (const path of await childDirectories(workspace.path)) {
-        const name = path.slice(workspace.path.length + 1)
+      for (const { name, path } of await childDirectories(workspace.path)) {
         const key = pathKey(path)
         if (name.startsWith('.') || ignore.has(name.toLowerCase()) || key === installKey) continue
         if (!candidates.has(key)) candidates.set(key, { path, key, workspaceId: workspace.id })
@@ -52,7 +56,6 @@ export async function scan(deps: ScannerDeps): Promise<ScanResult> {
     }
   }
 
-  type Job = () => Promise<void>
   const jobs: Job[] = []
 
   // Refresh every known project: still present → update, gone → mark missing.
@@ -63,31 +66,41 @@ export async function scan(deps: ScannerDeps): Promise<ScanResult> {
       result.missing++
       continue
     }
-    jobs.push(async () => {
-      const wasMissing = deps.projects.get(known.id)?.missingSince != null
-      deps.projects.updateDetected(known.id, await detect(known.path))
-      if (wasMissing) result.restored++
-      else result.updated++
+    jobs.push({
+      path: known.path,
+      run: async () => {
+        const wasMissing = deps.projects.get(known.id)?.missingSince != null
+        deps.projects.updateDetected(known.id, await detect(known.path))
+        if (wasMissing) result.restored++
+        else result.updated++
+      },
     })
   }
 
-  // New folders (or previously soft-deleted ones that reappeared in a workspace).
+  // New folders, or previously removed ones that reappeared in a workspace.
   for (const candidate of candidates.values()) {
-    jobs.push(async () => {
-      const fields = await detect(candidate.path)
-      const previous = deps.projects.findByPath(candidate.path)
-      if (previous) {
-        deps.projects.updateDetected(previous.id, fields)
-        result.restored++
-      } else {
-        deps.projects.insert({ ...fields, path: candidate.path, source: 'scan', workspaceId: candidate.workspaceId })
-        result.added++
-      }
+    jobs.push({
+      path: candidate.path,
+      run: async () => {
+        const fields = await detect(candidate.path)
+        const previous = deps.projects.findByPath(candidate.path)
+        // The workspace may have been removed while we were probing git.
+        if (!deps.workspaces.list().some((w) => w.id === candidate.workspaceId)) return
+        if (previous?.deleted) {
+          deps.projects.restore(previous.id, fields, { source: 'scan', workspaceId: candidate.workspaceId })
+          result.restored++
+        } else if (!previous) {
+          // null when another process registered it first; that's fine.
+          if (deps.projects.insert({ ...fields, path: candidate.path, source: 'scan', workspaceId: candidate.workspaceId })) {
+            result.added++
+          }
+        }
+      },
     })
   }
 
-  await runLimited(jobs, CONCURRENCY, (error, index) => {
-    result.errors.push({ path: `job #${index}`, message: errorMessage(error) })
+  await runLimited(jobs, CONCURRENCY, (error, job) => {
+    result.errors.push({ path: job.path, message: errorMessage(error) })
   })
 
   result.total = deps.projects.list({ all: true }).length
@@ -95,15 +108,15 @@ export async function scan(deps: ScannerDeps): Promise<ScanResult> {
   return result
 }
 
-async function childDirectories(dir: string): Promise<string[]> {
+async function childDirectories(dir: string): Promise<{ name: string; path: string }[]> {
   const entries = await readdir(dir, { withFileTypes: true })
-  const dirs: string[] = []
+  const dirs: { name: string; path: string }[] = []
   for (const entry of entries) {
     const path = join(dir, entry.name)
-    if (entry.isDirectory()) dirs.push(path)
+    if (entry.isDirectory()) dirs.push({ name: entry.name, path })
     else if (entry.isSymbolicLink()) {
       try {
-        if ((await stat(path)).isDirectory()) dirs.push(path)
+        if ((await stat(path)).isDirectory()) dirs.push({ name: entry.name, path })
       } catch {
         // dangling link
       }
@@ -112,15 +125,15 @@ async function childDirectories(dir: string): Promise<string[]> {
   return dirs
 }
 
-async function runLimited(jobs: (() => Promise<void>)[], limit: number, onError: (e: unknown, i: number) => void) {
+async function runLimited(jobs: Job[], limit: number, onError: (e: unknown, job: Job) => void) {
   let next = 0
   const worker = async () => {
     while (next < jobs.length) {
-      const index = next++
+      const job = jobs[next++]
       try {
-        await jobs[index]()
+        await job.run()
       } catch (error) {
-        onError(error, index)
+        onError(error, job)
       }
     }
   }

@@ -30,6 +30,11 @@ async function load() {
   }
 }
 
+/** Reloads only the workspace list, keeping unsaved edits elsewhere on the page. */
+async function loadWorkspaces() {
+  workspaces.value = await api.workspaces()
+}
+
 async function run(action: () => Promise<unknown>) {
   busy.value = true
   error.value = null
@@ -47,7 +52,7 @@ const addWorkspace = () =>
     await api.addWorkspace(newWorkspace.value.trim())
     newWorkspace.value = ''
     scanTick.value++
-    await load()
+    await loadWorkspaces()
   })
 
 function removeWorkspace(id: string) {
@@ -60,7 +65,7 @@ function removeWorkspace(id: string) {
   run(async () => {
     await api.removeWorkspace(id)
     scanTick.value++
-    await load()
+    await loadWorkspaces()
   })
 }
 

@@ -1,4 +1,4 @@
-import { basename } from 'node:path'
+import { basename, isAbsolute } from 'node:path'
 import { localUserId, transaction, type DB } from './db.js'
 import { newId, now } from './ids.js'
 import { isWithin, normalizePath, pathKey } from './paths.js'
@@ -101,8 +101,11 @@ export class ProjectRepository {
     const trimmed = ref.trim()
     const byId = this.get(trimmed)
     if (byId) return byId
-    const byPath = this.findByPath(trimmed)
-    if (byPath && !byPath.deleted) return this.get(byPath.id)!
+    // Only treat explicit paths as paths, so a bare name never resolves against the cwd.
+    if (isAbsolute(trimmed) || /[\\/]/.test(trimmed)) {
+      const byPath = this.findByPath(trimmed)
+      if (byPath && !byPath.deleted) return this.get(byPath.id)!
+    }
     const byName = this.list({ all: true }).filter((p) => p.name.toLowerCase() === trimmed.toLowerCase())
     if (byName.length === 1) return byName[0]
     if (byName.length > 1) {
@@ -126,15 +129,17 @@ export class ProjectRepository {
     return match ? this.get(match.id) : null
   }
 
-  insert(input: NewProject): Project {
+  /** Inserts a project; if another process registered the same path meanwhile, returns null. */
+  insert(input: NewProject): Project | null {
     const id = newId()
     const ts = now()
     const path = normalizePath(input.path)
-    this.db
+    const { changes } = this.db
       .prepare(
         `INSERT INTO projects (id, owner_id, workspace_id, source, name, path, path_key, stack, git,
           last_activity_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(path_key) DO NOTHING`,
       )
       .run(
         id,
@@ -150,23 +155,28 @@ export class ProjectRepository {
         ts,
         ts,
       )
-    return this.get(id)!
+    return changes ? this.get(id)! : null
   }
 
-  /** Updates only scanner-owned fields; also clears missing/deleted markers. */
+  /**
+   * Updates only scanner-owned fields and clears the missing marker. Never touches
+   * soft-deleted rows, so a scan racing a workspace removal cannot resurrect them.
+   */
   updateDetected(id: string, fields: DetectedFields): void {
     this.db
       .prepare(
-        `UPDATE projects SET stack = ?, git = ?, last_activity_at = ?, missing_since = NULL,
-          deleted_at = NULL, updated_at = ? WHERE id = ?`,
+        `UPDATE projects SET stack = ?, git = ?, last_activity_at = ?, missing_since = NULL, updated_at = ?
+         WHERE id = ? AND deleted_at IS NULL`,
       )
-      .run(
-        JSON.stringify(fields.stack),
-        fields.git ? JSON.stringify(fields.git) : null,
-        fields.lastActivityAt,
-        now(),
-        id,
-      )
+      .run(JSON.stringify(fields.stack), fields.git ? JSON.stringify(fields.git) : null, fields.lastActivityAt, now(), id)
+  }
+
+  /** Brings back a soft-deleted project that was rediscovered or re-added, re-homing it. */
+  restore(id: string, fields: DetectedFields, origin: { source: 'scan' | 'manual'; workspaceId: string | null }): void {
+    this.db
+      .prepare('UPDATE projects SET deleted_at = NULL, source = ?, workspace_id = ? WHERE id = ?')
+      .run(origin.source, origin.workspaceId, id)
+    this.updateDetected(id, fields)
   }
 
   markMissing(id: string): void {

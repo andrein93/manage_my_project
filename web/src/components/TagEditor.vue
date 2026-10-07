@@ -26,6 +26,7 @@ function remove(tag: string) {
     <input
       v-model="draft"
       list="tag-suggestions"
+      maxlength="50"
       class="min-w-40 flex-1 bg-transparent py-0.5 text-sm outline-none"
       :placeholder="t('detail.addTag')"
       @keydown.enter.prevent="add"

@@ -34,8 +34,10 @@ export function createApp(options: CreateAppOptions = {}): App {
   const workspaces = new WorkspaceRepository(db)
   const settings = new SettingsRepository(db)
 
-  // First run: the folder that contains mmp is the default workspace.
-  if (workspaces.list().length === 0 && projects.allForScan().length === 0) {
+  // First run only (counting removed rows too, so a deliberately removed workspace stays removed):
+  // the folder that contains mmp becomes the default workspace.
+  const count = (table: string) => (db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get() as { n: number }).n
+  if (count('workspaces') === 0 && count('projects') === 0) {
     try {
       workspaces.add(dirname(normalizePath(config.installDir)))
     } catch {
@@ -43,13 +45,28 @@ export function createApp(options: CreateAppOptions = {}): App {
     }
   }
 
+  let running: Promise<ScanResult> | undefined
+  let queued: Promise<ScanResult> | undefined
+  const start = () =>
+    (running = scan({ projects, workspaces, settings, installDir: config.installDir }).finally(() => {
+      running = undefined
+    }))
+
   return {
     config,
     db,
     projects,
     workspaces,
     settings,
-    scan: () => scan({ projects, workspaces, settings, installDir: config.installDir }),
+    scan() {
+      // One scan at a time per process. Callers arriving mid-scan share a single follow-up
+      // scan, so they always see changes made before their call (e.g. a new workspace).
+      if (!running) return start()
+      return (queued ??= running.catch(() => {}).then(() => {
+        queued = undefined
+        return start()
+      }))
+    },
     async addProject(path) {
       const normalized = normalizePath(path)
       assertDirectory(normalized)
@@ -57,10 +74,12 @@ export function createApp(options: CreateAppOptions = {}): App {
       const fields = await detect(normalized)
       if (existing) {
         if (!existing.deleted) throw new UserError(`Already registered as "${existing.name}"`, 'conflict')
-        projects.updateDetected(existing.id, fields)
+        projects.restore(existing.id, fields, { source: 'manual', workspaceId: null })
         return projects.get(existing.id)!
       }
-      return projects.insert({ ...fields, path: normalized, source: 'manual', workspaceId: null })
+      const project = projects.insert({ ...fields, path: normalized, source: 'manual', workspaceId: null })
+      if (!project) throw new UserError('Already registered', 'conflict')
+      return project
     },
     close: () => db.close(),
   }

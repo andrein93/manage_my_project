@@ -25,7 +25,7 @@ function launch(target: string, isUrl: boolean): void {
         ? ['rundll32', ['url.dll,FileProtocolHandler', target]]
         : ['explorer.exe', [target]]
       : process.platform === 'darwin'
-        ? ['open', [target]]
+        ? ['open', isUrl ? [target] : ['-a', 'Finder', target]]
         : ['xdg-open', [target]]
   const child = spawn(command, args, { detached: true, stdio: 'ignore' })
   child.on('error', () => {})

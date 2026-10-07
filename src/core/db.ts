@@ -64,7 +64,8 @@ const MIGRATIONS: string[] = [
 export function openDatabase(file: string): DB {
   if (file !== ':memory:') mkdirSync(dirname(file), { recursive: true })
   const db = new DatabaseSync(file)
-  db.exec('PRAGMA journal_mode = WAL; PRAGMA busy_timeout = 5000; PRAGMA foreign_keys = ON;')
+  // busy_timeout first: switching to WAL needs a lock another process may hold.
+  db.exec('PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;')
   migrate(db)
   ensureLocalUser(db)
   return db
@@ -72,10 +73,11 @@ export function openDatabase(file: string): DB {
 
 function migrate(db: DB): void {
   db.exec('CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY)')
-  const row = db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get() as { v: number | null }
-  const current = row.v ?? 0
-  for (let i = current; i < MIGRATIONS.length; i++) {
+  for (let i = 0; i < MIGRATIONS.length; i++) {
+    // Re-read the version under the write lock: another process may have migrated meanwhile.
     transaction(db, () => {
+      const row = db.prepare('SELECT MAX(version) AS v FROM schema_migrations').get() as { v: number | null }
+      if ((row.v ?? 0) > i) return
       db.exec(MIGRATIONS[i])
       db.prepare('INSERT INTO schema_migrations (version) VALUES (?)').run(i + 1)
     })
@@ -83,10 +85,12 @@ function migrate(db: DB): void {
 }
 
 function ensureLocalUser(db: DB): void {
-  const existing = db.prepare('SELECT id FROM users LIMIT 1').get()
-  if (existing) return
-  const ts = now()
-  db.prepare('INSERT INTO users (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').run(newId(), 'Local user', ts, ts)
+  if (db.prepare('SELECT id FROM users LIMIT 1').get()) return
+  transaction(db, () => {
+    if (db.prepare('SELECT id FROM users LIMIT 1').get()) return
+    const ts = now()
+    db.prepare('INSERT INTO users (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').run(newId(), 'Local user', ts, ts)
+  })
 }
 
 export function localUserId(db: DB): string {

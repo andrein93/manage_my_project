@@ -65,7 +65,13 @@ export async function buildServer(app: App, options: ServerOptions = {}): Promis
   return server
 }
 
+const LOOPBACK = new Set(['127.0.0.1', '::1', 'localhost'])
+
 export async function startServer(app: App, options: ServerOptions = {}): Promise<{ url: string; server: FastifyInstance }> {
+  // The API has no authentication and can open folders: never expose it to the network.
+  if (!LOOPBACK.has(app.config.host)) {
+    throw new UserError(`MMP_HOST must be a loopback address (127.0.0.1, ::1 or localhost), got "${app.config.host}".`)
+  }
   const server = await buildServer(app, options)
   try {
     await server.listen({ port: app.config.port, host: app.config.host })
@@ -75,6 +81,5 @@ export async function startServer(app: App, options: ServerOptions = {}): Promis
     }
     throw error
   }
-  const host = app.config.host === '0.0.0.0' || app.config.host === '127.0.0.1' ? 'localhost' : app.config.host
-  return { url: `http://${host}:${app.config.port}`, server }
+  return { url: `http://localhost:${app.config.port}`, server }
 }

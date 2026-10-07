@@ -32,11 +32,14 @@ function fillForm(p: Project) {
   form.value = { name: p.name, description: p.description, status: p.status, tags: [...p.tags] }
 }
 
-async function load() {
-  // Background refreshes must not overwrite unsaved edits.
-  if (dirty.value) return
+/** Background refreshes never overwrite unsaved edits; `force` (a different project) does. */
+async function load(force = false) {
+  if (dirty.value && !force) return
+  const id = props.id
   try {
-    const [p, meta] = await Promise.all([api.project(props.id), api.meta()])
+    const [p, meta] = await Promise.all([api.project(id), api.meta()])
+    // Ignore stale responses and edits started while the request was in flight.
+    if (id !== props.id || (dirty.value && !force)) return
     project.value = p
     allTags.value = meta.tags
     fillForm(p)
@@ -50,9 +53,7 @@ async function save() {
   saving.value = true
   error.value = null
   try {
-    const { name, description, status, tags } = form.value
-    await api.updateProject(project.value.id, { name, description, status })
-    const updated = await api.setTags(project.value.id, tags)
+    const updated = await api.updateProject(project.value.id, { ...form.value })
     project.value = updated
     fillForm(updated)
     saved.value = true
@@ -75,9 +76,15 @@ async function open(target: 'folder' | 'vscode') {
 const date = (iso: string | null | undefined) =>
   iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '-'
 
-watch(() => props.id, load)
-watch(scanTick, load)
-useAutoRefresh(load)
+watch(
+  () => props.id,
+  () => {
+    project.value = null
+    load(true)
+  },
+)
+watch(scanTick, () => load())
+useAutoRefresh(() => load())
 </script>
 
 <template>

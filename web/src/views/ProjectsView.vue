@@ -31,7 +31,9 @@ function setFilter(key: string, value: string) {
 }
 const hasFilters = computed(() => ['q', 'status', 'stack', 'tag', 'inactive'].some((k) => q(k)))
 
+let latestRequest = 0
 async function load() {
+  const request = ++latestRequest
   try {
     const f = filters.value
     const params: Record<string, string> = {}
@@ -42,6 +44,8 @@ async function load() {
     if (f.tag) params.tag = f.tag
     if (f.inactive) params.inactive = f.inactive
     const [list, m] = await Promise.all([api.projects(params), api.meta()])
+    // Out-of-order responses (typing, focus, interval) must not show stale filters.
+    if (request !== latestRequest) return
     projects.value = list
     meta.value = m
     error.value = null
@@ -66,6 +70,13 @@ watch(search, (value) => {
 })
 
 watch(() => route.query, load)
+// Keep the search box in sync on back/forward navigation.
+watch(
+  () => q('q'),
+  (value) => {
+    if (value !== search.value.trim()) search.value = value
+  },
+)
 watch(scanTick, load)
 useAutoRefresh(load)
 </script>
