@@ -1,0 +1,46 @@
+{
+  "name": "manage-my-projects",
+  "version": "0.1.0",
+  "description": "Local-first project manager for solo developers: maps your project folders and exposes them via CLI, web dashboard and MCP.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "mmp": "bin/mmp.js"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "build": "npm run build:server && npm run build:web",
+    "build:server": "tsc -p tsconfig.json",
+    "build:web": "vite build --config web/vite.config.ts",
+    "dev:server": "tsc -p tsconfig.json --watch",
+    "dev:web": "vite --config web/vite.config.ts",
+    "prepare": "npm run build",
+    "start": "node bin/mmp.js start",
+    "mmp": "node bin/mmp.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p tsconfig.json --noEmit && vue-tsc -p web/tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@fastify/static": "^10.1.5",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "commander": "^15.0.0",
+    "fastify": "^5.12.5",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.6.4",
+    "@vitejs/plugin-vue": "^6.0.9",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.3",
+    "vitest": "^5.0.3",
+    "vue": "^3.5.43",
+    "vue-i18n": "^11.4.13",
+    "vue-router": "^5.4.0",
+    "vue-tsc": "^3.3.12"
+  }
+}

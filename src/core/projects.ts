@@ -1,0 +1,262 @@
+import { basename } from 'node:path'
+import { localUserId, transaction, type DB } from './db.js'
+import { newId, now } from './ids.js'
+import { isWithin, normalizePath, pathKey } from './paths.js'
+import {
+  HIDDEN_STATUSES,
+  PROJECT_STATUSES,
+  UserError,
+  type GitInfo,
+  type Project,
+  type ProjectFilters,
+  type ProjectPatch,
+  type ProjectStatus,
+} from './types.js'
+
+interface ProjectRow {
+  id: string
+  owner_id: string
+  workspace_id: string | null
+  source: 'scan' | 'manual'
+  name: string
+  description: string
+  status: ProjectStatus
+  path: string
+  path_key: string
+  stack: string
+  git: string | null
+  last_activity_at: string | null
+  missing_since: string | null
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+  tags: string | null
+}
+
+export interface DetectedFields {
+  stack: string[]
+  git: GitInfo | null
+  lastActivityAt: string | null
+}
+
+export interface NewProject extends DetectedFields {
+  path: string
+  source: 'scan' | 'manual'
+  workspaceId: string | null
+  name?: string
+}
+
+const SELECT = `
+  SELECT p.*, (
+    SELECT json_group_array(t.name) FROM (
+      SELECT t.name FROM project_tags pt JOIN tags t ON t.id = pt.tag_id
+      WHERE pt.project_id = p.id ORDER BY t.name
+    ) t
+  ) AS tags
+  FROM projects p`
+
+const DAY_MS = 86_400_000
+
+export class ProjectRepository {
+  constructor(private readonly db: DB) {}
+
+  list(filters: ProjectFilters = {}): Project[] {
+    const statuses = filters.status?.length
+      ? filters.status
+      : filters.all
+        ? [...PROJECT_STATUSES]
+        : PROJECT_STATUSES.filter((s) => !HIDDEN_STATUSES.includes(s))
+    const rows = this.db
+      .prepare(`${SELECT} WHERE p.deleted_at IS NULL ORDER BY p.name COLLATE NOCASE`)
+      .all() as unknown as ProjectRow[]
+
+    const query = filters.query?.trim().toLowerCase()
+    const cutoff = filters.inactiveDays != null ? Date.now() - filters.inactiveDays * DAY_MS : null
+
+    return rows.map(toProject).filter((p) => {
+      if (!statuses.includes(p.status)) return false
+      if (filters.stack && !p.stack.includes(filters.stack.toLowerCase())) return false
+      if (filters.tag && !p.tags.some((t) => t.toLowerCase() === filters.tag!.toLowerCase())) return false
+      if (cutoff != null && p.lastActivityAt && Date.parse(p.lastActivityAt) > cutoff) return false
+      if (query && ![p.name, p.description, p.path, ...p.tags].some((v) => v.toLowerCase().includes(query))) {
+        return false
+      }
+      return true
+    })
+  }
+
+  get(id: string): Project | null {
+    const row = this.db.prepare(`${SELECT} WHERE p.id = ? AND p.deleted_at IS NULL`).get(id) as ProjectRow | undefined
+    return row ? toProject(row) : null
+  }
+
+  /** Includes soft-deleted rows so a rediscovered folder can be restored. */
+  findByPath(path: string): (Project & { deleted: boolean }) | null {
+    const row = this.db.prepare(`${SELECT} WHERE p.path_key = ?`).get(pathKey(path)) as ProjectRow | undefined
+    return row ? { ...toProject(row), deleted: row.deleted_at !== null } : null
+  }
+
+  /** Resolves an id, exact path or case-insensitive name to a single project. */
+  resolve(ref: string): Project {
+    const trimmed = ref.trim()
+    const byId = this.get(trimmed)
+    if (byId) return byId
+    const byPath = this.findByPath(trimmed)
+    if (byPath && !byPath.deleted) return this.get(byPath.id)!
+    const byName = this.list({ all: true }).filter((p) => p.name.toLowerCase() === trimmed.toLowerCase())
+    if (byName.length === 1) return byName[0]
+    if (byName.length > 1) {
+      throw new UserError(
+        `"${ref}" matches ${byName.length} projects; use an id or path:\n${byName.map((p) => `  ${p.id}  ${p.path}`).join('\n')}`,
+        'conflict',
+      )
+    }
+    throw new UserError(`Project not found: ${ref}`, 'not_found')
+  }
+
+  /** The project whose folder contains `path` (deepest match), or null. */
+  findContaining(path: string): Project | null {
+    const key = pathKey(path)
+    const rows = this.db
+      .prepare('SELECT id, path_key FROM projects WHERE deleted_at IS NULL')
+      .all() as { id: string; path_key: string }[]
+    const match = rows
+      .filter((r) => isWithin(key, r.path_key))
+      .sort((a, b) => b.path_key.length - a.path_key.length)[0]
+    return match ? this.get(match.id) : null
+  }
+
+  insert(input: NewProject): Project {
+    const id = newId()
+    const ts = now()
+    const path = normalizePath(input.path)
+    this.db
+      .prepare(
+        `INSERT INTO projects (id, owner_id, workspace_id, source, name, path, path_key, stack, git,
+          last_activity_at, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        id,
+        localUserId(this.db),
+        input.workspaceId,
+        input.source,
+        input.name ?? basename(path),
+        path,
+        pathKey(path),
+        JSON.stringify(input.stack),
+        input.git ? JSON.stringify(input.git) : null,
+        input.lastActivityAt,
+        ts,
+        ts,
+      )
+    return this.get(id)!
+  }
+
+  /** Updates only scanner-owned fields; also clears missing/deleted markers. */
+  updateDetected(id: string, fields: DetectedFields): void {
+    this.db
+      .prepare(
+        `UPDATE projects SET stack = ?, git = ?, last_activity_at = ?, missing_since = NULL,
+          deleted_at = NULL, updated_at = ? WHERE id = ?`,
+      )
+      .run(
+        JSON.stringify(fields.stack),
+        fields.git ? JSON.stringify(fields.git) : null,
+        fields.lastActivityAt,
+        now(),
+        id,
+      )
+  }
+
+  markMissing(id: string): void {
+    const ts = now()
+    this.db
+      .prepare('UPDATE projects SET missing_since = ?, updated_at = ? WHERE id = ? AND missing_since IS NULL')
+      .run(ts, ts, id)
+  }
+
+  update(id: string, patch: ProjectPatch): Project {
+    const project = this.get(id)
+    if (!project) throw new UserError(`Project not found: ${id}`, 'not_found')
+    const name = patch.name?.trim() ?? project.name
+    if (!name) throw new UserError('Name cannot be empty')
+    const status = patch.status ?? project.status
+    if (!PROJECT_STATUSES.includes(status)) {
+      throw new UserError(`Invalid status "${status}". Use one of: ${PROJECT_STATUSES.join(', ')}`)
+    }
+    this.db
+      .prepare('UPDATE projects SET name = ?, description = ?, status = ?, updated_at = ? WHERE id = ?')
+      .run(name, patch.description ?? project.description, status, now(), id)
+    return this.get(id)!
+  }
+
+  /** Adds and removes tags; tag names are trimmed and lower-cased. */
+  editTags(id: string, add: string[] = [], remove: string[] = []): Project {
+    if (!this.get(id)) throw new UserError(`Project not found: ${id}`, 'not_found')
+    transaction(this.db, () => {
+      for (const name of normalizeTags(add)) {
+        this.db.prepare('INSERT OR IGNORE INTO tags (id, name) VALUES (?, ?)').run(newId(), name)
+        this.db
+          .prepare('INSERT OR IGNORE INTO project_tags (project_id, tag_id) SELECT ?, id FROM tags WHERE name = ?')
+          .run(id, name)
+      }
+      for (const name of normalizeTags(remove)) {
+        this.db
+          .prepare('DELETE FROM project_tags WHERE project_id = ? AND tag_id = (SELECT id FROM tags WHERE name = ?)')
+          .run(id, name)
+      }
+      this.db.prepare('DELETE FROM tags WHERE id NOT IN (SELECT tag_id FROM project_tags)').run()
+      this.db.prepare('UPDATE projects SET updated_at = ? WHERE id = ?').run(now(), id)
+    })
+    return this.get(id)!
+  }
+
+  /** Replaces the full tag set. */
+  setTags(id: string, tags: string[]): Project {
+    const project = this.get(id)
+    if (!project) throw new UserError(`Project not found: ${id}`, 'not_found')
+    const next = normalizeTags(tags)
+    return this.editTags(id, next, project.tags.filter((t) => !next.includes(t)))
+  }
+
+  allTags(): string[] {
+    return (this.db.prepare('SELECT name FROM tags ORDER BY name').all() as { name: string }[]).map((r) => r.name)
+  }
+
+  /** All active (non-deleted) project rows, for the scanner. */
+  allForScan(): { id: string; path: string; pathKey: string; source: 'scan' | 'manual' }[] {
+    return (
+      this.db.prepare('SELECT id, path, path_key, source FROM projects WHERE deleted_at IS NULL').all() as {
+        id: string
+        path: string
+        path_key: string
+        source: 'scan' | 'manual'
+      }[]
+    ).map((r) => ({ id: r.id, path: r.path, pathKey: r.path_key, source: r.source }))
+  }
+}
+
+function normalizeTags(tags: string[]): string[] {
+  return [...new Set(tags.map((t) => t.trim().toLowerCase()).filter(Boolean))]
+}
+
+function toProject(row: ProjectRow): Project {
+  return {
+    id: row.id,
+    ownerId: row.owner_id,
+    workspaceId: row.workspace_id,
+    source: row.source,
+    name: row.name,
+    description: row.description,
+    status: row.status,
+    path: row.path,
+    stack: JSON.parse(row.stack),
+    git: row.git ? JSON.parse(row.git) : null,
+    tags: row.tags ? JSON.parse(row.tags) : [],
+    lastActivityAt: row.last_activity_at,
+    missingSince: row.missing_since,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}

@@ -1,0 +1,11 @@
+#!/usr/bin/env node
+// node:sqlite is stable enough for our use; silence its experimental warning.
+const emitWarning = process.emitWarning
+process.emitWarning = (warning, ...args) => {
+  const type = typeof args[0] === 'string' ? args[0] : args[0]?.type
+  if (type === 'ExperimentalWarning' && String(warning).includes('SQLite')) return
+  return emitWarning.call(process, warning, ...args)
+}
+
+const { run } = await import('../dist/cli/index.js')
+await run(process.argv)
