@@ -4,29 +4,9 @@ import type { Command } from 'commander'
 import { buildCli } from '../cli/index.js'
 import type { App } from '../core/app.js'
 import { createMcpServer } from '../mcp/index.js'
+import type { CommandDoc, HelpDocs, ToolDoc } from './help-types.js'
 
-export interface CommandDoc {
-  /** Top-level command group, e.g. "task". */
-  group: string
-  groupDescription: string
-  /** Full command, e.g. "mmp task add". */
-  command: string
-  usage: string
-  description: string
-  options: { flags: string; description: string; choices: string[] | null; default: string | null }[]
-}
-
-export interface ToolDoc {
-  name: string
-  title: string | null
-  description: string
-  params: { name: string; type: string; description: string; required: boolean }[]
-}
-
-export interface HelpDocs {
-  cli: CommandDoc[]
-  mcp: ToolDoc[]
-}
+export type { CommandDoc, HelpDocs, ToolDoc }
 
 let cached: HelpDocs | undefined
 

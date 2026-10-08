@@ -1,5 +1,18 @@
 import type { SyncResult, TimeEntry, TimeReport, WorkBlock } from '../../src/core/time/types'
 import type {
+  Agreement,
+  AgreementKind,
+  AiPlan,
+  AiPlanKind,
+  Expense,
+  FinanceReport,
+  FinanceRow,
+  Interval,
+  OwedRow,
+  Payment,
+} from '../../src/core/finance/types'
+import type { CommandDoc, ToolDoc } from '../../src/server/help-types'
+import type {
   Category,
   CategoryInput,
   CategoryRef,
@@ -36,6 +49,8 @@ export type {
 }
 
 export type { SyncResult, TimeEntry, TimeReport, WorkBlock }
+export type { Agreement, AgreementKind, AiPlan, AiPlanKind, Expense, FinanceReport, FinanceRow, Interval, OwedRow, Payment }
+export type { CommandDoc, ToolDoc }
 
 export interface SyncStatus {
   running: boolean
@@ -59,6 +74,8 @@ export interface Settings {
   idleMinutes: number
   claudeProjectsDir: string
   weekStart: 'monday' | 'sunday'
+  currency: string
+  usdRate: number
 }
 
 export interface ProjectPatch {
@@ -141,4 +158,27 @@ export const api = {
   addTimeEntry: (input: { projectId: string; date?: string; minutes: string | number; note?: string }) =>
     request<TimeEntry>('POST', '/time/entries', input),
   removeTimeEntry: (id: string) => request<void>('DELETE', `/time/entries/${id}`),
+
+  financeReport: (params: Record<string, string | undefined>) => request<FinanceReport>('GET', `/finance/report?${query(params)}`),
+  owed: () => request<{ currency: string; rows: OwedRow[] }>('GET', '/finance/owed'),
+  agreements: (project?: string) => request<Agreement[]>('GET', `/agreements?${query({ project })}`),
+  addAgreement: (input: { projectId: string; kind: AgreementKind; amount: string; interval?: Interval; startDate?: string; endDate?: string | null; note?: string }) =>
+    request<Agreement>('POST', '/agreements', input),
+  updateAgreement: (id: string, input: { endDate?: string | null; note?: string }) => request<Agreement>('PATCH', `/agreements/${id}`, input),
+  removeAgreement: (id: string) => request<void>('DELETE', `/agreements/${id}`),
+  payments: (params: { project?: string; client?: string }) => request<Payment[]>('GET', `/payments?${query(params)}`),
+  addPayment: (input: { projectId: string; amount: string; date?: string; note?: string; agreementId?: string | null }) =>
+    request<Payment>('POST', '/payments', input),
+  removePayment: (id: string) => request<void>('DELETE', `/payments/${id}`),
+  expenses: (params: { project?: string; shared?: string }) => request<Expense[]>('GET', `/expenses?${query(params)}`),
+  addExpense: (input: { projectId?: string | null; amount: string; interval?: Interval | null; startDate?: string; endDate?: string | null; note?: string }) =>
+    request<Expense>('POST', '/expenses', input),
+  updateExpense: (id: string, input: { endDate?: string | null }) => request<Expense>('PATCH', `/expenses/${id}`, input),
+  removeExpense: (id: string) => request<void>('DELETE', `/expenses/${id}`),
+  aiPlans: () => request<AiPlan[]>('GET', '/ai-plans'),
+  addAiPlan: (input: { kind: AiPlanKind; monthlyAmount?: string | null; startDate?: string; endDate?: string | null; note?: string }) =>
+    request<AiPlan>('POST', '/ai-plans', input),
+  updateAiPlan: (id: string, input: { endDate?: string | null }) => request<AiPlan>('PATCH', `/ai-plans/${id}`, input),
+  removeAiPlan: (id: string) => request<void>('DELETE', `/ai-plans/${id}`),
+  help: () => request<{ cli: CommandDoc[]; mcp: ToolDoc[] }>('GET', '/help'),
 }

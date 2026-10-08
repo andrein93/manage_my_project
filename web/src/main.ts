@@ -9,6 +9,7 @@ import ProjectDetailView from './views/ProjectDetailView.vue'
 import ProjectsView from './views/ProjectsView.vue'
 import SettingsView from './views/SettingsView.vue'
 import TasksView from './views/TasksView.vue'
+import FinanceView from './views/FinanceView.vue'
 import TimeView from './views/TimeView.vue'
 
 const router = createRouter({
@@ -18,6 +19,7 @@ const router = createRouter({
     { path: '/projects/:id', name: 'project', component: ProjectDetailView, props: true },
     { path: '/tasks', name: 'tasks', component: TasksView },
     { path: '/time', name: 'time', component: TimeView },
+    { path: '/finance', name: 'finance', component: FinanceView },
     { path: '/clients', name: 'clients', component: ClientsView },
     { path: '/clients/:id', name: 'client', component: ClientDetailView, props: true },
     { path: '/settings', name: 'settings', component: SettingsView },

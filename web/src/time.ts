@@ -21,3 +21,14 @@ export function dayLabel(day: string, options: Intl.DateTimeFormatOptions = { we
   const [y, m, d] = day.split('-').map(Number)
   return new Date(y, m - 1, d).toLocaleDateString(undefined, options)
 }
+
+/** Cents in the given currency, in the viewer's locale. */
+export function formatMoney(cents: number | null, currency: string): string {
+  if (cents === null) return '-'
+  const value = cents / 100
+  try {
+    return value.toLocaleString(undefined, { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  } catch {
+    return `${value.toFixed(2)} ${currency}`
+  }
+}

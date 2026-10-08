@@ -7,16 +7,17 @@ project, detects its stack, git state and last activity, and gives you three way
 with them:
 
 - a **web dashboard** to browse, filter, tag and annotate projects, group them by **client**
-  and **category**, manage **tasks** as a list or a kanban board, and see **where your time and
-  AI spend go** — estimated automatically from your Claude Code sessions and git commits;
+  and **category**, manage **tasks** as a list or a kanban board, see **where your time and
+  AI spend go** (estimated automatically from your Claude Code sessions and git commits), and
+  find out **which projects really pay off** and **who still owes you money**;
 - a **CLI** (`mmp list`, `mmp show`, …);
 - an **MCP server**, so your AI assistant (Claude Code, Cursor, Codex, …) can answer
   "which projects haven't I touched in three months?" or "add D:\clients to my workspaces".
 
 Everything stays on your machine, in a single SQLite file.
 
-> **Status:** v0.3 — project registry, clients, categories, tasks and automatic time tracking.
-> Profitability tracking is next on the [roadmap](#roadmap).
+> **Status:** v0.4 — project registry, clients, categories, tasks, automatic time tracking and
+> profitability. See the [roadmap](#roadmap) for what is next.
 
 ## Requirements
 
@@ -69,6 +70,14 @@ Any other MCP client works the same way: run `node bin/mmp.js mcp` over stdio.
 | `time_report` | Hours and AI cost by project, client, category or day for any period |
 | `log_time` | Log a call or meeting manually |
 | `sync_time` | Import new Claude Code and git activity now |
+| `finance_report` | Earned, collected, costs, margin and €/hour by project or client |
+| `owed_report` | Who still owes you money |
+| `list_agreements` / `add_agreement` | Hourly rates, fixed prices, recurring fees |
+| `record_payment` | "Acme paid me 1,500 today" |
+| `add_expense` | Project costs or shared costs (split by hours) |
+
+The full, always up-to-date list (with every parameter) is in the dashboard under
+**Settings → Commands**.
 
 ## CLI
 
@@ -98,6 +107,17 @@ mmp time report [--period today|week|last-week|month|last-month] [--from --to]
 mmp time blocks --project <ref>    work blocks and manual entries
 mmp time add <project> <duration> [--date] [--note]   e.g. mmp time add shop 1h30m --note "Call"
 mmp time remove <id>
+
+mmp finance report [--period ...|--from --to|--lifetime] [--by project|client]
+mmp finance owed
+mmp deal add <project> --hourly 50 | --fixed 3000 | --recurring 150 [--every month|year] [--from --to]
+mmp deal list | end <id> | remove <id>
+mmp payment add <project> <amount> [--date] [--note] [--deal <id>]
+mmp payment list | remove <id>
+mmp expense add <amount> --note "VPS" [--project <ref>] [--every month|year] [--from --to]
+mmp expense list | remove <id>
+mmp ai-plan add --subscription 90 | --api [--from --to]
+mmp ai-plan list | end <id> | remove <id>
 mmp mcp                             MCP server on stdio (started by your AI client)
 ```
 
@@ -130,6 +150,24 @@ mmp estimates your working time **without timers and without changing your Claud
   plan this is not what you pay).
 - Calls and meetings can be logged manually from the Time page, the CLI or your AI.
 - The first import of a long history takes a few seconds and runs in the background.
+
+## Money
+
+Record **how each project is paid** and mmp tells you whether it is worth it:
+
+- **Agreements:** hourly rate (earned = hours tracked × rate), fixed price (spread evenly between
+  its start and end dates) or recurring fee (every month or year). A project can have several.
+- **Payments** you receive, so you see what was earned *and* what was collected; the difference
+  is what clients still owe you (or their prepaid credit).
+- **Costs:** AI (see below), project expenses (a domain), and shared expenses (a server, a tool)
+  split across projects by hours worked each month.
+- **AI plan:** pay-as-you-go uses the cost Claude Code reports, converted with your USD rate;
+  with a subscription, the monthly fee is split across projects by how much each used.
+- **Margin** = earned − costs, and **effective hourly rate** = margin ÷ hours worked, per period
+  or since the beginning.
+
+All amounts are in one currency (Settings → Finance) and **net of VAT**. mmp is not an
+invoicing tool.
 
 ## How scanning works
 
@@ -204,7 +242,7 @@ keys and register it in `web/src/i18n.ts`.
 1. ~~Core: scanner, registry, CLI, dashboard, MCP~~ (v0.1)
 2. ~~Clients, categories and tasks, manageable by your AI~~ (v0.2)
 3. ~~Automatic time tracking from Claude Code sessions and git~~ (v0.3)
-4. Profitability: income, costs (time, AI tokens, hosting), effective hourly rate
+4. ~~Profitability: agreements, payments, costs, AI plans, effective hourly rate~~ (v0.4)
 5. Project health, renewals (domains, SSL, hosting), weekly reports
 6. Optional sync server to share projects across people and machines
 

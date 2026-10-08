@@ -68,6 +68,8 @@ export class FinanceService {
     const total = emptyAcc()
     for (const g of groups.values()) merge(total, g.acc)
     const overheadCents = filtered ? 0 : Math.round(overhead)
+    // Hours in totals are wall-clock time (parallel projects count once, as in the Time page).
+    total.minutes = this.time.report(range, 'project', { projectId: filters.projectId, clientId: filters.clientId }).totals.minutes
     const totals = numbers(total, overheadCents)
     return { range, lifetime, by, currency: this.settings.get().currency, totals: { ...totals, overheadCents }, rows }
   }

@@ -4,6 +4,8 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { api, type Workspace } from '../api'
 import CategoriesSettings from '../components/CategoriesSettings.vue'
+import CommandReference from '../components/CommandReference.vue'
+import FinanceSettings from '../components/FinanceSettings.vue'
 import TimeSettings from '../components/TimeSettings.vue'
 import { scanTick, useErrors } from '../composables'
 
@@ -19,12 +21,10 @@ const confirmRemove = ref<string | null>(null)
 const busy = ref(false)
 const ignoreSaved = ref(false)
 
-const mcpCommand = ref('')
 
 async function load() {
   try {
-    const [ws, settings, meta] = await Promise.all([api.workspaces(), api.settings(), api.meta()])
-    mcpCommand.value = meta.mcpCommand
+    const [ws, settings] = await Promise.all([api.workspaces(), api.settings()])
     workspaces.value = ws
     ignoreText.value = settings.ignoreNames.join('\n')
   } catch (e) {
@@ -129,6 +129,8 @@ onMounted(load)
 
     <TimeSettings />
 
+    <FinanceSettings />
+
     <section>
       <h2 class="text-lg font-semibold">{{ t('settings.ignore') }}</h2>
       <p class="mt-1 text-sm text-muted">{{ t('settings.ignoreHint') }}</p>
@@ -139,10 +141,6 @@ onMounted(load)
       </div>
     </section>
 
-    <section>
-      <h2 class="text-lg font-semibold">{{ t('settings.mcp') }}</h2>
-      <p class="mt-1 text-sm text-muted">{{ t('settings.mcpHint') }}</p>
-      <pre class="mt-3 overflow-x-auto rounded-md border border-line bg-surface p-3 font-mono text-sm">{{ mcpCommand }}</pre>
-    </section>
+    <CommandReference />
   </div>
 </template>

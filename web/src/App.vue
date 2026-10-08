@@ -11,6 +11,7 @@ const links = computed(() => [
   { to: '/', label: t('app.projects'), active: (p: string) => p === '/' || p.startsWith('/projects') },
   { to: '/tasks', label: t('app.tasks'), active: (p: string) => p.startsWith('/tasks') },
   { to: '/time', label: t('app.time'), active: (p: string) => p.startsWith('/time') },
+  { to: '/finance', label: t('app.finance'), active: (p: string) => p.startsWith('/finance') },
   { to: '/clients', label: t('app.clients'), active: (p: string) => p.startsWith('/clients') },
   { to: '/settings', label: t('app.settings'), active: (p: string) => p.startsWith('/settings') },
 ])

@@ -2,12 +2,12 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { api, type Client, type Project, type TimeReport } from '../api'
+import { api, type Client, type FinanceReport, type Project, type TimeReport } from '../api'
 import CategoryDot from '../components/CategoryDot.vue'
 import FreshnessStrip from '../components/FreshnessStrip.vue'
 import StatusMark from '../components/StatusMark.vue'
 import { useAutoRefresh, useErrors } from '../composables'
-import { formatMinutes, formatUsd } from '../time'
+import { formatMinutes, formatMoney, formatUsd } from '../time'
 
 const props = defineProps<{ id: string }>()
 const { t } = useI18n()
@@ -20,6 +20,7 @@ const form = ref({ name: '', email: '', notes: '' })
 const saved = ref(false)
 const confirmRemove = ref(false)
 const month = ref<TimeReport | null>(null)
+const lifetime = ref<FinanceReport | null>(null)
 
 const dirty = computed(
   () =>
@@ -43,13 +44,19 @@ async function load(force = false) {
   }
 }
 
-/** Time is optional on this page: a failure here must not hide the client. */
+/** Time and money are optional on this page: a failure here must not hide the client. */
 async function loadMonth(id: string) {
   try {
-    const time = await api.timeReport({ period: 'month', client: id })
-    if (id === props.id) month.value = time
+    const [time, money] = await Promise.all([
+      api.timeReport({ period: 'month', client: id }),
+      api.financeReport({ lifetime: 'true', client: id }),
+    ])
+    if (id !== props.id) return
+    month.value = time
+    lifetime.value = money
   } catch {
     month.value = null
+    lifetime.value = null
   }
 }
 
@@ -98,6 +105,31 @@ useAutoRefresh(() => load())
         {{ t('time.thisMonth') }}: <span class="text-ink tabular-nums">{{ formatMinutes(month.totals.minutes) }}</span>,
         {{ t('time.aiCost') }} <span class="text-ink tabular-nums">{{ formatUsd(month.totals.costUsd) }}</span>
       </p>
+
+      <dl v-if="lifetime && (lifetime.totals.earnedCents || lifetime.totals.collectedCents || lifetime.totals.costCents)" class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div>
+          <dt class="text-sm text-muted">{{ t('finance.earned') }} ({{ t('finance.lifetimeTitle').toLowerCase() }})</dt>
+          <dd class="text-xl font-semibold tabular-nums">{{ formatMoney(lifetime.totals.earnedCents, lifetime.currency) }}</dd>
+        </div>
+        <div>
+          <dt class="text-sm text-muted">{{ lifetime.totals.earnedCents - lifetime.totals.collectedCents < 0 ? t('finance.credit') : t('finance.owed') }}</dt>
+          <dd class="text-xl font-semibold tabular-nums">
+            {{ formatMoney(Math.abs(lifetime.totals.earnedCents - lifetime.totals.collectedCents), lifetime.currency) }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-sm text-muted">{{ t('finance.margin') }}</dt>
+          <dd class="text-xl font-semibold tabular-nums" :class="{ 'text-danger': lifetime.totals.marginCents < 0 }">
+            {{ formatMoney(lifetime.totals.marginCents, lifetime.currency) }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-sm text-muted">{{ t('finance.perHour') }}</dt>
+          <dd class="text-xl font-semibold tabular-nums">
+            {{ lifetime.totals.effectiveRateCents === null ? '-' : formatMoney(lifetime.totals.effectiveRateCents, lifetime.currency) }}
+          </dd>
+        </div>
+      </dl>
 
       <form class="mt-6 space-y-5" @submit.prevent="save">
         <div class="grid gap-4 sm:grid-cols-2">

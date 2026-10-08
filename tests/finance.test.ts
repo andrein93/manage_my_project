@@ -60,6 +60,7 @@ describe('finance report', () => {
     expect(blog.expenseCents).toBe(Math.round((2000 * 30) / 92))
     expect(report.totals.earnedCents).toBe(shop.earnedCents + blog.earnedCents)
     expect(report.totals.overheadCents).toBe(0)
+    expect(report.totals.minutes).toBe(92) // wall-clock hours from the Time report
   })
 
   it('splits a subscription by usage instead of the API cost', () => {
