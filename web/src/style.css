@@ -14,6 +14,7 @@
   --aging: #b8901a;
   --dormant: #8a94a3;
   --danger: #b4372f;
+  --chart: #3a3fbf;
   color-scheme: light;
 }
 
@@ -30,6 +31,7 @@
     --aging: #e0b53c;
     --dormant: #6f7a8a;
     --danger: #f0776e;
+    --chart: #7b80f0;
     color-scheme: dark;
   }
 }
@@ -48,6 +50,7 @@
   --color-aging: var(--aging);
   --color-dormant: var(--dormant);
   --color-danger: var(--danger);
+  --color-chart: var(--chart);
 }
 
 body {

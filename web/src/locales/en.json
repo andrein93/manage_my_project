@@ -6,7 +6,8 @@
     "settings": "Settings",
     "rescan": "Rescan",
     "scanning": "Scanning…",
-    "scanDone": "Scan finished: {added} new, {missing} missing, {total} total"
+    "scanDone": "Scan finished: {added} new, {missing} missing, {total} total",
+    "time": "Time"
   },
   "status": {
     "active": "Active",
@@ -164,5 +165,72 @@
   "error": {
     "generic": "Something went wrong: {message}",
     "offline": "Cannot reach the mmp server. Is `mmp start` still running?"
+  },
+  "time": {
+    "period": {
+      "today": "Today",
+      "week": "This week",
+      "last-week": "Last week",
+      "month": "This month",
+      "last-month": "Last month",
+      "custom": "Custom range"
+    },
+    "from": "From",
+    "to": "To",
+    "by": {
+      "project": "By project",
+      "client": "By client",
+      "category": "By category"
+    },
+    "total": "Time worked",
+    "manualShare": "{manual} logged manually",
+    "aiCost": "AI cost",
+    "aiCostHint": "API-equivalent cost reported by Claude Code",
+    "perDay": "Hours per day",
+    "chartLabel": "Hours worked per day from {from} to {to}",
+    "tooltip": "{date}: {time}, AI {cost}",
+    "share": "Share",
+    "name": "Name",
+    "hours": "Time",
+    "unassigned": "Activity outside your projects",
+    "unassignedHint": "Claude Code sessions in folders that are not registered projects. Add a folder to count its whole history.",
+    "addAsProject": "Add as project",
+    "logTime": "Log time",
+    "logTimeHint": "Calls, meetings and anything done away from Claude Code and git.",
+    "duration": "Duration",
+    "durationHint": "e.g. 45m, 1h30m",
+    "date": "Date",
+    "note": "Note",
+    "notePlaceholder": "What was it?",
+    "project": "Project",
+    "log": "Log time",
+    "logged": "Logged",
+    "entries": "Logged manually in this period",
+    "remove": "Remove",
+    "empty": "No time recorded in this period.",
+    "syncing": "Importing Claude Code history…",
+    "syncedAt": "Synced {when}",
+    "syncNow": "Sync now",
+    "noTranscripts": "Claude Code transcripts were not found in {dir}. Change the folder in Settings if you keep them elsewhere.",
+    "panelTitle": "Time",
+    "thisMonth": "This month",
+    "last30": "Last 30 days",
+    "recentBlocks": "Recent work",
+    "sources": {
+      "claude": "Claude Code",
+      "git": "git"
+    },
+    "noBlocks": "No activity recorded yet.",
+    "seeAll": "See time report",
+    "settings": "Time tracking",
+    "settingsHint": "mmp estimates your time from Claude Code sessions and git commits.",
+    "idle": "Idle threshold (minutes)",
+    "idleHint": "A pause longer than this ends a work block.",
+    "transcripts": "Claude Code transcripts folder",
+    "weekStart": "Weeks start on",
+    "monday": "Monday",
+    "sunday": "Sunday",
+    "saveSettings": "Save time settings",
+    "parallelHint": "Time spent on projects in parallel counts for each of them, so rows can add up to more than the time worked."
   }
 }

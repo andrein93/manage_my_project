@@ -2,11 +2,12 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { api, type Client, type Project } from '../api'
+import { api, type Client, type Project, type TimeReport } from '../api'
 import CategoryDot from '../components/CategoryDot.vue'
 import FreshnessStrip from '../components/FreshnessStrip.vue'
 import StatusMark from '../components/StatusMark.vue'
 import { useAutoRefresh, useErrors } from '../composables'
+import { formatMinutes, formatUsd } from '../time'
 
 const props = defineProps<{ id: string }>()
 const { t } = useI18n()
@@ -18,6 +19,7 @@ const projects = ref<Project[]>([])
 const form = ref({ name: '', email: '', notes: '' })
 const saved = ref(false)
 const confirmRemove = ref(false)
+const month = ref<TimeReport | null>(null)
 
 const dirty = computed(
   () =>
@@ -29,7 +31,8 @@ async function load(force = false) {
   if (dirty.value && !force) return
   const id = props.id
   try {
-    const data = await api.client(id)
+    const [data, time] = await Promise.all([api.client(id), api.timeReport({ period: 'month', client: id })])
+    month.value = time
     if (id !== props.id || (dirty.value && !force)) return
     const { projects: list, ...rest } = data
     client.value = rest
@@ -81,6 +84,10 @@ useAutoRefresh(() => load())
 
     <template v-if="client">
       <h1 class="mt-3 text-2xl font-semibold tracking-tight">{{ client.name }}</h1>
+      <p v-if="month" class="mt-1 text-sm text-muted">
+        {{ t('time.thisMonth') }}: <span class="text-ink tabular-nums">{{ formatMinutes(month.totals.minutes) }}</span>,
+        {{ t('time.aiCost') }} <span class="text-ink tabular-nums">{{ formatUsd(month.totals.costUsd) }}</span>
+      </p>
 
       <form class="mt-6 space-y-5" @submit.prevent="save">
         <div class="grid gap-4 sm:grid-cols-2">

@@ -1,15 +1,12 @@
 import { addDays, cleanDate, localToday } from '../dates.js'
 import { UserError } from '../types.js'
+import type { DateRange } from './types.js'
 
 export const PERIODS = ['today', 'week', 'last-week', 'month', 'last-month'] as const
 export type Period = (typeof PERIODS)[number]
 export type WeekStart = 'monday' | 'sunday'
 
-export interface DateRange {
-  /** Inclusive local dates, YYYY-MM-DD. */
-  from: string
-  to: string
-}
+export type { DateRange } from './types.js'
 
 /** Resolves a named period relative to `today` (local date). */
 export function resolvePeriod(period: Period, today: string, weekStart: WeekStart = 'monday'): DateRange {

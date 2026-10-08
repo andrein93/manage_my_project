@@ -7,15 +7,16 @@ project, detects its stack, git state and last activity, and gives you three way
 with them:
 
 - a **web dashboard** to browse, filter, tag and annotate projects, group them by **client**
-  and **category**, and manage **tasks** as a list or a kanban board;
+  and **category**, manage **tasks** as a list or a kanban board, and see **where your time and
+  AI spend go** — estimated automatically from your Claude Code sessions and git commits;
 - a **CLI** (`mmp list`, `mmp show`, …);
 - an **MCP server**, so your AI assistant (Claude Code, Cursor, Codex, …) can answer
   "which projects haven't I touched in three months?" or "add D:\clients to my workspaces".
 
 Everything stays on your machine, in a single SQLite file.
 
-> **Status:** v0.2 — project registry, clients, categories and tasks. Automatic time tracking
-> and profitability tracking are on the [roadmap](#roadmap).
+> **Status:** v0.3 — project registry, clients, categories, tasks and automatic time tracking.
+> Profitability tracking is next on the [roadmap](#roadmap).
 
 ## Requirements
 
@@ -65,6 +66,9 @@ Any other MCP client works the same way: run `node bin/mmp.js mcp` over stdio.
 | `create_tasks` | Add one or many tasks to a project ("turn the README roadmap into tasks") |
 | `update_task` | Edit or complete a task |
 | `delete_task` | Delete a task |
+| `time_report` | Hours and AI cost by project, client, category or day for any period |
+| `log_time` | Log a call or meeting manually |
+| `sync_time` | Import new Claude Code and git activity now |
 
 ## CLI
 
@@ -87,6 +91,13 @@ mmp task list [--project] [--client] [--category] [--status s...] [--priority p.
 mmp task add "<title>" --project <ref> [--priority low|normal|high|urgent] [--due YYYY-MM-DD]
 mmp task show|done|remove <id>
 mmp task edit <id> [--title] [--status todo|in_progress|done] [--priority] [--due <date|none>]
+
+mmp time sync                      import new Claude Code / git activity
+mmp time report [--period today|week|last-week|month|last-month] [--from --to]
+                [--by project|client|category|day] [--project/--client/--category]
+mmp time blocks --project <ref>    work blocks and manual entries
+mmp time add <project> <duration> [--date] [--note]   e.g. mmp time add shop 1h30m --note "Call"
+mmp time remove <id>
 mmp mcp                             MCP server on stdio (started by your AI client)
 ```
 
@@ -103,6 +114,22 @@ first 6–8 characters, like git commits.
   optional due date. Each project page has a list and a kanban board; the **Tasks** page shows
   every open task grouped by due date (overdue, today, next 7 days, later, no date).
 - Removing a client or a category never removes projects; they just lose the label.
+
+## Time tracking
+
+mmp estimates your working time **without timers and without changing your Claude Code setup**:
+
+- It reads the session transcripts Claude Code already keeps in `~/.claude/projects`
+  (incrementally, metadata only: timestamps, working folder, session cost — **never the
+  conversation text**) and the commits you authored in each registered repository.
+- Activity in the same project is merged into **work blocks**; a pause longer than the idle
+  threshold (15 minutes by default, see Settings) ends a block.
+- Each session's folder decides the project. Sessions in folders that are not projects appear
+  under *Activity outside your projects*; register the folder and its whole history moves over.
+- **AI cost** is the API-equivalent cost Claude Code records for each session (on a subscription
+  plan this is not what you pay).
+- Calls and meetings can be logged manually from the Time page, the CLI or your AI.
+- The first import of a long history takes a few seconds and runs in the background.
 
 ## How scanning works
 
@@ -176,7 +203,7 @@ keys and register it in `web/src/i18n.ts`.
 
 1. ~~Core: scanner, registry, CLI, dashboard, MCP~~ (v0.1)
 2. ~~Clients, categories and tasks, manageable by your AI~~ (v0.2)
-3. Automatic time tracking (Claude Code hooks, git activity)
+3. ~~Automatic time tracking from Claude Code sessions and git~~ (v0.3)
 4. Profitability: income, costs (time, AI tokens, hosting), effective hourly rate
 5. Project health, renewals (domains, SSL, hosting), weekly reports
 6. Optional sync server to share projects across people and machines

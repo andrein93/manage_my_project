@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { api, type Workspace } from '../api'
 import CategoriesSettings from '../components/CategoriesSettings.vue'
+import TimeSettings from '../components/TimeSettings.vue'
 import { scanTick, useErrors } from '../composables'
 
 const { t } = useI18n()
@@ -125,6 +126,8 @@ onMounted(load)
     </section>
 
     <CategoriesSettings />
+
+    <TimeSettings />
 
     <section>
       <h2 class="text-lg font-semibold">{{ t('settings.ignore') }}</h2>

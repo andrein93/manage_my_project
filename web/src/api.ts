@@ -1,3 +1,4 @@
+import type { SyncResult, TimeEntry, TimeReport, WorkBlock } from '../../src/core/time/types'
 import type {
   Category,
   CategoryInput,
@@ -34,6 +35,14 @@ export type {
   Workspace,
 }
 
+export type { SyncResult, TimeEntry, TimeReport, WorkBlock }
+
+export interface SyncStatus {
+  running: boolean
+  lastSync: (SyncResult & { finishedAt: string }) | null
+  claudeProjectsDir: string
+}
+
 export interface Meta {
   version: string
   mcpCommand: string
@@ -47,6 +56,9 @@ export interface Meta {
 
 export interface Settings {
   ignoreNames: string[]
+  idleMinutes: number
+  claudeProjectsDir: string
+  weekStart: 'monday' | 'sunday'
 }
 
 export interface ProjectPatch {
@@ -119,4 +131,14 @@ export const api = {
     request<Task>('POST', '/tasks', { projectId, ...input }),
   updateTask: (id: string, input: TaskInput) => request<Task>('PATCH', `/tasks/${id}`, input),
   removeTask: (id: string) => request<void>('DELETE', `/tasks/${id}`),
+
+  timeReport: (params: Record<string, string | undefined>) => request<TimeReport>('GET', `/time/report?${query(params)}`),
+  timeBlocks: (params: Record<string, string | undefined>) =>
+    request<{ blocks: WorkBlock[]; entries: TimeEntry[] }>('GET', `/time/blocks?${query(params)}`),
+  timeEntries: (params: Record<string, string | undefined>) => request<TimeEntry[]>('GET', `/time/entries?${query(params)}`),
+  timeStatus: () => request<SyncStatus>('GET', '/time/status'),
+  timeSync: () => request<SyncResult>('POST', '/time/sync', {}),
+  addTimeEntry: (input: { projectId: string; date?: string; minutes: string | number; note?: string }) =>
+    request<TimeEntry>('POST', '/time/entries', input),
+  removeTimeEntry: (id: string) => request<void>('DELETE', `/time/entries/${id}`),
 }

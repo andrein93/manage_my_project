@@ -5,6 +5,7 @@ import { api, type CategoryRef, type NamedRef, type Project, type ProjectStatus 
 import CategoryDot from '../components/CategoryDot.vue'
 import FreshnessStrip from '../components/FreshnessStrip.vue'
 import ProjectTasks from '../components/ProjectTasks.vue'
+import ProjectTime from '../components/ProjectTime.vue'
 import TagEditor from '../components/TagEditor.vue'
 import { scanTick, useAutoRefresh, useErrors } from '../composables'
 
@@ -160,6 +161,7 @@ useAutoRefresh(() => load())
       <p v-if="project.missingSince" class="mt-4 border-l-2 border-danger pl-3 text-sm">{{ t('detail.missingBanner') }}</p>
 
       <ProjectTasks class="mt-8" :project-id="project.id" />
+      <ProjectTime class="mt-12" :project-id="project.id" />
 
       <div class="mt-12 grid gap-10 border-t border-line pt-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <form class="space-y-5" @submit.prevent="save">

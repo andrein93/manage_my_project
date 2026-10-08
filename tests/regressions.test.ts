@@ -86,6 +86,15 @@ describe('review regressions', () => {
     await server.close()
   })
 
+  it('starts a real server with background sync and stops cleanly', async () => {
+    const app = createApp({ config: { ...fx.app.config, port: 0 }, dbFile: ':memory:' })
+    app.settings.update({ claudeProjectsDir: join(fx.root, 'none') })
+    const { server } = await startServer(app)
+    expect((await server.inject({ url: '/api/time/status' })).statusCode).toBe(200)
+    await server.close()
+    app.close()
+  })
+
   it('refuses to listen on a non-loopback interface', async () => {
     const app = createApp({ config: { ...fx.app.config, host: '0.0.0.0' }, dbFile: ':memory:' })
     await expect(startServer(app)).rejects.toThrow(/loopback/)

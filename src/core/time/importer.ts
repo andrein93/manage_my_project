@@ -7,24 +7,14 @@ import { transaction, type DB } from '../db.js'
 import { now } from '../ids.js'
 import { pathKey } from '../paths.js'
 import { minuteKey } from './periods.js'
+import type { SyncResult } from './types.js'
 
 const exec = promisify(execFile)
 const NEWLINE = 0x0a
 /** Cheap pre-filter before JSON.parse: only these line types matter. */
 const INTERESTING = /"type":"(user|assistant|cost-state)"/
 
-export interface SyncResult {
-  claudeDirFound: boolean
-  files: number
-  filesRead: number
-  linesRead: number
-  skippedLines: number
-  signals: number
-  sessions: number
-  commits: number
-  errors: { source: string; message: string }[]
-  durationMs: number
-}
+export type { SyncResult } from './types.js'
 
 export function emptySyncResult(): SyncResult {
   return {

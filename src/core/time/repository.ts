@@ -8,54 +8,16 @@ import type { SettingsRepository } from '../settings.js'
 import { UserError, type Project } from '../types.js'
 import { buildBlocks, minutesPerDay, type Block, type Signal } from './blocks.js'
 import { parseDuration } from './duration.js'
-import { daysOf, localDateOf, localDayStartMinute, minuteToMs, type DateRange } from './periods.js'
+import { daysOf, localDateOf, localDayStartMinute, minuteToMs } from './periods.js'
+import type { DateRange, GroupBy, TimeEntry, TimeReport, WorkBlock } from './types.js'
 
-export const GROUP_BY = ['project', 'client', 'category', 'day'] as const
-export type GroupBy = (typeof GROUP_BY)[number]
+export { GROUP_BY } from './types.js'
+export type { GroupBy, ReportRow, TimeEntry, TimeReport, WorkBlock } from './types.js'
 
 export interface ReportFilters {
   projectId?: string
   clientId?: string
   categoryId?: string
-}
-
-export interface ReportRow {
-  /** Project/client/category id, 'none', or a date for `day`. */
-  key: string
-  label: string
-  color: string | null
-  minutes: number
-  costUsd: number
-  /** Share of the report's total minutes, 0–1. */
-  share: number
-}
-
-export interface TimeReport {
-  range: DateRange
-  by: GroupBy
-  totals: { minutes: number; autoMinutes: number; manualMinutes: number; costUsd: number }
-  rows: ReportRow[]
-  days: { date: string; minutes: number; costUsd: number }[]
-  unassigned: { cwd: string; minutes: number; costUsd: number }[]
-}
-
-export interface TimeEntry {
-  id: string
-  projectId: string
-  projectName: string
-  date: string
-  minutes: number
-  note: string
-  createdAt: string
-  updatedAt: string
-}
-
-export interface WorkBlock {
-  start: string
-  end: string
-  minutes: number
-  sources: ('claude' | 'git')[]
-  sessionIds: string[]
 }
 
 export interface EntryInput {
@@ -161,14 +123,23 @@ export class TimeRepository {
     const sum = (m: Map<string, number>) => [...m.values()].reduce((a, b) => a + b, 0)
     const totals = { minutes: 0, autoMinutes: 0, manualMinutes: 0, costUsd: 0 }
     const daySeries = new Map(days.map((d) => [d, { date: d, minutes: 0, costUsd: 0 }]))
+    // Totals use wall-clock time: work on parallel projects counts once (union of all signals),
+    // while per-project rows below count each project's own blocks.
+    const allSignals = kept.flatMap(([key]) => signals.get(key) ?? [])
+    for (const [day, minutes] of minutesPerDay(buildBlocks(allSignals, idleMinutes))) {
+      if (!inRange.has(day)) continue
+      totals.autoMinutes += minutes
+      daySeries.get(day)!.minutes += minutes
+    }
     for (const [, b] of kept) {
-      totals.autoMinutes += sum(b.autoPerDay)
       totals.manualMinutes += sum(b.manualPerDay)
       totals.costUsd += sum(b.costPerDay)
-      for (const [d, m] of [...b.autoPerDay, ...b.manualPerDay]) daySeries.get(d)!.minutes += m
+      for (const [d, m] of b.manualPerDay) daySeries.get(d)!.minutes += m
       for (const [d, c] of b.costPerDay) daySeries.get(d)!.costUsd += c
     }
     totals.minutes = totals.autoMinutes + totals.manualMinutes
+    // Shares are relative to the sum of rows (which may exceed wall-clock time).
+    const rowTotal = kept.reduce((acc, [, b]) => acc + sum(b.autoPerDay) + sum(b.manualPerDay), 0)
 
     const byProject = new Map(all.map((p) => [p.id, p]))
     const groups = new Map<string, { label: string; color: string | null; minutes: number; costUsd: number }>()
@@ -201,7 +172,7 @@ export class TimeRepository {
         color: g.color,
         minutes: Math.round(g.minutes),
         costUsd: round(g.costUsd),
-        share: totals.minutes ? g.minutes / totals.minutes : 0,
+        share: by === 'day' ? (totals.minutes ? g.minutes / totals.minutes : 0) : rowTotal ? g.minutes / rowTotal : 0,
       }))
       .filter((r) => by === 'day' || r.minutes > 0 || r.costUsd > 0)
       .sort((a, b) => (by === 'day' ? a.key.localeCompare(b.key) : b.minutes - a.minutes || b.costUsd - a.costUsd))

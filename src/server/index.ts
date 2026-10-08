@@ -86,6 +86,9 @@ export async function startServer(app: App, options: ServerOptions = {}): Promis
     throw new UserError(`MMP_HOST must be a loopback address (127.0.0.1, ::1 or localhost), got "${app.config.host}".`)
   }
   const server = await buildServer(app, options)
+  // Hooks must be registered before listen().
+  let timer: ReturnType<typeof setInterval> | undefined
+  server.addHook('onClose', async () => clearInterval(timer))
   try {
     await server.listen({ port: app.config.port, host: app.config.host })
   } catch (error) {
@@ -98,9 +101,8 @@ export async function startServer(app: App, options: ServerOptions = {}): Promis
     // Not awaited: the first import of a long history must not delay the dashboard.
     const sync = () => app.time.sync().catch((error) => server.log.error(error))
     sync()
-    const timer = setInterval(sync, SYNC_INTERVAL_MS)
+    timer = setInterval(sync, SYNC_INTERVAL_MS)
     timer.unref()
-    server.addHook('onClose', async () => clearInterval(timer))
   }
   return { url: `http://localhost:${app.config.port}`, server }
 }

@@ -151,6 +151,22 @@ describe('time reports and manual entries', () => {
     expect(fx.app.time.repo.entries(range)).toEqual([])
   })
 
+  it('counts parallel work once in totals but fully per project', () => {
+    // blog gets activity overlapping shop's 10:00–10:12 block.
+    writeFileSync(join(claudeDir, 'parallel.jsonl'), msg('user', '10:02', blog(), 's9') + msg('user', '10:08', blog(), 's9'))
+    return fx.app.time.sync().then(() => {
+      const report = fx.app.time.repo.report(range)
+      expect(report.rows.map((r) => [r.label, r.minutes])).toEqual([
+        ['shop', 12],
+        ['blog', 10],
+      ])
+      // Wall clock: 10:00–10:12 (12) + blog 11:00 (2) + outside 12:00 (2).
+      expect(report.totals.autoMinutes).toBe(16)
+      expect(report.days[0].minutes).toBe(16)
+      expect(report.rows.reduce((a, r) => a + r.share, 0)).toBeCloseTo(22 / 24, 5)
+    })
+  })
+
   it('lists work blocks of a project, newest first', () => {
     const blocks = fx.app.time.repo.blocks(fx.app.projects.resolve('shop').id, range)
     expect(blocks).toHaveLength(1)
