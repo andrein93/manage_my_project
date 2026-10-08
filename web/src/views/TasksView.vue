@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CheckSquare } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -6,6 +7,9 @@ import { api, type DueGroup, type Meta, type Project, type Task } from '../api'
 import TaskItem from '../components/TaskItem.vue'
 import { useAutoRefresh, useErrors } from '../composables'
 import { TASK_PRIORITIES } from '../tasks'
+import PageHeader from '../ui/PageHeader.vue'
+import UiBadge from '../ui/UiBadge.vue'
+import UiEmpty from '../ui/UiEmpty.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -96,10 +100,7 @@ useAutoRefresh(load)
 
 <template>
   <section>
-    <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <h1 class="text-2xl font-semibold tracking-tight">{{ t('app.tasks') }}</h1>
-      <p class="text-sm text-muted">{{ t('task.count', { n: tasks.length }, tasks.length) }}</p>
-    </div>
+    <PageHeader :title="t('app.tasks')" :subtitle="t('task.count', { n: tasks.length }, tasks.length)" />
 
     <form class="mb-4 grid gap-2 sm:grid-cols-[1fr_16rem_auto]" @submit.prevent="add">
       <input v-model="draft" class="field" maxlength="500" :placeholder="t('task.add')" :aria-label="t('task.add')" />
@@ -136,28 +137,25 @@ useAutoRefresh(load)
       </select>
     </div>
 
-    <p v-if="error" class="mb-4 text-sm text-danger" role="alert">{{ error }}</p>
+    <p v-if="error" class="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
 
     <div v-for="group in groups" :key="group.id" class="mb-8">
-      <h2 class="mb-1 flex items-baseline gap-2 text-sm font-semibold" :class="{ 'text-danger': group.id === 'overdue' }">
+      <h2 class="mb-2 flex items-center gap-2 text-sm font-semibold" :class="{ 'text-danger': group.id === 'overdue' }">
         {{ t(`task.due.${group.id}`) }}
-        <span class="font-normal text-muted tabular-nums">{{ group.tasks.length }}</span>
+        <UiBadge :tone="group.id === 'overdue' ? 'danger' : 'neutral'">{{ group.tasks.length }}</UiBadge>
       </h2>
-      <div class="divide-y divide-line border-y border-line">
+      <div class="card divide-y divide-line px-4">
         <TaskItem v-for="task in group.tasks" :key="task.id" :task="task" show-project @changed="replace" @removed="drop" />
       </div>
     </div>
 
     <div v-if="completed.length" class="mb-8">
-      <h2 class="mb-1 text-sm font-semibold">{{ t('task.status.done') }}</h2>
-      <div class="divide-y divide-line border-y border-line">
+      <h2 class="mb-2 text-sm font-semibold text-muted">{{ t('task.status.done') }}</h2>
+      <div class="card divide-y divide-line px-4">
         <TaskItem v-for="task in completed" :key="task.id" :task="task" show-project @changed="replace" @removed="drop" />
       </div>
     </div>
 
-    <div v-if="loaded && !error && tasks.length === 0" class="border-y border-line py-16 text-center">
-      <p class="font-medium">{{ t('task.emptyTitle') }}</p>
-      <p class="mt-1 text-sm text-muted">{{ t('task.emptyHint') }}</p>
-    </div>
+    <UiEmpty v-if="loaded && !error && tasks.length === 0" :icon="CheckSquare" :title="t('task.emptyTitle')" :hint="t('task.emptyHint')" />
   </section>
 </template>

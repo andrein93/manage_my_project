@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Motion } from 'motion-v'
+import { Clock, RefreshCw, X } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -7,6 +9,11 @@ import DailyChart from '../components/DailyChart.vue'
 import { uiLocale } from '../i18n'
 import { scanTick, useAutoRefresh, useErrors } from '../composables'
 import { formatMinutes, formatUsd, localDate } from '../time'
+import { reducedMotion, staggerDelay } from '../motion'
+import PageHeader from '../ui/PageHeader.vue'
+import UiCard from '../ui/UiCard.vue'
+import UiEmpty from '../ui/UiEmpty.vue'
+import NumberTicker from '../ui/effects/NumberTicker.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -147,20 +154,24 @@ onMounted(() => {
   if (!form.value.projectId && typeof route.query.project === 'string') form.value.projectId = route.query.project
 })
 useAutoRefresh(load, 60_000)
+const minutesTick = (n: number) => formatMinutes(Math.round(n))
 </script>
 
 <template>
   <section>
-    <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <h1 class="text-2xl font-semibold tracking-tight">{{ t('app.time') }}</h1>
-      <p class="flex items-center gap-3 text-sm text-muted" role="status">
-        <span v-if="status?.running">{{ t('time.syncing') }}</span>
-        <span v-else-if="syncedAgo">{{ t('time.syncedAt', { when: syncedAgo }) }}</span>
-        <button class="hover:text-ink underline-offset-2 hover:underline" :disabled="status?.running" @click="syncNow">{{ t('time.syncNow') }}</button>
-      </p>
-    </div>
+    <PageHeader :title="t('app.time')">
+      <template #actions>
+        <span class="text-sm text-muted" role="status">
+          <template v-if="status?.running">{{ t('time.syncing') }}</template>
+          <template v-else-if="syncedAgo">{{ t('time.syncedAt', { when: syncedAgo }) }}</template>
+        </span>
+        <button class="btn btn-sm" :disabled="status?.running" @click="syncNow">
+          <RefreshCw class="size-3.5" :class="{ 'animate-spin': status?.running }" aria-hidden="true" />{{ t('time.syncNow') }}
+        </button>
+      </template>
+    </PageHeader>
 
-    <p v-if="status?.lastSync && !status.lastSync.claudeDirFound" class="mb-4 border-l-2 border-aging pl-3 text-sm">
+    <p v-if="status?.lastSync && !status.lastSync.claudeDirFound" class="mb-4 rounded-md border border-aging/30 bg-aging/10 px-3 py-2 text-sm">
       {{ t('time.noTranscripts', { dir: status.claudeProjectsDir }) }}
     </p>
 
@@ -184,33 +195,35 @@ useAutoRefresh(load, 60_000)
       </select>
     </div>
 
-    <p v-if="error" class="mb-4 text-sm text-danger" role="alert">{{ error }}</p>
+    <p v-if="error" class="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
 
     <template v-if="report">
+      <UiCard class="mb-6 p-5">
       <div class="mb-6 flex flex-wrap gap-x-12 gap-y-4">
         <div>
-          <p class="text-sm text-muted">{{ t('time.total') }}</p>
-          <p class="text-3xl font-semibold tracking-tight tabular-nums">{{ formatMinutes(report.totals.minutes) }}</p>
+          <p class="label">{{ t('time.total') }}</p>
+          <p class="mt-1 text-3xl font-semibold tracking-tight"><NumberTicker :value="report.totals.minutes" :format="minutesTick" /></p>
           <p v-if="report.totals.manualMinutes" class="text-xs text-muted">
             {{ t('time.manualShare', { manual: formatMinutes(report.totals.manualMinutes) }) }}
           </p>
         </div>
         <div :title="t('time.aiCostHint')">
-          <p class="text-sm text-muted">{{ t('time.aiCost') }}</p>
-          <p class="text-3xl font-semibold tracking-tight tabular-nums">{{ formatUsd(report.totals.costUsd) }}</p>
+          <p class="label">{{ t('time.aiCost') }}</p>
+          <p class="mt-1 text-3xl font-semibold tracking-tight"><NumberTicker :value="report.totals.costUsd" :format="formatUsd" /></p>
           <p class="text-xs text-muted">{{ t('time.aiCostHint') }}</p>
         </div>
       </div>
 
-      <DailyChart v-if="report.days.length > 1" :days="report.days" class="mb-8" />
+      <DailyChart v-if="report.days.length > 1" :days="report.days" />
+      </UiCard>
 
-      <div class="mb-3 inline-flex rounded-md border border-line p-0.5 text-sm" role="group">
+      <div class="mb-3 inline-flex rounded-lg border border-line bg-surface-2 p-0.5 text-sm" role="group">
         <button
           v-for="g in GROUPS"
           :key="g"
           type="button"
-          class="rounded px-3 py-1"
-          :class="filters.by === g ? 'bg-ink text-paper' : 'text-muted hover:text-ink'"
+          class="rounded-md px-3 py-1 transition-colors"
+          :class="filters.by === g ? 'bg-surface text-ink shadow-card' : 'text-muted hover:text-ink'"
           :aria-pressed="filters.by === g"
           @click="setQuery({ by: g === 'project' ? undefined : g })"
         >
@@ -218,18 +231,19 @@ useAutoRefresh(load, 60_000)
         </button>
       </div>
 
-      <table v-if="report.rows.length" class="mb-10 w-full text-sm">
-        <thead class="border-b border-line text-left text-muted">
+      <UiCard v-if="report.rows.length" class="mb-10 overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="border-b border-line text-left text-xs tracking-wider text-muted uppercase">
           <tr>
-            <th class="py-2 font-medium">{{ t('time.name') }}</th>
-            <th class="hidden w-1/3 py-2 font-medium sm:table-cell">{{ t('time.share') }}</th>
-            <th class="py-2 text-right font-medium">{{ t('time.hours') }}</th>
-            <th class="py-2 text-right font-medium">{{ t('time.aiCost') }}</th>
+            <th class="py-2.5 pl-4 font-medium">{{ t('time.name') }}</th>
+            <th class="hidden w-1/3 py-2.5 font-medium sm:table-cell">{{ t('time.share') }}</th>
+            <th class="py-2.5 text-right font-medium">{{ t('time.hours') }}</th>
+            <th class="py-2.5 pr-4 text-right font-medium">{{ t('time.aiCost') }}</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-line">
-          <tr v-for="row in report.rows" :key="row.key">
-            <td class="py-2.5 pr-3">
+          <tr v-for="(row, i) in report.rows" :key="row.key" class="transition-colors hover:bg-surface-2/60">
+            <td class="py-2.5 pr-3 pl-4">
               <span class="inline-flex items-center gap-2">
                 <span v-if="row.color" class="h-2.5 w-2.5 shrink-0 rounded-full" :style="{ backgroundColor: row.color }" aria-hidden="true" />
                 <RouterLink v-if="rowLink(row.key)" :to="rowLink(row.key)!" class="hover:underline">{{ row.label }}</RouterLink>
@@ -238,36 +252,42 @@ useAutoRefresh(load, 60_000)
             </td>
             <td class="hidden py-2.5 pr-6 sm:table-cell">
               <div class="flex items-center gap-2">
-                <div class="h-2 flex-1 rounded-sm bg-line/50">
-                  <div class="h-2 rounded-sm bg-chart" :style="{ width: `${(row.share / maxShare) * 100}%` }" />
+                <div class="h-1.5 flex-1 rounded-full bg-surface-2">
+                  <Motion
+                    class="h-1.5 w-full origin-left rounded-full bg-chart"
+                    :initial="{ scaleX: 0 }"
+                    :animate="{ scaleX: row.share / maxShare }"
+                    :transition="{ duration: 0.6, ease: 'easeOut', delay: staggerDelay(i, reducedMotion) }"
+                  />
                 </div>
                 <span class="w-10 text-right text-xs text-muted tabular-nums">{{ Math.round(row.share * 100) }}%</span>
               </div>
             </td>
             <td class="py-2.5 text-right tabular-nums">{{ formatMinutes(row.minutes) }}</td>
-            <td class="py-2.5 text-right tabular-nums">{{ formatUsd(row.costUsd) }}</td>
+            <td class="py-2.5 pr-4 text-right tabular-nums">{{ formatUsd(row.costUsd) }}</td>
           </tr>
         </tbody>
       </table>
-      <p v-else class="mb-10 border-y border-line py-10 text-center text-sm text-muted">{{ t('time.empty') }}</p>
+      </UiCard>
+      <UiEmpty v-else class="mb-10" :icon="Clock" :title="t('time.empty')" />
       <p v-if="report.rows.length" class="-mt-8 mb-10 text-xs text-muted">{{ t('time.parallelHint') }}</p>
 
       <section v-if="report.unassigned.length" class="mb-10">
         <h2 class="text-lg font-semibold">{{ t('time.unassigned') }}</h2>
         <p class="mt-1 text-sm text-muted">{{ t('time.unassignedHint') }}</p>
-        <ul class="mt-3 divide-y divide-line border-y border-line">
+        <ul class="card mt-3 divide-y divide-line px-4">
           <li v-for="u in report.unassigned" :key="u.cwd" class="flex flex-wrap items-center justify-between gap-3 py-2.5 text-sm">
             <span class="font-mono text-xs break-all">{{ u.cwd }}</span>
             <span class="flex items-center gap-4">
               <span class="tabular-nums">{{ formatMinutes(u.minutes) }}</span>
               <span class="text-muted tabular-nums">{{ formatUsd(u.costUsd) }}</span>
-              <button class="btn !py-1" @click="addAsProject(u.cwd)">{{ t('time.addAsProject') }}</button>
+              <button class="btn btn-sm" @click="addAsProject(u.cwd)">{{ t('time.addAsProject') }}</button>
             </span>
           </li>
         </ul>
       </section>
 
-      <section class="max-w-3xl">
+      <UiCard as="section" class="max-w-3xl p-5">
         <h2 class="text-lg font-semibold">{{ t('time.logTime') }}</h2>
         <p class="mt-1 text-sm text-muted">{{ t('time.logTimeHint') }}</p>
         <form class="mt-3 grid gap-2 sm:grid-cols-[1fr_9rem_10rem]" @submit.prevent="logTime">
@@ -285,8 +305,8 @@ useAutoRefresh(load, 60_000)
         </form>
 
         <template v-if="entries.length">
-          <h3 class="mt-6 mb-1 text-sm font-semibold">{{ t('time.entries') }}</h3>
-          <ul class="divide-y divide-line border-y border-line text-sm">
+          <h3 class="label mt-6 mb-2">{{ t('time.entries') }}</h3>
+          <ul class="divide-y divide-line text-sm">
             <li v-for="e in entries" :key="e.id" class="flex items-center justify-between gap-3 py-2">
               <span class="min-w-0">
                 <span class="tabular-nums">{{ e.date }}</span>
@@ -295,12 +315,12 @@ useAutoRefresh(load, 60_000)
               </span>
               <span class="flex shrink-0 items-center gap-3">
                 <span class="tabular-nums">{{ formatMinutes(e.minutes) }}</span>
-                <button class="text-muted hover:text-danger" :aria-label="`${t('time.remove')} ${e.date} ${e.projectName}`" @click="removeEntry(e.id)">×</button>
+                <button class="text-muted hover:text-danger" :aria-label="`${t('time.remove')} ${e.date} ${e.projectName}`" @click="removeEntry(e.id)"><X class="size-4" aria-hidden="true" /></button>
               </span>
             </li>
           </ul>
         </template>
-      </section>
+      </UiCard>
     </template>
   </section>
 </template>

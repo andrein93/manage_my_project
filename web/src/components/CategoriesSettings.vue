@@ -62,7 +62,7 @@ onMounted(() => load().catch(report))
     <p class="mt-1 text-sm text-muted">{{ t('settings.categoriesHint') }}</p>
     <p v-if="error" class="mt-2 text-sm text-danger" role="alert">{{ error }}</p>
 
-    <ul class="mt-4 divide-y divide-line border-y border-line">
+    <ul class="mt-4 divide-y divide-line">
       <li v-for="(c, i) in categories" :key="c.id" class="flex items-center gap-3 py-2">
         <input
           type="color"
@@ -81,10 +81,10 @@ onMounted(() => load().catch(report))
         />
         <span class="w-20 shrink-0 text-right text-xs text-muted tabular-nums">{{ t('list.count', { n: c.projectCount }, c.projectCount) }}</span>
         <div class="flex shrink-0">
-          <button type="button" class="btn !px-2 !py-1" :disabled="i === 0" :aria-label="t('settings.moveUp', { name: c.name })" @click="move(i, -1)">↑</button>
+          <button type="button" class="btn btn-sm" :disabled="i === 0" :aria-label="t('settings.moveUp', { name: c.name })" @click="move(i, -1)">↑</button>
           <button
             type="button"
-            class="btn !px-2 !py-1"
+            class="btn btn-sm"
             :disabled="i === categories.length - 1"
             :aria-label="t('settings.moveDown', { name: c.name })"
             @click="move(i, 1)"

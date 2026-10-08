@@ -22,6 +22,6 @@ const color = { fresh: 'bg-fresh', aging: 'bg-aging', dormant: 'bg-dormant', nev
         :style="{ left: `${f.position * 100}%` }"
       />
     </div>
-    <span class="w-16 font-mono text-xs text-muted">{{ relative(f.days) }}</span>
+    <span class="w-16 text-xs whitespace-nowrap text-muted tabular-nums">{{ relative(f.days) }}</span>
   </div>
 </template>

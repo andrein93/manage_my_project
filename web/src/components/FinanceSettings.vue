@@ -103,15 +103,15 @@ onMounted(() => load().catch(report))
     <div>
       <h2 class="text-lg font-semibold">{{ t('finance.aiPlans') }}</h2>
       <p class="mt-1 text-sm text-muted">{{ t('finance.aiPlansHint') }}</p>
-      <ul v-if="plans.length" class="mt-3 divide-y divide-line border-y border-line text-sm">
+      <ul v-if="plans.length" class="mt-3 divide-y divide-line text-sm">
         <li v-for="p in plans" :key="p.id" class="flex items-center justify-between gap-3 py-2">
           <span>
             <span class="font-medium">{{ p.kind === 'api' ? t('finance.api') : `${t('finance.subscription')} ${money(p.monthlyCents)}` }}</span>
             <span class="ml-2 text-xs text-muted tabular-nums">{{ p.startDate }} → {{ p.endDate ?? t('finance.ongoing') }}</span>
           </span>
           <span class="flex gap-1">
-            <button v-if="!p.endDate" class="btn !px-2 !py-1 text-xs" @click="endPlan(p.id)">{{ t('finance.end') }}</button>
-            <button class="btn !px-2 !py-1 text-xs" :class="{ '!border-danger !text-danger': confirm === p.id }" @click="removePlan(p.id)">
+            <button v-if="!p.endDate" class="btn btn-sm" @click="endPlan(p.id)">{{ t('finance.end') }}</button>
+            <button class="btn btn-sm" :class="{ '!border-danger !text-danger': confirm === p.id }" @click="removePlan(p.id)">
               {{ confirm === p.id ? t('finance.removeConfirm') : t('finance.remove') }}
             </button>
           </span>
@@ -133,13 +133,13 @@ onMounted(() => load().catch(report))
     <div>
       <h2 class="text-lg font-semibold">{{ t('finance.sharedExpenses') }}</h2>
       <p class="mt-1 text-sm text-muted">{{ t('finance.sharedHint') }}</p>
-      <ul v-if="shared.length" class="mt-3 divide-y divide-line border-y border-line text-sm">
+      <ul v-if="shared.length" class="mt-3 divide-y divide-line text-sm">
         <li v-for="e in shared" :key="e.id" class="flex items-center justify-between gap-3 py-2">
           <span>
             <span class="font-medium">{{ e.note || '-' }}</span>
             <span class="ml-2 text-xs text-muted">{{ money(e.amountCents) }} {{ e.interval ? t(`finance.every.${e.interval}`) : e.startDate }}</span>
           </span>
-          <button class="btn !px-2 !py-1 text-xs" :class="{ '!border-danger !text-danger': confirm === e.id }" @click="removeShared(e.id)">
+          <button class="btn btn-sm" :class="{ '!border-danger !text-danger': confirm === e.id }" @click="removeShared(e.id)">
             {{ confirm === e.id ? t('finance.removeConfirm') : t('finance.remove') }}
           </button>
         </li>

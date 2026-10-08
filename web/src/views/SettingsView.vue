@@ -8,6 +8,8 @@ import CommandReference from '../components/CommandReference.vue'
 import FinanceSettings from '../components/FinanceSettings.vue'
 import LanguageSettings from '../components/LanguageSettings.vue'
 import ThemeSettings from '../components/ThemeSettings.vue'
+import PageHeader from '../ui/PageHeader.vue'
+import UiCard from '../ui/UiCard.vue'
 import TimeSettings from '../components/TimeSettings.vue'
 import { scanTick, useErrors } from '../composables'
 
@@ -92,17 +94,17 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="max-w-3xl space-y-12">
-    <h1 class="text-2xl font-semibold tracking-tight">{{ t('app.settings') }}</h1>
-    <p v-if="error" class="text-sm text-danger" role="alert">{{ error }}</p>
+  <div class="max-w-3xl space-y-4">
+    <PageHeader :title="t('app.settings')" />
+    <p v-if="error" class="rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
 
-    <ThemeSettings />
-    <LanguageSettings />
+    <UiCard class="p-5"><ThemeSettings /></UiCard>
+    <UiCard class="p-5"><LanguageSettings /></UiCard>
 
-    <section>
+    <UiCard as="section" class="p-5">
       <h2 class="text-lg font-semibold">{{ t('settings.workspaces') }}</h2>
       <p class="mt-1 text-sm text-muted">{{ t('settings.workspacesHint') }}</p>
-      <ul class="mt-4 divide-y divide-line border-y border-line">
+      <ul class="mt-4 divide-y divide-line">
         <li v-for="w in workspaces" :key="w.id" class="flex items-center justify-between gap-4 py-2.5">
           <span class="font-mono text-sm break-all">{{ w.path }}</span>
           <button
@@ -119,24 +121,24 @@ onMounted(load)
         <input v-model="newWorkspace" class="field font-mono" required :placeholder="t('settings.workspacePath')" :aria-label="t('settings.workspacePath')" />
         <button class="btn btn-primary shrink-0" :disabled="busy">{{ t('settings.addWorkspace') }}</button>
       </form>
-    </section>
+    </UiCard>
 
-    <section>
+    <UiCard as="section" class="p-5">
       <h2 class="text-lg font-semibold">{{ t('settings.addProject') }}</h2>
       <p class="mt-1 text-sm text-muted">{{ t('settings.addProjectHint') }}</p>
       <form class="mt-3 flex gap-2" @submit.prevent="addProject">
         <input v-model="newProject" class="field font-mono" required :placeholder="t('settings.projectPath')" :aria-label="t('settings.projectPath')" />
         <button class="btn btn-primary shrink-0" :disabled="busy">{{ t('settings.add') }}</button>
       </form>
-    </section>
+    </UiCard>
 
-    <CategoriesSettings />
+    <UiCard class="p-5"><CategoriesSettings /></UiCard>
 
-    <TimeSettings />
+    <UiCard class="p-5"><TimeSettings /></UiCard>
 
-    <FinanceSettings />
+    <UiCard class="p-5"><FinanceSettings /></UiCard>
 
-    <section>
+    <UiCard as="section" class="p-5">
       <h2 class="text-lg font-semibold">{{ t('settings.ignore') }}</h2>
       <p class="mt-1 text-sm text-muted">{{ t('settings.ignoreHint') }}</p>
       <textarea v-model="ignoreText" class="field mt-3 min-h-32 font-mono" :aria-label="t('settings.ignore')" />
@@ -144,8 +146,8 @@ onMounted(load)
         <button class="btn" :disabled="busy" @click="saveIgnore">{{ t('settings.saveIgnore') }}</button>
         <span v-if="ignoreSaved" class="text-sm text-fresh" role="status">{{ t('detail.saved') }}</span>
       </div>
-    </section>
+    </UiCard>
 
-    <CommandReference />
+    <UiCard class="p-5"><CommandReference /></UiCard>
   </div>
 </template>
