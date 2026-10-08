@@ -43,7 +43,8 @@ function setPeriod(period: string) {
 const params = computed(() => {
   const f = filters.value
   return {
-    ...(f.period === 'custom' && f.from ? { from: f.from, to: f.to || f.from } : { period: f.period }),
+    // A custom period without a start date falls back to this week.
+    ...(f.period === 'custom' ? (f.from ? { from: f.from, to: f.to || f.from } : { period: 'week' }) : { period: f.period }),
     by: f.by,
     client: f.client || undefined,
     category: f.category || undefined,
@@ -66,7 +67,9 @@ async function load() {
     status.value = s
     meta.value = m
     projects.value = list
-    entries.value = await api.timeEntries({ from: r.range.from, to: r.range.to })
+    const list2 = await api.timeEntries({ from: r.range.from, to: r.range.to })
+    if (request !== latest) return
+    entries.value = list2
     error.value = null
   } catch (e) {
     reportError(e)

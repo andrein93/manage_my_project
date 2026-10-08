@@ -147,6 +147,15 @@ export const MIGRATIONS: string[] = [
     updated_at TEXT NOT NULL
   );
   `,
+  `
+  CREATE TABLE session_minutes (
+    session_id TEXT NOT NULL,
+    minute TEXT NOT NULL,
+    PRIMARY KEY (session_id, minute)
+  ) WITHOUT ROWID;
+  CREATE INDEX session_minutes_minute ON session_minutes(minute);
+  DELETE FROM import_state WHERE source_key LIKE 'claude:%';
+  `,
 ]
 
 /** Starter categories, created once when the categories table has never been used. */

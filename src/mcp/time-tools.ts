@@ -37,7 +37,7 @@ export function registerTimeTools(server: McpServer, app: App): void {
         client?: string
         category?: string
       }) => {
-        await app.time.sync()
+        await app.time.freshen()
         const range = rangeFrom(a, localToday(), app.settings.get().weekStart)
         const report = app.time.repo.report(range, a.by ?? 'project', {
           projectId: a.project ? app.projects.resolve(a.project).id : undefined,

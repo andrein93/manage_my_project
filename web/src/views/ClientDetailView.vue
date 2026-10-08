@@ -31,15 +31,25 @@ async function load(force = false) {
   if (dirty.value && !force) return
   const id = props.id
   try {
-    const [data, time] = await Promise.all([api.client(id), api.timeReport({ period: 'month', client: id })])
-    month.value = time
+    const data = await api.client(id)
     if (id !== props.id || (dirty.value && !force)) return
+    loadMonth(id)
     const { projects: list, ...rest } = data
     client.value = rest
     projects.value = list
     form.value = { name: rest.name, email: rest.email, notes: rest.notes }
   } catch (e) {
     report(e)
+  }
+}
+
+/** Time is optional on this page: a failure here must not hide the client. */
+async function loadMonth(id: string) {
+  try {
+    const time = await api.timeReport({ period: 'month', client: id })
+    if (id === props.id) month.value = time
+  } catch {
+    month.value = null
   }
 }
 

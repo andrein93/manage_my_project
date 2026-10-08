@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process'
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { appendFileSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { localToday } from '../src/core/dates.js'
@@ -94,14 +94,18 @@ describe('transcript import', () => {
     expect(report.rows.find((r) => r.label === 'scratch')).toMatchObject({ minutes: 2, costUsd: 0.5 })
   })
 
-  it('reports a missing transcripts folder without failing', async () => {
-    fx.app.settings.update({ claudeProjectsDir: join(fx.root, 'nope') })
+  it('rejects network or missing transcripts folders, and syncs fine if the folder disappears', async () => {
+    expect(() => fx.app.settings.update({ claudeProjectsDir: '\\\\server\\share' })).toThrow(/Network paths/)
+    expect(() => fx.app.settings.update({ claudeProjectsDir: join(fx.root, 'nope') })).toThrow(/Not a folder/)
+    rmSync(claudeDir, { recursive: true })
     expect(await fx.app.time.sync()).toMatchObject({ claudeDirFound: false, files: 0, errors: [] })
   })
 
   it.runIf(hasGit)('imports commits by the local git user only', async () => {
     gitInit(shop())
     execFileSync('git', ['-C', shop(), 'config', 'user.email', 't@example.com'])
+    // A colleague whose address contains ours must not count.
+    execFileSync('git', ['-C', shop(), '-c', 'user.name=Bot', '-c', 'user.email=at@example.com', 'commit', '-q', '--allow-empty', '-m', 'y'])
     execFileSync('git', ['-C', shop(), '-c', 'user.name=Other', '-c', 'user.email=other@example.com', 'commit', '-q', '--allow-empty', '-m', 'x', '--date', '2020-01-01T10:00:00'])
     const result = await fx.app.time.sync()
     expect(result.commits).toBe(1)
@@ -163,8 +167,27 @@ describe('time reports and manual entries', () => {
       // Wall clock: 10:00–10:12 (12) + blog 11:00 (2) + outside 12:00 (2).
       expect(report.totals.autoMinutes).toBe(16)
       expect(report.days[0].minutes).toBe(16)
-      expect(report.rows.reduce((a, r) => a + r.share, 0)).toBeCloseTo(22 / 24, 5)
+      expect(report.rows.reduce((a, r) => a + r.share, 0)).toBeCloseTo(1, 5)
     })
+  })
+
+  it('keeps the cost of a session that runs in parallel in the same folder', async () => {
+    // s7 overlaps s1 minute by minute in the same folder: activity rows dedupe, cost must not.
+    writeFileSync(
+      join(claudeDir, 'twin.jsonl'),
+      msg('user', '10:00', shop(), 's7') + msg('assistant', '10:05', shop(), 's7') + cost('s7', 4),
+    )
+    await fx.app.time.sync()
+    expect(fx.app.time.repo.report(range).rows[0]).toMatchObject({ label: 'shop', costUsd: 7 })
+  })
+
+  it('keeps a block that started before the range intact', async () => {
+    writeFileSync(join(claudeDir, 'late.jsonl'), msg('user', '23:55', shop(), 's8') + msg('user', '00:05', shop(), 's8', '2026-10-02'))
+    await fx.app.time.sync()
+    const next = { from: '2026-10-02', to: '2026-10-02' }
+    // 00:00–00:07 belongs to the 2nd (block 23:55–00:07 split at midnight).
+    expect(fx.app.time.repo.report(next).totals.autoMinutes).toBe(7)
+    expect(fx.app.time.repo.blocks(fx.app.projects.resolve('shop').id, next)).toHaveLength(1)
   })
 
   it('lists work blocks of a project, newest first', () => {

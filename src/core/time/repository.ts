@@ -8,7 +8,7 @@ import type { SettingsRepository } from '../settings.js'
 import { UserError, type Project } from '../types.js'
 import { buildBlocks, minutesPerDay, type Block, type Signal } from './blocks.js'
 import { parseDuration } from './duration.js'
-import { daysOf, localDateOf, localDayStartMinute, minuteToMs } from './periods.js'
+import { daysOf, localDateOf, localDayStartMinute, minuteKey, minuteToMs } from './periods.js'
 import type { DateRange, GroupBy, TimeEntry, TimeReport, WorkBlock } from './types.js'
 
 export { GROUP_BY } from './types.js'
@@ -66,7 +66,9 @@ export class TimeRepository {
     const inRange = new Set(days)
 
     const attribute = this.attributor(all)
-    const rows = this.activity(range)
+    // Look back one idle window so a block that started before the range keeps its true shape;
+    // per-day minutes are clipped to the range below.
+    const rows = this.activity(range, idleMinutes)
 
     // Group signals by project id, or by cwd for unassigned activity.
     const signals = new Map<string, Signal[]>()
@@ -96,15 +98,15 @@ export class TimeRepository {
 
     // AI cost: each session's cost is spread over its active minutes, then clipped to the range.
     const sessionDays = new Map<string, Map<string, number>>()
-    for (const r of rows) {
-      if (!r.session_id) continue
+    for (const r of this.sessionMinutes(range)) {
       let perDay = sessionDays.get(r.session_id)
       if (!perDay) sessionDays.set(r.session_id, (perDay = new Map()))
       const day = localDateOf(minuteToMs(r.minute))
       perDay.set(day, (perDay.get(day) ?? 0) + 1)
     }
     for (const session of this.sessions([...sessionDays.keys()])) {
-      if (session.total === 0 || session.cost_usd === 0) continue
+      // Sessions whose folder is still unknown carry no attribution yet.
+      if (session.total === 0 || session.cost_usd === 0 || !session.cwd_key) continue
       const project = attribute(session.cwd_key)
       const b = bucket(project ? project.id : `cwd:${session.cwd_key}`)
       if (!project) unassignedCwd.set(`cwd:${session.cwd_key}`, session.cwd)
@@ -139,7 +141,9 @@ export class TimeRepository {
     }
     totals.minutes = totals.autoMinutes + totals.manualMinutes
     // Shares are relative to the sum of rows (which may exceed wall-clock time).
-    const rowTotal = kept.reduce((acc, [, b]) => acc + sum(b.autoPerDay) + sum(b.manualPerDay), 0)
+    const rowTotal = kept
+      .filter(([key]) => !key.startsWith('cwd:'))
+      .reduce((acc, [, b]) => acc + sum(b.autoPerDay) + sum(b.manualPerDay), 0)
 
     const byProject = new Map(all.map((p) => [p.id, p]))
     const groups = new Map<string, { label: string; color: string | null; minutes: number; costUsd: number }>()
@@ -204,10 +208,12 @@ export class TimeRepository {
   blocks(projectId: string, range: DateRange): WorkBlock[] {
     if (!this.projects.get(projectId)) throw new UserError(`Project not found: ${projectId}`, 'not_found')
     const attribute = this.attributor(this.projects.list({ all: true }))
-    const signals: Signal[] = this.activity(range)
+    const signals: Signal[] = this.activity(range, this.settings.get().idleMinutes)
       .filter((r) => attribute(r.cwd_key)?.id === projectId)
       .map((r) => ({ at: minuteToMs(r.minute), source: r.source, sessionId: r.session_id }))
+    const rangeStart = minuteToMs(localDayStartMinute(range.from))
     return buildBlocks(signals, this.settings.get().idleMinutes)
+      .filter((b) => b.end > rangeStart)
       .reverse()
       .map((b: Block) => ({
         start: new Date(b.start).toISOString(),
@@ -295,10 +301,20 @@ export class TimeRepository {
     return this.db.prepare(`${ENTRY_SELECT} AND e.date BETWEEN ? AND ?`).all(range.from, range.to) as unknown as EntryRow[]
   }
 
-  private activity(range: DateRange): ActivityRow[] {
+  private activity(range: DateRange, lookbackMinutes = 0): ActivityRow[] {
+    const from = minuteKey(minuteToMs(localDayStartMinute(range.from)) - lookbackMinutes * 60_000)
     return this.db
       .prepare('SELECT cwd_key, cwd, minute, source, session_id FROM activity WHERE minute >= ? AND minute < ?')
-      .all(localDayStartMinute(range.from), localDayStartMinute(addDays(range.to, 1))) as unknown as ActivityRow[]
+      .all(from, localDayStartMinute(addDays(range.to, 1))) as unknown as ActivityRow[]
+  }
+
+  private sessionMinutes(range: DateRange): { session_id: string; minute: string }[] {
+    return this.db
+      .prepare('SELECT session_id, minute FROM session_minutes WHERE minute >= ? AND minute < ?')
+      .all(localDayStartMinute(range.from), localDayStartMinute(addDays(range.to, 1))) as unknown as {
+      session_id: string
+      minute: string
+    }[]
   }
 
   /** Sessions with their cost and total active minutes (all time). */
@@ -311,7 +327,7 @@ export class TimeRepository {
         ...(this.db
           .prepare(
             `SELECT s.session_id, s.cwd_key, s.cwd, s.cost_usd,
-               (SELECT COUNT(*) FROM activity a WHERE a.session_id = s.session_id) AS total
+               (SELECT COUNT(*) FROM session_minutes m WHERE m.session_id = s.session_id) AS total
              FROM ai_sessions s WHERE s.session_id IN (${marks})`,
           )
           .all(...chunk) as unknown as { session_id: string; cwd_key: string; cwd: string; cost_usd: number; total: number }[]),

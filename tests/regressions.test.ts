@@ -88,7 +88,7 @@ describe('review regressions', () => {
 
   it('starts a real server with background sync and stops cleanly', async () => {
     const app = createApp({ config: { ...fx.app.config, port: 0 }, dbFile: ':memory:' })
-    app.settings.update({ claudeProjectsDir: join(fx.root, 'none') })
+    app.settings.update({ claudeProjectsDir: join(fx.root, '.claude-projects-empty') })
     const { server } = await startServer(app)
     expect((await server.inject({ url: '/api/time/status' })).statusCode).toBe(200)
     await server.close()

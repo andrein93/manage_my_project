@@ -31,6 +31,21 @@ export class TimeService {
     }))
   }
 
+  /**
+   * Syncs unless one finished within `maxAgeMs`; waits at most `timeoutMs` (the sync keeps
+   * running in the background and later calls see its data).
+   */
+  async freshen(maxAgeMs = 60_000, timeoutMs = 8_000): Promise<void> {
+    const last = this.last ? Date.parse(this.last.finishedAt) : 0
+    if (!this.running && Date.now() - last < maxAgeMs) return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    await Promise.race([
+      this.sync().catch(() => undefined),
+      new Promise((resolve) => (timer = setTimeout(resolve, timeoutMs))),
+    ])
+    clearTimeout(timer)
+  }
+
   status(): SyncStatus {
     return { running: !!this.running, lastSync: this.last, claudeProjectsDir: this.settings.get().claudeProjectsDir }
   }

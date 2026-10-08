@@ -13,18 +13,24 @@ const month = ref<TimeReport | null>(null)
 const last30 = ref<TimeReport | null>(null)
 const blocks = ref<WorkBlock[]>([])
 
+let latest = 0
 async function load() {
+  const request = ++latest
+  const projectId = props.projectId
   const today = new Date()
   const from30 = localDate(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29))
   try {
     const [m, l, b] = await Promise.all([
-      api.timeReport({ period: 'month', project: props.projectId }),
-      api.timeReport({ from: from30, to: localDate(today), project: props.projectId }),
-      api.timeBlocks({ from: from30, to: localDate(today), project: props.projectId }),
+      api.timeReport({ period: 'month', project: projectId }),
+      api.timeReport({ from: from30, to: localDate(today), project: projectId }),
+      api.timeBlocks({ from: from30, to: localDate(today), project: projectId }),
     ])
+    // Ignore responses for a project we already navigated away from.
+    if (request !== latest || projectId !== props.projectId) return
     month.value = m
     last30.value = l
     blocks.value = b.blocks.slice(0, 5)
+    error.value = null
   } catch (e) {
     report(e)
   }

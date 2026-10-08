@@ -1,3 +1,4 @@
+import { statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { DB } from './db.js'
@@ -45,7 +46,16 @@ export class SettingsRepository {
     }
     if (patch.claudeProjectsDir !== undefined) {
       const dir = String(patch.claudeProjectsDir).trim()
-      values.claudeProjectsDir = dir ? resolve(dir) : DEFAULT_SETTINGS.claudeProjectsDir
+      if (/^(\\\\|\/\/)/.test(dir)) throw new UserError('Network paths are not allowed for the transcripts folder')
+      const resolved = dir ? resolve(dir) : DEFAULT_SETTINGS.claudeProjectsDir
+      let isDir = false
+      try {
+        isDir = statSync(resolved).isDirectory()
+      } catch {
+        // handled below
+      }
+      if (!isDir && dir) throw new UserError(`Not a folder: ${resolved}`)
+      values.claudeProjectsDir = resolved
     }
     if (patch.weekStart !== undefined) {
       if (patch.weekStart !== 'monday' && patch.weekStart !== 'sunday') throw new UserError('weekStart must be monday or sunday')
