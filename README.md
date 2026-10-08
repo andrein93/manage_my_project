@@ -6,7 +6,7 @@ Clone mmp into the folder that holds all your projects. It maps every sibling fo
 project, detects its stack, git state and last activity, and gives you three ways to work
 with them:
 
-- a **web dashboard** (English and Italian, more languages welcome) that opens on an
+- a **web dashboard** (English, Italian, Spanish, German and French) that opens on an
   **overview** of what needs your attention, and lets you browse, filter, tag and annotate
   projects, group them by **client**
   and **category**, manage **tasks** as a list or a kanban board, see **where your time and
@@ -199,7 +199,8 @@ locally; mmp never contacts package registries.
 
 ## Languages
 
-The dashboard is available in English and Italian; it follows your browser language unless you
+The dashboard is available in English, Italian, Spanish, German and French; it follows your
+browser language unless you
 pick one in Settings. Adding a language is adding one file — see [CONTRIBUTING](CONTRIBUTING.md).
 The CLI and AI tools answer in English.
 
