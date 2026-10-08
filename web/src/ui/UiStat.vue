@@ -9,7 +9,7 @@ withDefaults(defineProps<{ label: string; value: number; format?: (n: number) =>
 <template>
   <div :title="hint">
     <dt class="label">{{ label }}</dt>
-    <dd class="mt-1.5 font-mono text-2xl font-medium tracking-tight" :class="{ 'text-danger': tone === 'danger', 'text-fresh': tone === 'fresh' }">
+    <dd class="mt-1.5 text-2xl font-semibold tracking-tight tabular-nums" :class="{ 'text-danger': tone === 'danger', 'text-fresh': tone === 'fresh' }">
       <NumberTicker :value="value" :format="format" />
     </dd>
   </div>
