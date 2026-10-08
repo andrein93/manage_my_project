@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { api, type Task, type TaskInput } from '../api'
+import { api, type Task, type TaskInput, type TeamMember } from '../api'
 import { useErrors } from '../composables'
 import { priorityClass, shortDate, TASK_PRIORITIES } from '../tasks'
 import CategoryDot from './CategoryDot.vue'
 
-const props = defineProps<{ task: Task; showProject?: boolean }>()
+const props = defineProps<{ task: Task; showProject?: boolean; members?: TeamMember[] }>()
 const emit = defineEmits<{ changed: [task: Task]; removed: [id: string] }>()
 const { t } = useI18n()
 const { error, report } = useErrors()
@@ -110,6 +110,17 @@ const done = () => props.task.status === 'done'
         >
           <option v-for="p in TASK_PRIORITIES" :key="p" :value="p">{{ t(`task.priority.${p}`) }}</option>
         </select>
+        <select
+          v-if="members && members.length > 1"
+          class="select-fit cursor-pointer bg-transparent text-muted"
+          :value="task.assignee?.id ?? ''"
+          :aria-label="t('team.assignee')"
+          @change="save({ assigneeId: ($event.target as HTMLSelectElement).value || null })"
+        >
+          <option value="">{{ t('team.unassigned') }}</option>
+          <option v-for="m in members" :key="m.id" :value="m.id">{{ m.name }}</option>
+        </select>
+        <span v-else-if="task.assignee" class="text-muted">{{ task.assignee.name }}</span>
         <span class="relative inline-flex">
           <button
             type="button"

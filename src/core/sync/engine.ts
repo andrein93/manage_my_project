@@ -69,22 +69,9 @@ export interface Change {
   seq?: number
 }
 
-export interface SyncRunResult {
-  pushed: number
-  pulled: number
-  applied: number
-  skipped: number
-  durationMs: number
-}
+import type { SyncRunResult, SyncStatus } from './types.js'
 
-export interface SyncStatus {
-  configured: boolean
-  url: string | null
-  user: { id: string; name: string; email: string } | null
-  running: boolean
-  lastRun: (SyncRunResult & { at: string }) | null
-  lastError: string | null
-}
+export type { SyncRunResult, SyncStatus } from './types.js'
 
 interface Credentials {
   url: string

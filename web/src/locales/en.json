@@ -386,5 +386,28 @@
     "project": "Project",
     "priority": "Priority",
     "removeTag": "Remove tag {tag}"
+  },
+  "team": {
+    "title": "Team sync",
+    "hint": "Share projects with your team through a sync server you host (see sync-server/README.md). Projects stay private until you share them.",
+    "url": "Server URL",
+    "token": "Your token",
+    "tokenHint": "Your admin creates your account and token with: php artisan mmp:user \"Your Name\" your-email",
+    "connect": "Connect",
+    "server": "Server",
+    "you": "You",
+    "me": "you",
+    "lastSync": "Last sync",
+    "lastSyncDetail": "{received} received, {sent} sent",
+    "never": "never",
+    "members": "Members",
+    "shareHint": "Share a project from its page. Syncing runs every 2 minutes while the dashboard is open.",
+    "syncNow": "Sync now",
+    "disconnect": "Disconnect",
+    "shared": "Shared with team",
+    "notHere": "Team project: not on this computer",
+    "assignee": "Assignee",
+    "unassigned": "Unassigned",
+    "teamTime": "Team time this month"
   }
 }

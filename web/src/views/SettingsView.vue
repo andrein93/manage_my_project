@@ -7,6 +7,7 @@ import CategoriesSettings from '../components/CategoriesSettings.vue'
 import CommandReference from '../components/CommandReference.vue'
 import FinanceSettings from '../components/FinanceSettings.vue'
 import LanguageSettings from '../components/LanguageSettings.vue'
+import TeamSyncSettings from '../components/TeamSyncSettings.vue'
 import TimeSettings from '../components/TimeSettings.vue'
 import { scanTick, useErrors } from '../composables'
 
@@ -96,6 +97,8 @@ onMounted(load)
     <p v-if="error" class="text-sm text-danger" role="alert">{{ error }}</p>
 
     <LanguageSettings />
+
+    <TeamSyncSettings />
 
     <section>
       <h2 class="text-lg font-semibold">{{ t('settings.workspaces') }}</h2>

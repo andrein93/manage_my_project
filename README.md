@@ -18,8 +18,8 @@ with them:
 
 Everything stays on your machine, in a single SQLite file.
 
-> **Status:** v0.5 — project registry, clients, categories, tasks, automatic time tracking,
-> profitability, project health and a weekly digest. See the [roadmap](#roadmap) for what is next.
+> **Status:** v0.6 — project registry, clients, categories, tasks, automatic time tracking,
+> profitability, project health, a weekly digest, five languages and optional **team sync**.
 
 ## Requirements
 
@@ -80,6 +80,7 @@ Any other MCP client works the same way: run `node bin/mmp.js mcp` over stdio.
 | `weekly_digest` | The week in review, as Markdown |
 | `project_health` | Projects without backup, with unpushed work, dormant… |
 | `upcoming_charges` | Recurring costs to pay and fees to invoice soon |
+| `sync_now` / `list_members` | Team sync and members (for assigning tasks) |
 
 The full, always up-to-date list (with every parameter) is in the dashboard under
 **Settings → Commands**.
@@ -129,6 +130,13 @@ mmp health                         projects that need attention
 mmp upcoming [--days 30]           costs to pay and fees to invoice
 mmp list --attention               only projects that need attention
 mmp list --framework laravel@9     projects by framework major version
+
+mmp sync login <url> "<token>"     connect to your team's sync server
+mmp sync                           pull the team's changes and push yours
+mmp sync status | logout
+mmp members                        team members
+mmp set <project> --share          share a project with the team (--no-share to stop)
+mmp task edit <id> --assignee <member|none>
 mmp mcp                             MCP server on stdio (started by your AI client)
 ```
 
@@ -196,6 +204,24 @@ from lockfiles, so you can list every project still on, say, Laravel 9. Everythi
 locally; mmp never contacts package registries.
 
 "Copy weekly report" on the overview (or `mmp digest`) gives you a Markdown summary of the week.
+
+## Team sync (optional)
+
+mmp stays local-first, but a small team can share work through a **sync server you host**:
+a tiny Laravel app in [`sync-server/`](sync-server/README.md).
+
+- The admin installs it and creates members with `php artisan mmp:user "Name" email`, which
+  prints each person's token.
+- Each member connects with `mmp sync login <url> "<token>"` (or Settings → Team sync).
+- **Projects are private until you share them** (project page → "Shared with team", or
+  `mmp set <project> --share`). Shared projects carry their tasks, agreements, payments,
+  project costs, manual time and each member's daily hours. Clients and categories are shared.
+- The same git repository cloned by several members becomes one project (matched by its
+  remote, so SSH aliases and HTTPS URLs still match); a teammate's project you have not cloned
+  shows as "not on this computer" and attaches automatically when the folder appears.
+- Conflicts: the most recent edit wins. Syncing runs every 2 minutes while the dashboard is open.
+- Time and Finance reports stay personal; each project page shows hours per member.
+- Folder paths, scans, raw activity, AI plans and settings never leave your computer.
 
 ## Languages
 
@@ -279,7 +305,7 @@ keys and register it in `web/src/i18n.ts`.
 3. ~~Automatic time tracking from Claude Code sessions and git~~ (v0.3)
 4. ~~Profitability: agreements, payments, costs, AI plans, effective hourly rate~~ (v0.4)
 5. ~~Project health, upcoming charges, overview and weekly digest; Italian translation~~ (v0.5)
-6. Optional sync server to share projects across people and machines
+6. ~~Team sync server (Laravel), Spanish, German and French~~ (v0.6)
 
 ## License
 

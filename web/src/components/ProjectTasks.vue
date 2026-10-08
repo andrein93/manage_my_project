@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { api, type Task, type TaskStatus } from '../api'
+import { api, type Task, type TaskStatus, type TeamMember } from '../api'
 import { useAutoRefresh, useErrors } from '../composables'
 import { positionAt, priorityClass, shortDate, TASK_STATUSES } from '../tasks'
 import TaskItem from './TaskItem.vue'
@@ -11,6 +11,11 @@ const { t } = useI18n()
 const { error, report } = useErrors()
 
 const tasks = ref<Task[]>([])
+const members = ref<TeamMember[]>([])
+api
+  .members()
+  .then((m) => (members.value = m))
+  .catch(() => undefined)
 const draft = ref('')
 const showDone = ref(false)
 const mode = ref<'list' | 'board'>(readMode())
@@ -121,13 +126,13 @@ useAutoRefresh(load)
     <div v-if="mode === 'list'" class="mt-3">
       <p v-if="tasks.length === 0" class="py-6 text-sm text-muted">{{ t('task.empty') }}</p>
       <div class="divide-y divide-line">
-        <TaskItem v-for="task in open" :key="task.id" :task="task" @changed="replace" @removed="drop" />
+        <TaskItem v-for="task in open" :key="task.id" :task="task" :members="members" @changed="replace" @removed="drop" />
       </div>
       <button v-if="done.length" type="button" class="mt-3 text-sm text-muted hover:text-ink" @click="showDone = !showDone">
         {{ showDone ? t('task.hideDone') : t('task.showDone', { n: done.length }) }}
       </button>
       <div v-if="showDone" class="mt-1 divide-y divide-line">
-        <TaskItem v-for="task in done" :key="task.id" :task="task" @changed="replace" @removed="drop" />
+        <TaskItem v-for="task in done" :key="task.id" :task="task" :members="members" @changed="replace" @removed="drop" />
       </div>
     </div>
 

@@ -168,7 +168,8 @@ useAutoRefresh(load)
               <span v-if="p.git?.dirty" class="text-xs text-aging" :title="t('list.uncommitted')">● {{ t('list.uncommitted') }}</span>
             </div>
             <p v-if="p.description" class="truncate text-sm text-muted">{{ p.description }}</p>
-            <p v-else class="truncate font-mono text-xs text-muted">{{ p.path }}</p>
+            <p v-else-if="p.local" class="truncate font-mono text-xs text-muted">{{ p.path }}</p>
+            <p v-else class="truncate text-xs text-muted">{{ t('team.notHere') }}</p>
           </div>
           <div class="flex flex-wrap gap-1">
             <span v-for="s in p.stack" :key="s" class="rounded border border-line px-1.5 text-xs text-muted">{{ s }}</span>

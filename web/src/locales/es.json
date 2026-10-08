@@ -386,5 +386,28 @@
     "project": "Proyecto",
     "priority": "Prioridad",
     "removeTag": "Quitar la etiqueta {tag}"
+  },
+  "team": {
+    "title": "Sincronización de equipo",
+    "hint": "Comparte proyectos con tu equipo mediante un servidor de sincronización que alojas tú (ver sync-server/README.md). Los proyectos son privados hasta que los compartes.",
+    "url": "URL del servidor",
+    "token": "Tu token",
+    "tokenHint": "Tu administrador crea tu cuenta y tu token con: php artisan mmp:user \"Tu nombre\" tu-correo",
+    "connect": "Conectar",
+    "server": "Servidor",
+    "you": "Tú",
+    "me": "tú",
+    "lastSync": "Última sincronización",
+    "lastSyncDetail": "{received} recibidos, {sent} enviados",
+    "never": "nunca",
+    "members": "Miembros",
+    "shareHint": "Comparte un proyecto desde su página. La sincronización se ejecuta cada 2 minutos mientras el panel está abierto.",
+    "syncNow": "Sincronizar ahora",
+    "disconnect": "Desconectar",
+    "shared": "Compartido con el equipo",
+    "notHere": "Proyecto del equipo: no está en este ordenador",
+    "assignee": "Responsable",
+    "unassigned": "Sin asignar",
+    "teamTime": "Tiempo del equipo este mes"
   }
 }

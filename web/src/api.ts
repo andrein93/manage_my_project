@@ -14,6 +14,7 @@ import type {
 import type { CommandDoc, ToolDoc } from '../../src/server/help-types'
 import type { Digest, Overview, UpcomingItem } from '../../src/core/overview-types'
 import type { HealthFlag } from '../../src/core/types'
+import type { SyncRunResult, SyncStatus as TeamSyncStatus, TeamMember } from '../../src/core/sync/types'
 import type {
   Category,
   CategoryInput,
@@ -54,6 +55,7 @@ export type { SyncResult, TimeEntry, TimeReport, WorkBlock }
 export type { Agreement, AgreementKind, AiPlan, AiPlanKind, Expense, FinanceReport, FinanceRow, Interval, OwedRow, Payment }
 export type { CommandDoc, ToolDoc }
 export type { Digest, HealthFlag, Overview, UpcomingItem }
+export type { SyncRunResult, TeamMember, TeamSyncStatus }
 
 export interface SyncStatus {
   running: boolean
@@ -84,6 +86,7 @@ export interface Settings {
 }
 
 export interface ProjectPatch {
+  shared?: boolean
   name?: string
   description?: string
   status?: ProjectStatus
@@ -187,5 +190,15 @@ export const api = {
   removeAiPlan: (id: string) => request<void>('DELETE', `/ai-plans/${id}`),
   help: () => request<{ cli: CommandDoc[]; mcp: ToolDoc[] }>('GET', '/help'),
   overview: () => request<Overview>('GET', '/overview'),
+  syncStatus: () => request<TeamSyncStatus>('GET', '/sync/status'),
+  syncLogin: (url: string, token: string) => request<TeamSyncStatus>('POST', '/sync/login', { url, token }),
+  syncRun: () => request<SyncRunResult>('POST', '/sync/run', {}),
+  syncLogout: () => request<TeamSyncStatus>('POST', '/sync/logout', {}),
+  members: () => request<TeamMember[]>('GET', '/members'),
+  teamTime: (projectId: string) =>
+    request<{ range: { from: string; to: string }; members: { userId: string; name: string; minutes: number }[] }>(
+      'GET',
+      `/projects/${projectId}/team-time`,
+    ),
   digest: (week: 'this' | 'last') => request<Digest & { markdown: string }>('GET', `/digest?week=${week}`),
 }

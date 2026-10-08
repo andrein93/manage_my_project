@@ -13,6 +13,7 @@ const { error, report } = useErrors()
 const month = ref<TimeReport | null>(null)
 const last30 = ref<TimeReport | null>(null)
 const blocks = ref<WorkBlock[]>([])
+const team = ref<{ userId: string; name: string; minutes: number }[]>([])
 
 let latest = 0
 async function load() {
@@ -31,6 +32,7 @@ async function load() {
     month.value = m
     last30.value = l
     blocks.value = b.blocks.slice(0, 5)
+    team.value = (await api.teamTime(projectId).catch(() => ({ members: [] }))).members
     error.value = null
   } catch (e) {
     report(e)
@@ -64,6 +66,15 @@ useAutoRefresh(load, 60_000)
         <dd class="text-xl font-semibold tabular-nums">{{ formatUsd(month.totals.costUsd) }}</dd>
       </div>
     </dl>
+    <template v-if="team.length">
+      <h3 class="mt-5 mb-1 text-sm font-medium text-muted">{{ t('team.teamTime') }}</h3>
+      <ul class="divide-y divide-line border-y border-line text-sm">
+        <li v-for="m in team" :key="m.userId" class="flex justify-between gap-3 py-2">
+          <span>{{ m.name }}</span>
+          <span class="tabular-nums">{{ formatMinutes(m.minutes) }}</span>
+        </li>
+      </ul>
+    </template>
     <h3 class="mt-5 mb-1 text-sm font-medium text-muted">{{ t('time.recentBlocks') }}</h3>
     <ul v-if="blocks.length" class="divide-y divide-line border-y border-line text-sm">
       <li v-for="b in blocks" :key="b.start" class="flex items-center justify-between gap-3 py-2">

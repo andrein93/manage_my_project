@@ -114,6 +114,21 @@ async function createClient() {
   }
 }
 
+const teamEnabled = ref(false)
+api
+  .syncStatus()
+  .then((s) => (teamEnabled.value = s.configured))
+  .catch(() => undefined)
+
+async function toggleShared(shared: boolean) {
+  if (!project.value) return
+  try {
+    project.value = await api.updateProject(project.value.id, { shared })
+  } catch (e) {
+    report(e)
+  }
+}
+
 async function open(target: 'folder' | 'vscode') {
   try {
     await api.open(props.id, target)
@@ -152,11 +167,18 @@ useAutoRefresh(() => load())
             </RouterLink>
             <CategoryDot :category="project.category" show-name />
           </p>
-          <p class="mt-1 font-mono text-xs break-all text-muted">{{ project.path }}</p>
+          <p v-if="project.local" class="mt-1 font-mono text-xs break-all text-muted">{{ project.path }}</p>
+          <p v-else class="mt-1 text-xs text-muted">{{ t('team.notHere') }}</p>
         </div>
-        <div class="flex gap-2">
-          <button class="btn" :disabled="!!project.missingSince" @click="open('folder')">{{ t('detail.openFolder') }}</button>
-          <button class="btn" :disabled="!!project.missingSince" @click="open('vscode')">{{ t('detail.openVscode') }}</button>
+        <div class="flex flex-wrap items-center gap-2">
+          <label v-if="teamEnabled" class="btn cursor-pointer">
+            <input type="checkbox" class="accent-[var(--action)]" :checked="project.shared" @change="toggleShared(($event.target as HTMLInputElement).checked)" />
+            {{ t('team.shared') }}
+          </label>
+          <template v-if="project.local">
+            <button class="btn" :disabled="!!project.missingSince" @click="open('folder')">{{ t('detail.openFolder') }}</button>
+            <button class="btn" :disabled="!!project.missingSince" @click="open('vscode')">{{ t('detail.openVscode') }}</button>
+          </template>
         </div>
       </div>
 
