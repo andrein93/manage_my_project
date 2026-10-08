@@ -216,6 +216,38 @@ export const MIGRATIONS: string[] = [
   `
   ALTER TABLE projects ADD COLUMN versions TEXT NOT NULL DEFAULT '{}';
   `,
+  `
+  ALTER TABLE clients ADD COLUMN sync_rev TEXT;
+  ALTER TABLE categories ADD COLUMN sync_rev TEXT;
+  ALTER TABLE projects ADD COLUMN sync_rev TEXT;
+  ALTER TABLE tasks ADD COLUMN sync_rev TEXT;
+  ALTER TABLE agreements ADD COLUMN sync_rev TEXT;
+  ALTER TABLE payments ADD COLUMN sync_rev TEXT;
+  ALTER TABLE expenses ADD COLUMN sync_rev TEXT;
+  ALTER TABLE time_entries ADD COLUMN sync_rev TEXT;
+  ALTER TABLE projects ADD COLUMN shared INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE projects ADD COLUMN remote_key TEXT;
+  ALTER TABLE projects ADD COLUMN local INTEGER NOT NULL DEFAULT 1;
+  CREATE INDEX projects_remote_key ON projects(remote_key) WHERE remote_key IS NOT NULL;
+
+  CREATE TABLE time_daily (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    project_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    minutes INTEGER NOT NULL,
+    cost_usd REAL NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT,
+    sync_rev TEXT,
+    UNIQUE (user_id, project_id, date)
+  );
+
+  CREATE TABLE sync_state (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+  `,
 ]
 
 /** Starter categories, created once when the categories table has never been used. */
@@ -276,7 +308,16 @@ function seedCategories(db: DB): void {
 }
 
 export function localUserId(db: DB): string {
+  // After a team login the local user is the server identity (other members live in users too).
+  const me = hasTable(db, 'sync_state')
+    ? (db.prepare("SELECT value FROM sync_state WHERE key = 'userId'").get() as { value: string } | undefined)
+    : undefined
+  if (me) return me.value
   return (db.prepare('SELECT id FROM users ORDER BY created_at LIMIT 1').get() as { id: string }).id
+}
+
+function hasTable(db: DB, name: string): boolean {
+  return !!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(name)
 }
 
 export function transaction<T>(db: DB, fn: () => T): T {

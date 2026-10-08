@@ -308,7 +308,9 @@ export class TimeRepository {
   resolveEntry(ref: string): TimeEntry {
     const value = ref.trim().toLowerCase()
     const rows = value.length >= 6
-      ? (this.db.prepare(`${ENTRY_SELECT} AND substr(e.id, 1, ?) = ?`).all(value.length, value) as unknown as EntryRow[])
+      ? (this.db
+          .prepare(`${ENTRY_SELECT} AND e.owner_id = ? AND substr(e.id, 1, ?) = ?`)
+          .all(localUserId(this.db), value.length, value) as unknown as EntryRow[])
       : []
     if (rows.length === 1) return toEntry(rows[0])
     if (rows.length > 1) throw new UserError(`"${ref}" matches ${rows.length} time entries; use more characters`, 'conflict')
@@ -316,12 +318,15 @@ export class TimeRepository {
   }
 
   private entry(id: string): TimeEntry | null {
-    const row = this.db.prepare(`${ENTRY_SELECT} AND e.id = ?`).get(id) as EntryRow | undefined
+    const row = this.db.prepare(`${ENTRY_SELECT} AND e.owner_id = ? AND e.id = ?`).get(localUserId(this.db), id) as EntryRow | undefined
     return row ? toEntry(row) : null
   }
 
   private entryRows(range: DateRange): EntryRow[] {
-    return this.db.prepare(`${ENTRY_SELECT} AND e.date BETWEEN ? AND ?`).all(range.from, range.to) as unknown as EntryRow[]
+    // Personal reports: teammates' synced entries are theirs, not this user's time.
+    return this.db
+      .prepare(`${ENTRY_SELECT} AND e.owner_id = ? AND e.date BETWEEN ? AND ?`)
+      .all(localUserId(this.db), range.from, range.to) as unknown as EntryRow[]
   }
 
   private activity(range: DateRange, lookbackMinutes = 0): ActivityRow[] {

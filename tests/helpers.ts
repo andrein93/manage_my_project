@@ -21,7 +21,7 @@ export const TODAY = '2026-10-08'
  * A temp "projects folder" with mmp installed at `<root>/mmp`, so the default
  * workspace is `<root>` exactly like a real clone.
  */
-export function createFixture(files: Record<string, string> = {}): Fixture {
+export function createFixture(files: Record<string, string> = {}, options: { fetch?: typeof fetch } = {}): Fixture {
   const root = mkdtempSync(join(tmpdir(), 'mmp-test-'))
   const installDir = join(root, 'mmp')
   mkdirSync(installDir)
@@ -35,7 +35,7 @@ export function createFixture(files: Record<string, string> = {}): Fixture {
   }
   write(files)
   const config = loadConfig({ env: { MMP_DATA_DIR: join(root, '.data') }, installDir, envFile: join(root, 'none') })
-  const app = createApp({ config, dbFile: ':memory:', today: () => TODAY })
+  const app = createApp({ config, dbFile: ':memory:', today: () => TODAY, fetch: options.fetch })
   // Never read the developer's real Claude Code transcripts in tests.
   mkdirSync(join(root, '.claude-projects-empty'))
   app.settings.update({ claudeProjectsDir: join(root, '.claude-projects-empty') })

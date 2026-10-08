@@ -51,6 +51,10 @@ export interface Project {
   versions: Record<string, string>
   /** Attention flags (active/paused projects only). */
   health: HealthFlag[]
+  /** Synced with the team server. */
+  shared: boolean
+  /** false for team projects with no folder on this computer. */
+  local: boolean
   lastActivityAt: string | null
   missingSince: string | null
   createdAt: string
@@ -87,6 +91,7 @@ export interface ProjectPatch {
   name?: string
   description?: string
   status?: ProjectStatus
+  shared?: boolean
   /** null clears the client. */
   clientId?: string | null
   /** null clears the category. */
@@ -146,6 +151,7 @@ export interface Task {
   priority: TaskPriority
   /** YYYY-MM-DD */
   dueDate: string | null
+  assignee: NamedRef | null
   /** null for done tasks. */
   dueGroup: DueGroup | null
   position: number
@@ -162,6 +168,8 @@ export interface TaskInput {
   /** YYYY-MM-DD, or null to clear. */
   dueDate?: string | null
   position?: number
+  /** Team member id, or null to unassign. */
+  assigneeId?: string | null
 }
 
 export interface TaskFilters {

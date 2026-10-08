@@ -3,6 +3,7 @@ import { localUserId, transaction, type DB } from './db.js'
 import { newId, now } from './ids.js'
 import { majorOf } from './detect/versions.js'
 import { healthFlags } from './health.js'
+import { remoteKey } from './sync/remote-key.js'
 import { isWithin, normalizePath, pathKey } from './paths.js'
 import {
   HIDDEN_STATUSES,
@@ -39,6 +40,9 @@ interface ProjectRow {
   category_name: string | null
   category_color: string | null
   versions: string
+  shared: number
+  local: number
+  remote_key: string | null
 }
 
 export interface DetectedFields {
@@ -142,7 +146,7 @@ export class ProjectRepository {
   findContaining(path: string): Project | null {
     const key = pathKey(path)
     const rows = this.db
-      .prepare('SELECT id, path_key FROM projects WHERE deleted_at IS NULL')
+      .prepare('SELECT id, path_key FROM projects WHERE deleted_at IS NULL AND local = 1')
       .all() as { id: string; path_key: string }[]
     const match = rows
       .filter((r) => isWithin(key, r.path_key))
@@ -158,8 +162,8 @@ export class ProjectRepository {
     const { changes } = this.db
       .prepare(
         `INSERT INTO projects (id, owner_id, workspace_id, source, name, path, path_key, stack, git, versions,
-          last_activity_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          remote_key, last_activity_at, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(path_key) DO NOTHING`,
       )
       .run(
@@ -173,6 +177,7 @@ export class ProjectRepository {
         JSON.stringify(input.stack),
         input.git ? JSON.stringify(input.git) : null,
         JSON.stringify(input.versions ?? {}),
+        remoteKey(input.git?.remote),
         input.lastActivityAt,
         ts,
         ts,
@@ -194,7 +199,8 @@ export class ProjectRepository {
     }
     this.db
       .prepare(
-        `UPDATE projects SET stack = ?, git = ?, versions = ?, last_activity_at = ?, missing_since = NULL, updated_at = ?
+        `UPDATE projects SET stack = ?, git = ?, versions = ?, last_activity_at = ?, missing_since = NULL,
+           remote_key = COALESCE(?, remote_key)
          WHERE id = ? AND deleted_at IS NULL`,
       )
       .run(
@@ -202,9 +208,25 @@ export class ProjectRepository {
         git ? JSON.stringify(git) : null,
         JSON.stringify(fields.versions ?? {}),
         fields.lastActivityAt,
-        now(),
+        git && !git.error ? remoteKey(git.remote) : null,
         id,
       )
+  }
+
+  /** A team project pulled without a folder here, now found on disk: give it this folder. */
+  findRemoteOnly(key: string): Project | null {
+    const row = this.db
+      .prepare(`${SELECT} WHERE p.local = 0 AND p.deleted_at IS NULL AND p.remote_key = ?`)
+      .get(key) as ProjectRow | undefined
+    return row ? toProject(row) : null
+  }
+
+  attachFolder(id: string, folder: { path: string; workspaceId: string | null }, fields: DetectedFields): void {
+    const path = normalizePath(folder.path)
+    this.db
+      .prepare(`UPDATE projects SET local = 1, path = ?, path_key = ?, workspace_id = ?, source = 'scan' WHERE id = ?`)
+      .run(path, pathKey(path), folder.workspaceId, id)
+    this.updateDetected(id, fields)
   }
 
   /** Brings back a soft-deleted project that was rediscovered or re-added, re-homing it. */
@@ -241,11 +263,12 @@ export class ProjectRepository {
     if (categoryId && !this.exists('categories', categoryId)) {
       throw new UserError(`Category not found: ${categoryId}`, 'not_found')
     }
+    const shared = patch.shared === undefined ? project.shared : patch.shared
     this.db
       .prepare(
-        'UPDATE projects SET name = ?, description = ?, status = ?, client_id = ?, category_id = ?, updated_at = ? WHERE id = ?',
+        'UPDATE projects SET name = ?, description = ?, status = ?, client_id = ?, category_id = ?, shared = ?, updated_at = ? WHERE id = ?',
       )
-      .run(name, patch.description ?? project.description, status, clientId, categoryId, now(), id)
+      .run(name, patch.description ?? project.description, status, clientId, categoryId, shared ? 1 : 0, now(), id)
     return this.get(id)!
   }
 
@@ -289,7 +312,7 @@ export class ProjectRepository {
   /** All active (non-deleted) project rows, for the scanner. */
   allForScan(): { id: string; path: string; pathKey: string; source: 'scan' | 'manual' }[] {
     return (
-      this.db.prepare('SELECT id, path, path_key, source FROM projects WHERE deleted_at IS NULL').all() as {
+      this.db.prepare('SELECT id, path, path_key, source FROM projects WHERE deleted_at IS NULL AND local = 1').all() as {
         id: string
         path: string
         path_key: string
@@ -318,7 +341,9 @@ function toProject(row: ProjectRow): Project {
     git,
     tags: row.tags ? JSON.parse(row.tags) : [],
     versions: row.versions ? JSON.parse(row.versions) : {},
-    health: healthFlags({ status: row.status, git, missingSince: row.missing_since, lastActivityAt: row.last_activity_at }),
+    health: row.local ? healthFlags({ status: row.status, git, missingSince: row.missing_since, lastActivityAt: row.last_activity_at }) : [],
+    shared: !!row.shared,
+    local: !!row.local,
     client: row.client_id && row.client_name ? { id: row.client_id, name: row.client_name } : null,
     category:
       row.category_id && row.category_name

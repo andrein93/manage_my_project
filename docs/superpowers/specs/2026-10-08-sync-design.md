@@ -28,6 +28,14 @@ project page shows hours per member.
 - **Deletions** sync as soft deletes (`deleted_at`).
 - The token is stored in `<dataDir>/sync.json` (not in the database, not in `.env` of the repo).
 
+## What is shared
+
+Projects are **private by default**: a project (with its tasks, money records and time) syncs only
+when marked **Shared with team** (`projects.shared = 1`; dashboard toggle, `mmp set --share`,
+MCP `update_project shared`). Projects pulled from the server are shared. Clients, categories
+and the member list always sync. Un-sharing stops future pushes; data already on the server
+stays there.
+
 ## Synced data
 
 | Table | Shared fields |
@@ -47,8 +55,8 @@ sessions, AI plans, settings.
 
 - Each synced table gains `sync_rev` (the `updated_at` last exchanged with the server). A row is
   *dirty* when `sync_rev IS NULL OR sync_rev <> updated_at`.
-- `projects` gains `remote_key` (normalized git remote: lower-case host + path, no scheme, user,
-  `.git` suffix) and `local` (1 = has a folder on this machine). Projects pulled without a local
+- `projects` gains `shared` (0/1), `remote_key` (normalized git remote: the lower-case
+  `owner/repo` path without host, scheme, user or `.git`, so SSH host aliases still match) and `local` (1 = has a folder on this machine). Projects pulled without a local
   match are stored with `local = 0`, `path = ''`, `path_key = 'remote:<id>'`; the scanner never
   touches them, and they show "Not on this computer".
 - `time_daily(user_id, project_id, date, minutes, cost_usd, updated_at, sync_rev)`: own rows are

@@ -34,12 +34,16 @@ interface TaskRow {
   completed_at: string | null
   created_at: string
   updated_at: string
+  assignee_id: string | null
+  assignee_name: string | null
 }
 
 const SELECT = `
   SELECT t.*, p.name AS project_name, p.status AS project_status,
-    p.client_id, c.name AS client_name, p.category_id, g.name AS category_name, g.color AS category_color
+    p.client_id, c.name AS client_name, p.category_id, g.name AS category_name, g.color AS category_color,
+    u.name AS assignee_name
   FROM tasks t
+  LEFT JOIN users u ON u.id = t.assignee_id
   JOIN projects p ON p.id = t.project_id AND p.deleted_at IS NULL
   LEFT JOIN clients c ON c.id = p.client_id AND c.deleted_at IS NULL
   LEFT JOIN categories g ON g.id = p.category_id AND g.deleted_at IS NULL
@@ -144,6 +148,9 @@ export class TaskRepository {
     const task = this.get(id)
     if (!task) throw new UserError(`Task not found: ${id}`, 'not_found')
     const fields = validate(input, false)
+    if (fields.assigneeId && !this.db.prepare('SELECT 1 FROM users WHERE id = ?').get(fields.assigneeId)) {
+      throw new UserError(`Team member not found: ${fields.assigneeId}`, 'not_found')
+    }
     const status = fields.status ?? task.status
     const statusChanged = status !== task.status
     const position = fields.position ?? (statusChanged ? this.nextPosition(task.project.id, status) : task.position)
@@ -151,7 +158,7 @@ export class TaskRepository {
     this.db
       .prepare(
         `UPDATE tasks SET title = ?, description = ?, status = ?, priority = ?, due_date = ?, position = ?,
-          completed_at = ?, updated_at = ? WHERE id = ?`,
+          completed_at = ?, assignee_id = ?, updated_at = ? WHERE id = ?`,
       )
       .run(
         fields.title ?? task.title,
@@ -161,6 +168,7 @@ export class TaskRepository {
         fields.dueDate === undefined ? task.dueDate : fields.dueDate,
         position,
         completedAt,
+        fields.assigneeId === undefined ? (task.assignee?.id ?? null) : fields.assigneeId,
         now(),
         id,
       )
@@ -225,6 +233,7 @@ function validate(input: TaskInput, requireTitle = true): TaskInput {
     if (!Number.isFinite(input.position)) throw new UserError('Invalid position')
     out.position = input.position
   }
+  if (input.assigneeId !== undefined) out.assigneeId = input.assigneeId
   return out
 }
 
@@ -242,6 +251,7 @@ function toTask(row: TaskRow, today: string): Task {
     status: row.status,
     priority: row.priority,
     dueDate: row.due_date,
+    assignee: row.assignee_id && row.assignee_name ? { id: row.assignee_id, name: row.assignee_name } : null,
     dueGroup: row.status === 'done' ? null : dueGroup(row.due_date, today),
     position: Number(row.position),
     completedAt: row.completed_at,

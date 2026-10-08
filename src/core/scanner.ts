@@ -6,6 +6,7 @@ import { readGit } from './detect/git.js'
 import { detectStack } from './detect/stack.js'
 import { detectVersions } from './detect/versions.js'
 import { pathKey } from './paths.js'
+import { remoteKey } from './sync/remote-key.js'
 import type { DetectedFields, ProjectRepository } from './projects.js'
 import type { SettingsRepository } from './settings.js'
 import type { ScanResult } from './types.js'
@@ -91,6 +92,13 @@ export async function scan(deps: ScannerDeps): Promise<ScanResult> {
           deps.projects.restore(previous.id, fields, { source: 'scan', workspaceId: candidate.workspaceId })
           result.restored++
         } else if (!previous) {
+          const key = remoteKey(fields.git?.remote)
+          const team = key ? deps.projects.findRemoteOnly(key) : null
+          if (team) {
+            deps.projects.attachFolder(team.id, { path: candidate.path, workspaceId: candidate.workspaceId }, fields)
+            result.added++
+            return
+          }
           // null when another process registered it first; that's fine.
           if (deps.projects.insert({ ...fields, path: candidate.path, source: 'scan', workspaceId: candidate.workspaceId })) {
             result.added++
