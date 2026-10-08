@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api, type TimeReport, type WorkBlock } from '../api'
 import { useAutoRefresh, useErrors } from '../composables'
+import { uiLocale } from '../i18n'
 import { formatMinutes, formatUsd, localDate } from '../time'
 
 const props = defineProps<{ projectId: string }>()
@@ -36,7 +37,7 @@ async function load() {
   }
 }
 
-const when = (iso: string) => new Date(iso).toLocaleString(undefined, { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+const when = (iso: string) => new Date(iso).toLocaleString(uiLocale(), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 watch(() => props.projectId, load)
 useAutoRefresh(load, 60_000)

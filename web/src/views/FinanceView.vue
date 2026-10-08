@@ -88,7 +88,7 @@ useAutoRefresh(load, 60_000)
     <h1 class="mb-5 text-2xl font-semibold tracking-tight">{{ t('app.finance') }}</h1>
 
     <div class="mb-6 flex flex-wrap items-center gap-2">
-      <select class="field !w-auto" :value="period" aria-label="Period" @change="setQuery({ period: ($event.target as HTMLSelectElement).value === 'month' ? undefined : ($event.target as HTMLSelectElement).value })">
+      <select class="field !w-auto" :value="period" :aria-label="t('a11y.period')" @change="setQuery({ period: ($event.target as HTMLSelectElement).value === 'month' ? undefined : ($event.target as HTMLSelectElement).value })">
         <option v-for="p in PERIODS" :key="p" :value="p">{{ p === 'lifetime' ? t('finance.lifetime') : t(`time.period.${p}`) }}</option>
       </select>
       <div class="inline-flex rounded-md border border-line p-0.5 text-sm" role="group">

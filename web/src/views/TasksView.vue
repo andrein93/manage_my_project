@@ -111,26 +111,26 @@ useAutoRefresh(load)
     </form>
 
     <div class="mb-6 grid gap-2 sm:grid-cols-5">
-      <select class="field" :value="filters.show" aria-label="Show" @change="setFilter('show', ($event.target as HTMLSelectElement).value === 'open' ? '' : ($event.target as HTMLSelectElement).value)">
+      <select class="field" :value="filters.show" :aria-label="t('a11y.show')" @change="setFilter('show', ($event.target as HTMLSelectElement).value === 'open' ? '' : ($event.target as HTMLSelectElement).value)">
         <option value="open">{{ t('task.openOnly') }}</option>
         <option value="done">{{ t('task.doneOnly') }}</option>
         <option value="all">{{ t('task.allTasks') }}</option>
       </select>
-      <select class="field" :value="filters.project" aria-label="Project" @change="setFilter('project', ($event.target as HTMLSelectElement).value)">
+      <select class="field" :value="filters.project" :aria-label="t('a11y.project')" @change="setFilter('project', ($event.target as HTMLSelectElement).value)">
         <option value="">{{ t('task.anyProject') }}</option>
         <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
       </select>
-      <select class="field" :value="filters.client" aria-label="Client" @change="setFilter('client', ($event.target as HTMLSelectElement).value)">
+      <select class="field" :value="filters.client" :aria-label="t('a11y.client')" @change="setFilter('client', ($event.target as HTMLSelectElement).value)">
         <option value="">{{ t('list.anyClient') }}</option>
         <option value="none">{{ t('list.noClient') }}</option>
         <option v-for="c in meta?.clients" :key="c.id" :value="c.id">{{ c.name }}</option>
       </select>
-      <select class="field" :value="filters.category" aria-label="Category" @change="setFilter('category', ($event.target as HTMLSelectElement).value)">
+      <select class="field" :value="filters.category" :aria-label="t('a11y.category')" @change="setFilter('category', ($event.target as HTMLSelectElement).value)">
         <option value="">{{ t('list.anyCategory') }}</option>
         <option value="none">{{ t('list.noCategory') }}</option>
         <option v-for="c in meta?.categories" :key="c.id" :value="c.id">{{ c.name }}</option>
       </select>
-      <select class="field" :value="filters.priority" aria-label="Priority" @change="setFilter('priority', ($event.target as HTMLSelectElement).value)">
+      <select class="field" :value="filters.priority" :aria-label="t('a11y.priority')" @change="setFilter('priority', ($event.target as HTMLSelectElement).value)">
         <option value="">{{ t('task.anyPriority') }}</option>
         <option v-for="p in TASK_PRIORITIES" :key="p" :value="p">{{ t(`task.priority.${p}`) }}</option>
       </select>

@@ -21,7 +21,7 @@ function remove(tag: string) {
   <div class="field flex flex-wrap items-center gap-1.5 !py-1.5">
     <span v-for="tag in tags" :key="tag" class="inline-flex items-center gap-1 rounded bg-paper px-2 py-0.5 text-sm">
       {{ tag }}
-      <button type="button" class="text-muted hover:text-danger" :aria-label="`Remove ${tag}`" @click="remove(tag)">×</button>
+      <button type="button" class="text-muted hover:text-danger" :aria-label="t('a11y.removeTag', { tag })" @click="remove(tag)">×</button>
     </span>
     <input
       v-model="draft"

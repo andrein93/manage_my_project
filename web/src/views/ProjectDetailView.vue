@@ -6,6 +6,7 @@ import CategoryDot from '../components/CategoryDot.vue'
 import FreshnessStrip from '../components/FreshnessStrip.vue'
 import ProjectTasks from '../components/ProjectTasks.vue'
 import ProjectMoney from '../components/ProjectMoney.vue'
+import { uiLocale } from '../i18n'
 import ProjectTime from '../components/ProjectTime.vue'
 import TagEditor from '../components/TagEditor.vue'
 import { scanTick, useAutoRefresh, useErrors } from '../composables'
@@ -122,7 +123,7 @@ async function open(target: 'folder' | 'vscode') {
 }
 
 const date = (iso: string | null | undefined) =>
-  iso ? new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '-'
+  iso ? new Date(iso).toLocaleString(uiLocale(), { dateStyle: 'medium', timeStyle: 'short' }) : '-'
 
 watch(
   () => props.id,
@@ -138,7 +139,7 @@ useAutoRefresh(() => load())
 
 <template>
   <div>
-    <RouterLink to="/" class="text-sm text-muted hover:text-ink">← {{ t('detail.back') }}</RouterLink>
+    <RouterLink to="/projects" class="text-sm text-muted hover:text-ink">← {{ t('detail.back') }}</RouterLink>
     <p v-if="error" class="mt-4 text-sm text-danger" role="alert">{{ error }}</p>
 
     <template v-if="project">
@@ -160,6 +161,11 @@ useAutoRefresh(() => load())
       </div>
 
       <p v-if="project.missingSince" class="mt-4 border-l-2 border-danger pl-3 text-sm">{{ t('detail.missingBanner') }}</p>
+      <ul v-else-if="project.health.length" class="mt-4 flex flex-wrap gap-2 text-sm">
+        <li v-for="f in project.health" :key="f.kind" class="rounded border border-aging px-2 py-0.5 text-aging">
+          {{ t(`health.${f.kind}`) }}<template v-if="f.count"> ({{ f.count }})</template>
+        </li>
+      </ul>
 
       <ProjectTasks class="mt-8" :project-id="project.id" />
       <ProjectTime class="mt-12" :project-id="project.id" />
@@ -250,6 +256,12 @@ useAutoRefresh(() => load())
             <div class="grid grid-cols-[8rem_1fr] gap-3 py-2.5">
               <dt class="text-muted">{{ t('detail.stack') }}</dt>
               <dd>{{ project.stack.join(', ') || '-' }}</dd>
+            </div>
+            <div v-if="Object.keys(project.versions).length" class="grid grid-cols-[8rem_1fr] gap-3 py-2.5">
+              <dt class="text-muted">{{ t('detail.versions') }}</dt>
+              <dd class="tabular-nums">
+                <span v-for="(v, k) in project.versions" :key="k" class="mr-3 inline-block">{{ k }} {{ v }}</span>
+              </dd>
             </div>
             <template v-if="project.git">
               <div class="grid grid-cols-[8rem_1fr] gap-3 py-2.5">

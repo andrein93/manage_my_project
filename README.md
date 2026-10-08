@@ -6,7 +6,9 @@ Clone mmp into the folder that holds all your projects. It maps every sibling fo
 project, detects its stack, git state and last activity, and gives you three ways to work
 with them:
 
-- a **web dashboard** to browse, filter, tag and annotate projects, group them by **client**
+- a **web dashboard** (English and Italian, more languages welcome) that opens on an
+  **overview** of what needs your attention, and lets you browse, filter, tag and annotate
+  projects, group them by **client**
   and **category**, manage **tasks** as a list or a kanban board, see **where your time and
   AI spend go** (estimated automatically from your Claude Code sessions and git commits), and
   find out **which projects really pay off** and **who still owes you money**;
@@ -16,8 +18,8 @@ with them:
 
 Everything stays on your machine, in a single SQLite file.
 
-> **Status:** v0.4 — project registry, clients, categories, tasks, automatic time tracking and
-> profitability. See the [roadmap](#roadmap) for what is next.
+> **Status:** v0.5 — project registry, clients, categories, tasks, automatic time tracking,
+> profitability, project health and a weekly digest. See the [roadmap](#roadmap) for what is next.
 
 ## Requirements
 
@@ -75,6 +77,9 @@ Any other MCP client works the same way: run `node bin/mmp.js mcp` over stdio.
 | `list_agreements` / `add_agreement` | Hourly rates, fixed prices, recurring fees |
 | `record_payment` | "Acme paid me 1,500 today" |
 | `add_expense` | Project costs or shared costs (split by hours) |
+| `weekly_digest` | The week in review, as Markdown |
+| `project_health` | Projects without backup, with unpushed work, dormant… |
+| `upcoming_charges` | Recurring costs to pay and fees to invoice soon |
 
 The full, always up-to-date list (with every parameter) is in the dashboard under
 **Settings → Commands**.
@@ -118,6 +123,12 @@ mmp expense add <amount> --note "VPS" [--project <ref>] [--every month|year] [--
 mmp expense list | remove <id>
 mmp ai-plan add --subscription 90 | --api [--from --to]
 mmp ai-plan list | end <id> | remove <id>
+
+mmp digest [--last]                the week in review (Markdown)
+mmp health                         projects that need attention
+mmp upcoming [--days 30]           costs to pay and fees to invoice
+mmp list --attention               only projects that need attention
+mmp list --framework laravel@9     projects by framework major version
 mmp mcp                             MCP server on stdio (started by your AI client)
 ```
 
@@ -168,6 +179,29 @@ Record **how each project is paid** and mmp tells you whether it is worth it:
 
 All amounts are in one currency (Settings → Finance) and **net of VAT**. mmp is not an
 invoicing tool.
+
+## Overview and project health
+
+The dashboard opens on an **overview**: this week's hours and AI cost, this month's money, and
+what needs attention — overdue tasks, money owed, charges coming up in the next 30 days, and
+**project health** for active and paused projects:
+
+- **no remote** (git repo that is not backed up anywhere) or **not under git** at all;
+- **unpushed commits** and **uncommitted changes**;
+- **dormant**: marked active but untouched for 90+ days;
+- **folder missing**.
+
+Framework versions (Laravel, PHP, WordPress, Vue, React, Nuxt, Next, Vite, Tailwind…) are read
+from lockfiles, so you can list every project still on, say, Laravel 9. Everything is computed
+locally; mmp never contacts package registries.
+
+"Copy weekly report" on the overview (or `mmp digest`) gives you a Markdown summary of the week.
+
+## Languages
+
+The dashboard is available in English and Italian; it follows your browser language unless you
+pick one in Settings. Adding a language is adding one file — see [CONTRIBUTING](CONTRIBUTING.md).
+The CLI and AI tools answer in English.
 
 ## How scanning works
 
@@ -243,7 +277,7 @@ keys and register it in `web/src/i18n.ts`.
 2. ~~Clients, categories and tasks, manageable by your AI~~ (v0.2)
 3. ~~Automatic time tracking from Claude Code sessions and git~~ (v0.3)
 4. ~~Profitability: agreements, payments, costs, AI plans, effective hourly rate~~ (v0.4)
-5. Project health, renewals (domains, SSL, hosting), weekly reports
+5. ~~Project health, upcoming charges, overview and weekly digest; Italian translation~~ (v0.5)
 6. Optional sync server to share projects across people and machines
 
 ## License

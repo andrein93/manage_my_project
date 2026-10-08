@@ -27,12 +27,16 @@ const filters = computed(() => ({
   inactive: q('inactive'),
   client: q('client'),
   category: q('category'),
+  attention: q('attention'),
+  framework: q('framework'),
   sort: q('sort') || 'activity',
 }))
 function setFilter(key: string, value: string) {
   router.replace({ query: { ...route.query, [key]: value || undefined } })
 }
-const hasFilters = computed(() => ['q', 'status', 'stack', 'tag', 'inactive', 'client', 'category'].some((k) => q(k)))
+/** Most important health flag, skipping "uncommitted" which already has its own marker. */
+const mainFlag = (p: Project) => p.health.find((f) => f.kind !== 'uncommitted')?.kind ?? null
+const hasFilters = computed(() => ['q', 'status', 'stack', 'tag', 'inactive', 'client', 'category', 'attention', 'framework'].some((k) => q(k)))
 
 let latestRequest = 0
 async function load() {
@@ -48,6 +52,8 @@ async function load() {
     if (f.inactive) params.inactive = f.inactive
     if (f.client) params.client = f.client
     if (f.category) params.category = f.category
+    if (f.attention) params.attention = 'true'
+    if (f.framework) params.version = f.framework
     const [list, m] = await Promise.all([api.projects(params), api.meta()])
     // Out-of-order responses (typing, focus, interval) must not show stale filters.
     if (request !== latestRequest) return
@@ -94,35 +100,43 @@ useAutoRefresh(load)
     </div>
 
     <input v-model="search" type="search" class="field mb-2" :placeholder="t('list.search')" :aria-label="t('list.search')" />
-    <div class="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-7">
-      <select class="field" :value="filters.client" aria-label="Client" @change="setFilter('client', ($event.target as HTMLSelectElement).value)">
+    <div class="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+      <select class="field" :value="filters.attention" :aria-label="t('a11y.attention')" @change="setFilter('attention', ($event.target as HTMLSelectElement).value)">
+        <option value="">{{ t('list.anyHealth') }}</option>
+        <option value="1">{{ t('list.needsAttention', { n: meta?.attention ?? 0 }) }}</option>
+      </select>
+      <select v-if="meta?.versions.length" class="field" :value="filters.framework" :aria-label="t('a11y.framework')" @change="setFilter('framework', ($event.target as HTMLSelectElement).value)">
+        <option value="">{{ t('list.anyFramework') }}</option>
+        <option v-for="v in meta?.versions" :key="v" :value="v">{{ v.replace('@', ' ') }}</option>
+      </select>
+      <select class="field" :value="filters.client" :aria-label="t('a11y.client')" @change="setFilter('client', ($event.target as HTMLSelectElement).value)">
         <option value="">{{ t('list.anyClient') }}</option>
         <option value="none">{{ t('list.noClient') }}</option>
         <option v-for="c in meta?.clients" :key="c.id" :value="c.id">{{ c.name }}</option>
       </select>
-      <select class="field" :value="filters.category" aria-label="Category" @change="setFilter('category', ($event.target as HTMLSelectElement).value)">
+      <select class="field" :value="filters.category" :aria-label="t('a11y.category')" @change="setFilter('category', ($event.target as HTMLSelectElement).value)">
         <option value="">{{ t('list.anyCategory') }}</option>
         <option value="none">{{ t('list.noCategory') }}</option>
         <option v-for="c in meta?.categories" :key="c.id" :value="c.id">{{ c.name }}</option>
       </select>
-      <select class="field" :value="filters.status" aria-label="Status" @change="setFilter('status', ($event.target as HTMLSelectElement).value)">
+      <select class="field" :value="filters.status" :aria-label="t('a11y.status')" @change="setFilter('status', ($event.target as HTMLSelectElement).value)">
         <option value="">{{ t('list.anyStatus') }}</option>
         <option v-for="s in meta?.statuses" :key="s" :value="s">{{ t(`status.${s}`) }} ({{ meta?.counts[s] }})</option>
         <option value="all">{{ t('list.allStatuses') }}</option>
       </select>
-      <select class="field" :value="filters.stack" aria-label="Stack" @change="setFilter('stack', ($event.target as HTMLSelectElement).value)">
+      <select class="field" :value="filters.stack" :aria-label="t('a11y.stack')" @change="setFilter('stack', ($event.target as HTMLSelectElement).value)">
         <option value="">{{ t('list.anyStack') }}</option>
         <option v-for="s in meta?.stacks" :key="s" :value="s">{{ s }}</option>
       </select>
-      <select v-if="meta?.tags.length" class="field" :value="filters.tag" aria-label="Tag" @change="setFilter('tag', ($event.target as HTMLSelectElement).value)">
+      <select v-if="meta?.tags.length" class="field" :value="filters.tag" :aria-label="t('a11y.tag')" @change="setFilter('tag', ($event.target as HTMLSelectElement).value)">
         <option value="">{{ t('list.anyTag') }}</option>
         <option v-for="tag in meta?.tags" :key="tag" :value="tag">{{ tag }}</option>
       </select>
-      <select class="field" :value="filters.inactive" aria-label="Activity" @change="setFilter('inactive', ($event.target as HTMLSelectElement).value)">
+      <select class="field" :value="filters.inactive" :aria-label="t('a11y.activity')" @change="setFilter('inactive', ($event.target as HTMLSelectElement).value)">
         <option value="">{{ t('list.anyActivity') }}</option>
         <option v-for="d in [30, 90, 180, 365]" :key="d" :value="String(d)">{{ t('list.inactiveFor', { days: d }) }}</option>
       </select>
-      <select class="field" :value="filters.sort" aria-label="Sort" @change="setFilter('sort', ($event.target as HTMLSelectElement).value === 'activity' ? '' : 'name')">
+      <select class="field" :value="filters.sort" :aria-label="t('a11y.sort')" @change="setFilter('sort', ($event.target as HTMLSelectElement).value === 'activity' ? '' : 'name')">
         <option value="activity">{{ t('list.sortActivity') }}</option>
         <option value="name">{{ t('list.sortName') }}</option>
       </select>
@@ -141,6 +155,7 @@ useAutoRefresh(load)
               <CategoryDot :category="p.category" reserve />
               <span class="font-medium" :class="{ 'text-muted line-through': p.missingSince }">{{ p.name }}</span>
               <span v-if="p.client" class="text-sm text-muted">{{ p.client.name }}</span>
+              <span v-if="mainFlag(p) && !p.missingSince" class="text-xs text-aging">⚠ {{ t(`health.${mainFlag(p)}`) }}</span>
               <span v-if="p.missingSince" class="text-xs text-danger">{{ t('list.missing') }}</span>
               <span v-if="p.git?.dirty" class="text-xs text-aging" :title="t('list.uncommitted')">● {{ t('list.uncommitted') }}</span>
             </div>

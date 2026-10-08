@@ -12,6 +12,8 @@ import type {
   Payment,
 } from '../../src/core/finance/types'
 import type { CommandDoc, ToolDoc } from '../../src/server/help-types'
+import type { Digest, Overview, UpcomingItem } from '../../src/core/overview-types'
+import type { HealthFlag } from '../../src/core/types'
 import type {
   Category,
   CategoryInput,
@@ -51,6 +53,7 @@ export type {
 export type { SyncResult, TimeEntry, TimeReport, WorkBlock }
 export type { Agreement, AgreementKind, AiPlan, AiPlanKind, Expense, FinanceReport, FinanceRow, Interval, OwedRow, Payment }
 export type { CommandDoc, ToolDoc }
+export type { Digest, HealthFlag, Overview, UpcomingItem }
 
 export interface SyncStatus {
   running: boolean
@@ -66,6 +69,8 @@ export interface Meta {
   tags: string[]
   clients: NamedRef[]
   categories: CategoryRef[]
+  versions: string[]
+  attention: number
   counts: Record<ProjectStatus, number>
 }
 
@@ -181,4 +186,6 @@ export const api = {
   updateAiPlan: (id: string, input: { endDate?: string | null }) => request<AiPlan>('PATCH', `/ai-plans/${id}`, input),
   removeAiPlan: (id: string) => request<void>('DELETE', `/ai-plans/${id}`),
   help: () => request<{ cli: CommandDoc[]; mcp: ToolDoc[] }>('GET', '/help'),
+  overview: () => request<Overview>('GET', '/overview'),
+  digest: (week: 'this' | 'last') => request<Digest & { markdown: string }>('GET', `/digest?week=${week}`),
 }

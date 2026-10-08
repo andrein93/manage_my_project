@@ -1,3 +1,5 @@
+import { uiLocale } from './i18n'
+
 /** 95 → "1h 35m", 45 → "45m", 0 → "0m". */
 export function formatMinutes(minutes: number): string {
   const total = Math.round(minutes)
@@ -8,7 +10,7 @@ export function formatMinutes(minutes: number): string {
 }
 
 export function formatUsd(value: number): string {
-  return value.toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: value >= 100 ? 0 : 2 })
+  return value.toLocaleString(uiLocale(), { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 /** Local date as YYYY-MM-DD. */
@@ -19,7 +21,7 @@ export function localDate(date = new Date()): string {
 
 export function dayLabel(day: string, options: Intl.DateTimeFormatOptions = { weekday: 'short', day: 'numeric' }): string {
   const [y, m, d] = day.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, options)
+  return new Date(y, m - 1, d).toLocaleDateString(uiLocale(), options)
 }
 
 /** Cents in the given currency, in the viewer's locale. */
@@ -27,7 +29,7 @@ export function formatMoney(cents: number | null, currency: string): string {
   if (cents === null) return '-'
   const value = cents / 100
   try {
-    return value.toLocaleString(undefined, { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    return value.toLocaleString(uiLocale(), { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 })
   } catch {
     return `${value.toFixed(2)} ${currency}`
   }

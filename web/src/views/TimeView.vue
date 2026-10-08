@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { api, type Meta, type Project, type SyncStatus, type TimeEntry, type TimeReport } from '../api'
 import DailyChart from '../components/DailyChart.vue'
+import { uiLocale } from '../i18n'
 import { scanTick, useAutoRefresh, useErrors } from '../composables'
 import { formatMinutes, formatUsd, localDate } from '../time'
 
@@ -132,7 +133,7 @@ async function addAsProject(cwd: string) {
 const maxShare = computed(() => Math.max(0.0001, ...(report.value?.rows.map((r) => r.share) ?? [0])))
 const syncedAgo = computed(() => {
   const at = status.value?.lastSync?.finishedAt
-  return at ? new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : null
+  return at ? new Date(at).toLocaleTimeString(uiLocale(), { hour: '2-digit', minute: '2-digit' }) : null
 })
 const rowLink = (key: string) =>
   filters.value.by === 'project'
@@ -164,19 +165,19 @@ useAutoRefresh(load, 60_000)
     </p>
 
     <div class="mb-6 flex flex-wrap items-center gap-2">
-      <select class="field !w-auto" :value="filters.period" aria-label="Period" @change="setPeriod(($event.target as HTMLSelectElement).value)">
+      <select class="field !w-auto" :value="filters.period" :aria-label="t('a11y.period')" @change="setPeriod(($event.target as HTMLSelectElement).value)">
         <option v-for="p in PERIODS" :key="p" :value="p">{{ t(`time.period.${p}`) }}</option>
       </select>
       <template v-if="filters.period === 'custom'">
         <input type="date" class="field !w-auto" :value="filters.from" :aria-label="t('time.from')" @change="setQuery({ from: ($event.target as HTMLInputElement).value })" />
         <input type="date" class="field !w-auto" :value="filters.to" :aria-label="t('time.to')" @change="setQuery({ to: ($event.target as HTMLInputElement).value })" />
       </template>
-      <select class="field !w-auto" :value="filters.client" aria-label="Client" @change="setQuery({ client: ($event.target as HTMLSelectElement).value || undefined })">
+      <select class="field !w-auto" :value="filters.client" :aria-label="t('a11y.client')" @change="setQuery({ client: ($event.target as HTMLSelectElement).value || undefined })">
         <option value="">{{ t('list.anyClient') }}</option>
         <option value="none">{{ t('list.noClient') }}</option>
         <option v-for="c in meta?.clients" :key="c.id" :value="c.id">{{ c.name }}</option>
       </select>
-      <select class="field !w-auto" :value="filters.category" aria-label="Category" @change="setQuery({ category: ($event.target as HTMLSelectElement).value || undefined })">
+      <select class="field !w-auto" :value="filters.category" :aria-label="t('a11y.category')" @change="setQuery({ category: ($event.target as HTMLSelectElement).value || undefined })">
         <option value="">{{ t('list.anyCategory') }}</option>
         <option value="none">{{ t('list.noCategory') }}</option>
         <option v-for="c in meta?.categories" :key="c.id" :value="c.id">{{ c.name }}</option>

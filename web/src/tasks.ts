@@ -1,4 +1,5 @@
 import type { Task, TaskPriority, TaskStatus } from './api'
+import { uiLocale } from './i18n'
 
 export const TASK_STATUSES: TaskStatus[] = ['todo', 'in_progress', 'done']
 export const TASK_PRIORITIES: TaskPriority[] = ['urgent', 'high', 'normal', 'low']
@@ -14,7 +15,7 @@ export const priorityClass: Record<TaskPriority, string> = {
 /** "Oct 15" style label for a YYYY-MM-DD date, in the viewer's locale. */
 export function shortDate(day: string): string {
   const [y, m, d] = day.split('-').map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return new Date(y, m - 1, d).toLocaleDateString(uiLocale(), { month: 'short', day: 'numeric' })
 }
 
 /** Position for inserting before `index` in an ordered column (append when index = length). */

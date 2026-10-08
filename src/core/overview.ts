@@ -4,53 +4,10 @@ import { occurrences } from './finance/accrual.js'
 import { formatCents } from './finance/money.js'
 import { formatMinutes } from './time/duration.js'
 import { resolvePeriod } from './time/periods.js'
-import type { HealthFlag } from './types.js'
 
-export interface UpcomingItem {
-  date: string
-  /** pay = a cost coming up; invoice = a recurring fee to bill. */
-  direction: 'pay' | 'invoice'
-  label: string
-  projectId: string | null
-  projectName: string | null
-  amountCents: number
-}
+import type { Digest, Overview, UpcomingItem } from './overview-types.js'
 
-export interface Overview {
-  today: string
-  currency: string
-  week: {
-    from: string
-    to: string
-    minutes: number
-    costUsd: number
-    tasksCompleted: number
-    topProjects: { id: string; name: string; minutes: number }[]
-  }
-  month: { from: string; to: string; earnedCents: number; collectedCents: number; marginCents: number }
-  attention: {
-    overdueTasks: { id: string; title: string; dueDate: string; projectId: string; projectName: string }[]
-    health: { projectId: string; projectName: string; flags: HealthFlag[] }[]
-    owed: { clientId: string; clientName: string; owedCents: number }[]
-    upcoming: UpcomingItem[]
-  }
-}
-
-export interface Digest {
-  from: string
-  to: string
-  currency: string
-  minutes: number
-  costUsd: number
-  earnedCents: number
-  collectedCents: number
-  topProjects: { name: string; minutes: number }[]
-  tasksCompleted: { title: string; projectName: string }[]
-  overdueTasks: number
-  health: Record<string, string[]>
-  owedCents: number
-  upcoming: UpcomingItem[]
-}
+export type { Digest, Overview, UpcomingItem }
 
 /** Recurring costs to pay and recurring fees to invoice in the next `days` days (inclusive of today). */
 export function upcoming(app: App, days = 30, today = localToday()): UpcomingItem[] {
@@ -59,13 +16,13 @@ export function upcoming(app: App, days = 30, today = localToday()): UpcomingIte
   for (const e of app.finance.repo.expenses()) {
     const dates = e.interval ? occurrences(e.startDate, e.endDate, e.interval, until) : [e.startDate]
     for (const date of dates.filter((d) => d >= today && d <= until)) {
-      items.push({ date, direction: 'pay', label: e.note || 'Expense', projectId: e.projectId, projectName: e.projectName, amountCents: e.amountCents })
+      items.push({ date, direction: 'pay', label: e.note, projectId: e.projectId, projectName: e.projectName, amountCents: e.amountCents })
     }
   }
   for (const a of app.finance.repo.agreements()) {
     if (a.kind !== 'recurring' || !a.interval) continue
     for (const date of occurrences(a.startDate, a.endDate, a.interval, until).filter((d) => d >= today)) {
-      items.push({ date, direction: 'invoice', label: a.note || 'Recurring fee', projectId: a.projectId, projectName: a.projectName, amountCents: a.amountCents })
+      items.push({ date, direction: 'invoice', label: a.note, projectId: a.projectId, projectName: a.projectName, amountCents: a.amountCents })
     }
   }
   return items.sort((x, y) => x.date.localeCompare(y.date) || x.direction.localeCompare(y.direction))
@@ -176,7 +133,7 @@ export function digestMarkdown(d: Digest): string {
     lines.push(
       '',
       '## Coming up',
-      ...d.upcoming.map((u) => `- ${u.date}: ${u.direction === 'pay' ? 'pay' : 'invoice'} ${m(u.amountCents)} — ${u.label}${u.projectName ? ` (${u.projectName})` : ''}`),
+      ...d.upcoming.map((u) => `- ${u.date}: ${u.direction === 'pay' ? 'pay' : 'invoice'} ${m(u.amountCents)} — ${u.label || (u.direction === 'pay' ? 'Expense' : 'Recurring fee')}${u.projectName ? ` (${u.projectName})` : ''}`),
     )
   }
   return lines.join('\n') + '\n'

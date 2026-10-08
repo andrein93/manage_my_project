@@ -1,4 +1,7 @@
 {
+  "_meta": {
+    "name": "English"
+  },
   "app": {
     "projects": "Projects",
     "tasks": "Tasks",
@@ -8,7 +11,8 @@
     "scanning": "Scanning…",
     "scanDone": "Scan finished: {added} new, {missing} missing, {total} total",
     "time": "Time",
-    "finance": "Finance"
+    "finance": "Finance",
+    "overview": "Overview"
   },
   "status": {
     "active": "Active",
@@ -35,7 +39,10 @@
     "emptyHint": "Clear the filters, or add a workspace in Settings.",
     "clear": "Clear filters",
     "missing": "folder missing",
-    "uncommitted": "uncommitted changes"
+    "uncommitted": "uncommitted changes",
+    "anyHealth": "Any health",
+    "needsAttention": "Needs attention ({n})",
+    "anyFramework": "Any framework"
   },
   "fresh": {
     "today": "today",
@@ -75,7 +82,8 @@
     "sourceScan": "workspace scan",
     "sourceManual": "you, manually",
     "noGit": "Not a git repository",
-    "missingBanner": "This folder no longer exists on disk. Its data is kept; it comes back automatically if the folder reappears."
+    "missingBanner": "This folder no longer exists on disk. Its data is kept; it comes back automatically if the folder reappears.",
+    "versions": "Versions"
   },
   "task": {
     "status": {
@@ -160,8 +168,9 @@
     "ignore": "Ignored folder names",
     "ignoreHint": "Folders with these names are never registered. One per line.",
     "saveIgnore": "Save list",
-    "mcp": "Connect your AI",
-    "mcpHint": "Register mmp as an MCP server so Claude Code (or any MCP client) can read and manage your projects:"
+    "language": "Language",
+    "languageHint": "The language of this dashboard. Terminal and AI answers stay in English.",
+    "languageAuto": "Automatic (browser language)"
   },
   "error": {
     "generic": "Something went wrong: {message}",
@@ -331,5 +340,50 @@
       "Who still owes me money?"
     ],
     "noResults": "No commands match."
+  },
+  "health": {
+    "missing": "Folder missing",
+    "no_git": "Not under git",
+    "no_remote": "No remote (no backup)",
+    "unpushed": "Unpushed commits",
+    "uncommitted": "Uncommitted changes",
+    "dormant": "Active but untouched for 90+ days"
+  },
+  "overview": {
+    "thisWeek": "This week",
+    "thisMonth": "This month",
+    "tasksDone": "Tasks done",
+    "topProjects": "Where the time went",
+    "seeFinance": "See finance",
+    "attention": "Needs attention",
+    "allClear": "All clear: nothing needs your attention.",
+    "overdue": "Overdue tasks",
+    "seeAll": "See all",
+    "health": "Project health",
+    "upcoming": "Coming up in the next 30 days",
+    "pay": "to pay",
+    "invoice": "to invoice",
+    "done": "Done",
+    "copyDigest": "Copy weekly report",
+    "copied": "Copied to clipboard",
+    "digestTitle": "Week {from} → {to}",
+    "defaultExpense": "Expense",
+    "defaultFee": "Recurring fee"
+  },
+  "a11y": {
+    "period": "Period",
+    "attention": "Health",
+    "framework": "Framework",
+    "client": "Client",
+    "category": "Category",
+    "status": "Status",
+    "stack": "Stack",
+    "tag": "Tag",
+    "activity": "Activity",
+    "sort": "Sort",
+    "show": "Show",
+    "project": "Project",
+    "priority": "Priority",
+    "removeTag": "Remove tag {tag}"
   }
 }

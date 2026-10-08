@@ -61,7 +61,7 @@ export function registerExtrasCommands(program: Command, getApp: () => App, out:
       out(
         formatTable(
           ['DATE', 'WHAT', 'AMOUNT', 'FOR', 'PROJECT'],
-          items.map((i) => [i.date, i.direction === 'pay' ? 'to pay' : 'to invoice', formatCents(i.amountCents, currency), i.label, i.projectName ?? 'shared']),
+          items.map((i) => [i.date, i.direction === 'pay' ? 'to pay' : 'to invoice', formatCents(i.amountCents, currency), i.label || (i.direction === 'pay' ? 'Expense' : 'Recurring fee'), i.projectName ?? 'shared']),
         ),
       )
     })
