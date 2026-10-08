@@ -10,7 +10,8 @@
       // Apply the stored theme before first paint (key must match THEME_KEY in src/theme.ts).
       try {
         var theme = localStorage.getItem('mmp.theme')
-        if (theme === 'light' || theme === 'dark') document.documentElement.setAttribute('data-theme', theme)
+        // Dark is the default; only an explicit 'light' switches.
+        document.documentElement.setAttribute('data-theme', theme === 'light' ? 'light' : 'dark')
       } catch (e) {}
     </script>
   </head>

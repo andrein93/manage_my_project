@@ -35,12 +35,20 @@ describe('prefs', () => {
 })
 
 describe('theme', () => {
-  it('parses only known preferences', () => {
-    expect(parseThemePreference('dark')).toBe('dark')
+  it('defaults to dark for anything but light', () => {
     expect(parseThemePreference('light')).toBe('light')
-    expect(parseThemePreference('system')).toBe('system')
-    expect(parseThemePreference('purple')).toBe('system')
-    expect(parseThemePreference(null)).toBe('system')
+    expect(parseThemePreference('dark')).toBe('dark')
+    expect(parseThemePreference('system')).toBe('dark')
+    expect(parseThemePreference('purple')).toBe('dark')
+    expect(parseThemePreference(null)).toBe('dark')
+  })
+
+  it('falls back to dark when storage is blocked', () => {
+    const blocked = () => {
+      throw new Error('blocked')
+    }
+    vi.stubGlobal('localStorage', { getItem: blocked, setItem: blocked, removeItem: blocked })
+    expect(readThemePreference()).toBe('dark')
   })
 
   it('reads the stored preference', () => {
@@ -50,7 +58,7 @@ describe('theme', () => {
     expect(readThemePreference()).toBe('light')
   })
 
-  it('applies data-theme only for explicit choices', () => {
+  it('always sets data-theme', () => {
     const attrs = new Map<string, string>()
     const root = {
       setAttribute: (k: string, v: string) => void attrs.set(k, v),
@@ -58,7 +66,7 @@ describe('theme', () => {
     }
     applyThemePreference('dark', root)
     expect(attrs.get('data-theme')).toBe('dark')
-    applyThemePreference('system', root)
-    expect(attrs.has('data-theme')).toBe(false)
+    applyThemePreference('light', root)
+    expect(attrs.get('data-theme')).toBe('light')
   })
 })

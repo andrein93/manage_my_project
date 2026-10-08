@@ -2,32 +2,8 @@
 @import '@fontsource-variable/geist';
 @import '@fontsource-variable/geist-mono';
 
-/* Light */
+/* Dark is the default theme; data-theme="light" switches (set from src/theme.ts). */
 :root {
-  --paper: #fafafa;
-  --surface: #ffffff;
-  --surface-2: #f4f4f6;
-  --ink: #16171d;
-  --muted: #62646f;
-  --line: rgb(0 0 0 / 0.08);
-  --line-strong: rgb(0 0 0 / 0.14);
-  --action: #5b5bf0;
-  --action-ink: #ffffff;
-  --glow: rgb(91 91 240 / 0.14);
-  --spotlight: rgb(91 91 240 / 0.05);
-  --fresh: #1f9d6b;
-  --aging: #b8901a;
-  --dormant: #8a8d98;
-  --danger: #c4372f;
-  --chart: #5b5bf0;
-  --card-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
-  --pop-shadow: 0 16px 48px -12px rgb(0 0 0 / 0.25);
-  --aurora-opacity: 0;
-  color-scheme: light;
-}
-
-/* Dark: forced, or system preference when no explicit light choice. Keep both blocks identical. */
-:root[data-theme='dark'] {
   --paper: #0a0b0f;
   --surface: #111318;
   --surface-2: #171a21;
@@ -50,29 +26,28 @@
   color-scheme: dark;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    --paper: #0a0b0f;
-    --surface: #111318;
-    --surface-2: #171a21;
-    --ink: #ececf1;
-    --muted: #8b8d98;
-    --line: rgb(255 255 255 / 0.08);
-    --line-strong: rgb(255 255 255 / 0.14);
-    --action: #7c7cff;
-    --action-ink: #0a0b0f;
-    --glow: rgb(124 124 255 / 0.18);
-    --spotlight: rgb(124 124 255 / 0.06);
-    --fresh: #3ccf92;
-    --aging: #e0b53c;
-    --dormant: #6b6f7b;
-    --danger: #f0776e;
-    --chart: #7c7cff;
-    --card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 2px rgb(0 0 0 / 0.4);
-    --pop-shadow: 0 24px 64px -16px rgb(0 0 0 / 0.7);
-    --aurora-opacity: 0.25;
-    color-scheme: dark;
-  }
+/* Light */
+:root[data-theme='light'] {
+  --paper: #fafafa;
+  --surface: #ffffff;
+  --surface-2: #f4f4f6;
+  --ink: #16171d;
+  --muted: #62646f;
+  --line: rgb(0 0 0 / 0.08);
+  --line-strong: rgb(0 0 0 / 0.14);
+  --action: #5b5bf0;
+  --action-ink: #ffffff;
+  --glow: rgb(91 91 240 / 0.14);
+  --spotlight: rgb(91 91 240 / 0.05);
+  --fresh: #1f9d6b;
+  --aging: #b8901a;
+  --dormant: #8a8d98;
+  --danger: #c4372f;
+  --chart: #5b5bf0;
+  --card-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  --pop-shadow: 0 16px 48px -12px rgb(0 0 0 / 0.25);
+  --aurora-opacity: 0;
+  color-scheme: light;
 }
 
 @theme {

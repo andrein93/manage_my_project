@@ -173,7 +173,6 @@
     "languageAuto": "Automatica (lingua del browser)",
     "appearance": "Aspetto",
     "appearanceHint": "Salvato in questo browser.",
-    "themeSystem": "Sistema",
     "themeLight": "Chiaro",
     "themeDark": "Scuro"
   },
@@ -406,12 +405,13 @@
       "tasks": "Attività",
       "clients": "Clienti",
       "actions": "Azioni",
-      "themeSystem": "Tema: sistema",
       "themeLight": "Tema: chiaro",
       "themeDark": "Tema: scuro",
       "navigate": "per muoverti",
       "select": "per aprire",
       "close": "per chiudere"
-    }
+    },
+    "themeToLight": "Passa al tema chiaro",
+    "themeToDark": "Passa al tema scuro"
   }
 }

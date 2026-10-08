@@ -173,7 +173,6 @@
     "languageAuto": "Automatic (browser language)",
     "appearance": "Appearance",
     "appearanceHint": "Stored in this browser.",
-    "themeSystem": "System",
     "themeLight": "Light",
     "themeDark": "Dark"
   },
@@ -406,12 +405,13 @@
       "tasks": "Tasks",
       "clients": "Clients",
       "actions": "Actions",
-      "themeSystem": "Theme: system",
       "themeLight": "Theme: light",
       "themeDark": "Theme: dark",
       "navigate": "to navigate",
       "select": "to select",
       "close": "to close"
-    }
+    },
+    "themeToLight": "Switch to light theme",
+    "themeToDark": "Switch to dark theme"
   }
 }

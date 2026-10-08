@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { Monitor, Moon, Sun } from 'lucide-vue-next'
+import { Moon, Sun } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { THEME_PREFERENCES, setThemePreference, themePreference, type ThemePreference } from '../theme'
 
 const { t } = useI18n()
-const icons = { system: Monitor, light: Sun, dark: Moon }
+const icons = { dark: Moon, light: Sun }
 const label = (p: ThemePreference) => t(`settings.theme${p[0].toUpperCase()}${p.slice(1)}`)
 </script>
 

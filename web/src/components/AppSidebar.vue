@@ -11,9 +11,10 @@ export interface NavLink {
 
 <script setup lang="ts">
 import { Motion } from 'motion-v'
-import { PanelLeftClose, PanelLeftOpen, RefreshCw, Search } from 'lucide-vue-next'
+import { Moon, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Sun } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
+import { themePreference, toggleTheme } from '../theme'
 import UiKbd from '../ui/UiKbd.vue'
 
 defineProps<{ links: NavLink[]; collapsed: boolean; scanning: boolean }>()
@@ -73,10 +74,21 @@ const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigat
       <button v-if="collapsed" class="hidden justify-center rounded-md p-2 text-muted hover:bg-surface-2 hover:text-ink md:flex" :aria-label="t('ui.expand')" @click="emit('toggle')">
         <PanelLeftOpen class="size-4" aria-hidden="true" />
       </button>
-      <button class="btn w-full" :class="{ 'px-0': collapsed }" :disabled="scanning" :title="collapsed ? t('app.rescan') : undefined" @click="emit('rescan')">
-        <RefreshCw class="size-4" :class="{ 'animate-spin': scanning }" aria-hidden="true" />
-        <span v-if="!collapsed">{{ scanning ? t('app.scanning') : t('app.rescan') }}</span>
-      </button>
+      <div class="flex gap-1" :class="{ 'flex-col': collapsed }">
+        <button class="btn min-w-0 flex-1" :class="{ 'px-0': collapsed }" :disabled="scanning" :title="collapsed ? t('app.rescan') : undefined" @click="emit('rescan')">
+          <RefreshCw class="size-4" :class="{ 'animate-spin': scanning }" aria-hidden="true" />
+          <span v-if="!collapsed">{{ scanning ? t('app.scanning') : t('app.rescan') }}</span>
+        </button>
+        <button
+          class="btn shrink-0 px-2"
+          :aria-label="themePreference === 'dark' ? t('ui.themeToLight') : t('ui.themeToDark')"
+          :title="themePreference === 'dark' ? t('ui.themeToLight') : t('ui.themeToDark')"
+          @click="toggleTheme"
+        >
+          <Sun v-if="themePreference === 'dark'" class="size-4" aria-hidden="true" />
+          <Moon v-else class="size-4" aria-hidden="true" />
+        </button>
+      </div>
     </div>
   </div>
 </template>
