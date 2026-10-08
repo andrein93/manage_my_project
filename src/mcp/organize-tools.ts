@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { App } from '../core/app.js'
 import { resolveCategoryFilter, resolveClientFilter } from '../core/filters.js'
+import { resolveAssignee } from '../core/members.js'
 import { TASK_PRIORITIES, TASK_STATUSES, type TaskPriority, type TaskStatus } from '../core/types.js'
 import { tool } from './tool.js'
 
@@ -129,6 +130,7 @@ export function registerOrganizeTools(server: McpServer, app: App): void {
         status: z.enum(TASK_STATUSES).optional(),
         priority: z.enum(TASK_PRIORITIES).optional(),
         due_date: dueDate.nullable().optional(),
+        assignee: z.string().nullable().optional().describe('Team member name/id, or null to unassign'),
       },
     },
     tool(
@@ -139,8 +141,10 @@ export function registerOrganizeTools(server: McpServer, app: App): void {
         status?: TaskStatus
         priority?: TaskPriority
         due_date?: string | null
+        assignee?: string | null
       }) =>
         app.tasks.update(app.tasks.resolve(a.ref).id, {
+          assigneeId: resolveAssignee(app, a.assignee),
           title: a.title,
           description: a.description,
           status: a.status,

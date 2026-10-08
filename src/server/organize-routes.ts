@@ -40,6 +40,7 @@ const taskFields = {
   priority: z.enum(TASK_PRIORITIES).optional(),
   dueDate: z.string().nullable().optional(),
   position: z.number().finite().optional(),
+  assigneeId: z.string().nullable().optional(),
 }
 const taskCreate = z.object({ projectId: z.string().min(1), ...taskFields }).strict()
 const taskPatch = z.object({ ...taskFields, title: taskFields.title.optional() }).strict()

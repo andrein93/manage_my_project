@@ -11,6 +11,7 @@ import { registerRoutes } from './routes.js'
 import { registerExtrasRoutes } from './extras-routes.js'
 import { registerFinanceRoutes } from './finance-routes.js'
 import { helpDocs } from './help.js'
+import { registerSyncRoutes } from './sync-routes.js'
 import { registerTimeRoutes } from './time-routes.js'
 
 export interface ServerOptions {
@@ -23,6 +24,7 @@ export interface ServerOptions {
 }
 
 const SYNC_INTERVAL_MS = 5 * 60_000
+const TEAM_SYNC_INTERVAL_MS = 2 * 60_000
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
 const MUTATING = new Set(['POST', 'PUT', 'PATCH'])
@@ -63,6 +65,7 @@ export async function buildServer(app: App, options: ServerOptions = {}): Promis
       registerTimeRoutes(api, app)
       registerFinanceRoutes(api, app)
       registerExtrasRoutes(api, app)
+      registerSyncRoutes(api, app)
       api.get('/help', async () => helpDocs(app))
     },
     { prefix: '/api' },
@@ -94,7 +97,11 @@ export async function startServer(app: App, options: ServerOptions = {}): Promis
   const server = await buildServer(app, options)
   // Hooks must be registered before listen().
   let timer: ReturnType<typeof setInterval> | undefined
-  server.addHook('onClose', async () => clearInterval(timer))
+  let teamTimer: ReturnType<typeof setInterval> | undefined
+  server.addHook('onClose', async () => {
+    clearInterval(timer)
+    clearInterval(teamTimer)
+  })
   try {
     await server.listen({ port: app.config.port, host: app.config.host })
   } catch (error) {
@@ -109,6 +116,13 @@ export async function startServer(app: App, options: ServerOptions = {}): Promis
     sync()
     timer = setInterval(sync, SYNC_INTERVAL_MS)
     timer.unref()
+    // Team sync only when configured; errors are kept in sync status for the dashboard.
+    const teamSync = () => {
+      if (app.sync.status().configured) app.sync.run().catch(() => undefined)
+    }
+    teamSync()
+    teamTimer = setInterval(teamSync, TEAM_SYNC_INTERVAL_MS)
+    teamTimer.unref()
   }
   return { url: `http://localhost:${app.config.port}`, server }
 }

@@ -26,6 +26,7 @@ export function formatProject(p: Project): string {
     ['Status', p.status + (p.missingSince ? ` (folder missing since ${p.missingSince.slice(0, 10)})` : '')],
     ['Path', p.path],
     ['Client', p.client?.name ?? '-'],
+    ['Team', p.shared ? (p.local ? 'shared' : 'shared, not on this computer') : 'private'],
     ['Category', p.category?.name ?? '-'],
     ['Stack', p.stack.join(', ') || '-'],
     ['Tags', p.tags.join(', ') || '-'],

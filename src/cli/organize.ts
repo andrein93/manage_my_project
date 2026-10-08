@@ -1,6 +1,7 @@
 import { Option, type Command } from 'commander'
 import type { App } from '../core/app.js'
 import { resolveCategoryFilter, resolveClientFilter } from '../core/filters.js'
+import { resolveAssignee } from '../core/members.js'
 import {
   TASK_PRIORITIES,
   TASK_STATUSES,
@@ -37,6 +38,7 @@ function formatTask(t: Task): string {
     ['Status', t.status + (t.completedAt ? ` on ${t.completedAt.slice(0, 10)}` : '')],
     ['Priority', t.priority],
     ['Due', t.dueDate ?? '-'],
+    ['Assignee', t.assignee?.name ?? '-'],
   ]
   if (t.description) rows.push(['Notes', t.description])
   return rows.map(([k, v]) => `${k.padEnd(9)} ${v}`).join('\n')
@@ -213,9 +215,11 @@ export function registerOrganizeCommands(program: Command, getApp: () => App, ou
     .addOption(new Option('--priority <priority>').choices([...TASK_PRIORITIES]))
     .option('--due <date>', 'YYYY-MM-DD, or "none" to clear')
     .option('--description <text>')
-    .action((ref: string, opts: { title?: string; status?: TaskStatus; priority?: TaskPriority; due?: string; description?: string }) => {
+    .option('--assignee <member>', 'team member name or id, or "none"')
+    .action((ref: string, opts: { title?: string; status?: TaskStatus; priority?: TaskPriority; due?: string; description?: string; assignee?: string }) => {
       const app = getApp()
       const input: TaskInput = {
+        assigneeId: resolveAssignee(app, opts.assignee),
         title: opts.title,
         status: opts.status,
         priority: opts.priority,

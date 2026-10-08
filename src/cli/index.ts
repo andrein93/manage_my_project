@@ -7,6 +7,7 @@ import { formatProject, formatTable, relativeTime } from './format.js'
 import { registerOrganizeCommands } from './organize.js'
 import { registerExtrasCommands } from './extras.js'
 import { registerFinanceCommands } from './finance.js'
+import { registerSyncCommands } from './sync.js'
 import { registerTimeCommands } from './time.js'
 
 
@@ -30,6 +31,7 @@ interface SetOptions {
   status?: ProjectStatus
   client?: string
   category?: string
+  share?: boolean
 }
 
 /** Builds the CLI. `getApp` is lazy so `--help` works without touching the database. */
@@ -172,6 +174,8 @@ export function buildCli(getApp: () => App, out: (line: string) => void = consol
     .addOption(new Option('--status <status>').choices([...PROJECT_STATUSES]))
     .option('--client <ref>', 'client name or id, or "none" to clear')
     .option('--category <ref>', 'category name or id, or "none" to clear')
+    .option('--share', 'share with your team (team sync)')
+    .option('--no-share', 'stop sharing with your team')
     .action((ref: string, opts: SetOptions) => {
       const app = getApp()
       const project = app.projects.update(app.projects.resolve(ref).id, {
@@ -180,6 +184,7 @@ export function buildCli(getApp: () => App, out: (line: string) => void = consol
         status: opts.status,
         clientId: resolveClientPatch(app, opts.client),
         categoryId: resolveCategoryPatch(app, opts.category),
+        shared: opts.share,
       })
       out(formatProject(project))
     })
@@ -199,6 +204,7 @@ export function buildCli(getApp: () => App, out: (line: string) => void = consol
   registerTimeCommands(program, getApp, out)
   registerFinanceCommands(program, getApp, out)
   registerExtrasCommands(program, getApp, out)
+  registerSyncCommands(program, getApp, out)
 
   program
     .command('mcp')

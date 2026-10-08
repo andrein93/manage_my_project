@@ -39,6 +39,7 @@ const projectPatch = z
     tags: z.array(z.string().max(50)).max(50).optional(),
     clientId: z.string().nullable().optional(),
     categoryId: z.string().nullable().optional(),
+    shared: z.boolean().optional(),
   })
   .strict()
 
@@ -102,6 +103,7 @@ export function registerRoutes(api: FastifyInstance, app: App, opener: Opener): 
 
   api.post('/projects/:id/open', async (request, reply) => {
     const project = getProject(idParams.parse(request.params).id)
+    if (!project.local) throw new UserError('This team project has no folder on this computer')
     if (project.missingSince || !isDirectory(project.path)) throw new UserError('The project folder is missing')
     const { target } = openBody.parse(request.body)
     if (target === 'folder') opener.folder(project.path)

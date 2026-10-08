@@ -8,6 +8,7 @@ import { resolveCategoryFilter, resolveCategoryPatch, resolveClientFilter, resol
 import { registerOrganizeTools } from './organize-tools.js'
 import { registerExtrasTools } from './extras-tools.js'
 import { registerFinanceTools } from './finance-tools.js'
+import { registerSyncTools } from './sync-tools.js'
 import { registerTimeTools } from './time-tools.js'
 import { tool } from './tool.js'
 
@@ -132,6 +133,7 @@ export function createMcpServer(app: App): McpServer {
         name: z.string().optional(),
         description: z.string().optional(),
         status: z.enum(PROJECT_STATUSES).optional(),
+        shared: z.boolean().optional().describe('Share with the team (requires team sync)'),
         client: z.string().nullable().optional().describe('Existing client name/id (create it first with create_client)'),
         category: z.string().nullable().optional().describe('Existing category name/id'),
       },
@@ -142,6 +144,7 @@ export function createMcpServer(app: App): McpServer {
         name?: string
         description?: string
         status?: ProjectStatus
+        shared?: boolean
         client?: string | null
         category?: string | null
       }) =>
@@ -149,6 +152,7 @@ export function createMcpServer(app: App): McpServer {
           name: a.name,
           description: a.description,
           status: a.status,
+          shared: a.shared,
           clientId: resolveClientPatch(app, a.client),
           categoryId: resolveCategoryPatch(app, a.category),
         }),
@@ -171,6 +175,7 @@ export function createMcpServer(app: App): McpServer {
   registerTimeTools(server, app)
   registerFinanceTools(server, app)
   registerExtrasTools(server, app)
+  registerSyncTools(server, app)
   return server
 }
 
