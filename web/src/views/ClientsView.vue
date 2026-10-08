@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { Users } from 'lucide-vue-next'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { api, type Client } from '../api'
 import { useAutoRefresh, useErrors } from '../composables'
+import PageHeader from '../ui/PageHeader.vue'
+import UiCard from '../ui/UiCard.vue'
+import UiEmpty from '../ui/UiEmpty.vue'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -38,33 +42,35 @@ useAutoRefresh(load)
 
 <template>
   <section class="max-w-4xl">
-    <h1 class="mb-5 text-2xl font-semibold tracking-tight">{{ t('clients.title') }}</h1>
+    <PageHeader :title="t('clients.title')" />
 
     <form class="mb-6 flex gap-2" @submit.prevent="add">
       <input v-model="name" class="field" required maxlength="200" :placeholder="t('clients.name')" :aria-label="t('clients.name')" />
       <button class="btn btn-primary shrink-0">{{ t('clients.add') }}</button>
     </form>
-    <p v-if="error" class="mb-4 text-sm text-danger" role="alert">{{ error }}</p>
+    <p v-if="error" class="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
 
-    <table v-if="clients.length" class="w-full text-sm">
-      <thead class="border-b border-line text-left text-muted">
+    <UiCard v-if="clients.length" spotlight class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="border-b border-line text-left text-xs tracking-wider text-muted uppercase">
         <tr>
-          <th class="py-2 font-medium">{{ t('clients.name') }}</th>
-          <th class="py-2 text-right font-medium">{{ t('clients.projects') }}</th>
-          <th class="py-2 text-right font-medium">{{ t('clients.openTasks') }}</th>
+          <th class="px-4 py-2.5 font-medium">{{ t('clients.name') }}</th>
+          <th class="px-4 py-2.5 text-right font-medium">{{ t('clients.projects') }}</th>
+          <th class="px-4 py-2.5 text-right font-medium">{{ t('clients.openTasks') }}</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-line">
-        <tr v-for="c in clients" :key="c.id" class="hover:bg-surface">
-          <td class="py-3">
+        <tr v-for="c in clients" :key="c.id" class="transition-colors hover:bg-surface-2/60">
+          <td class="px-4 py-3">
             <RouterLink :to="{ name: 'client', params: { id: c.id } }" class="font-medium hover:underline">{{ c.name }}</RouterLink>
             <p v-if="c.email" class="text-xs text-muted">{{ c.email }}</p>
           </td>
-          <td class="py-3 text-right tabular-nums">{{ c.projectCount }}</td>
-          <td class="py-3 text-right tabular-nums">{{ c.openTaskCount }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ c.projectCount }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">{{ c.openTaskCount }}</td>
         </tr>
       </tbody>
     </table>
-    <p v-else-if="loaded && !error" class="border-y border-line py-12 text-center text-sm text-muted">{{ t('clients.empty') }}</p>
+    </UiCard>
+    <UiEmpty v-else-if="loaded && !error" :icon="Users" :title="t('clients.empty')" />
   </section>
 </template>

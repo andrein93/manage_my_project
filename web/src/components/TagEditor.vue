@@ -18,8 +18,8 @@ function remove(tag: string) {
 </script>
 
 <template>
-  <div class="field flex flex-wrap items-center gap-1.5 !py-1.5">
-    <span v-for="tag in tags" :key="tag" class="inline-flex items-center gap-1 rounded bg-paper px-2 py-0.5 text-sm">
+  <div class="field flex flex-wrap items-center gap-1.5 !py-1.5 focus-within:border-action focus-within:ring-3 focus-within:ring-glow">
+    <span v-for="tag in tags" :key="tag" class="inline-flex items-center gap-1 rounded-full border border-action/30 bg-action/10 px-2 py-0.5 text-xs text-action">
       {{ tag }}
       <button type="button" class="text-muted hover:text-danger" :aria-label="t('a11y.removeTag', { tag })" @click="remove(tag)">×</button>
     </span>

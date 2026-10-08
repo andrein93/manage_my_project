@@ -171,7 +171,11 @@
     "saveIgnore": "Guardar lista",
     "language": "Idioma",
     "languageHint": "El idioma de este panel. Las respuestas del terminal y de la IA siguen en inglés.",
-    "languageAuto": "Automático (idioma del navegador)"
+    "languageAuto": "Automático (idioma del navegador)",
+    "appearance": "Apariencia",
+    "appearanceHint": "Guardado en este navegador.",
+    "themeLight": "Claro",
+    "themeDark": "Oscuro"
   },
   "error": {
     "generic": "Algo ha fallado: {message}",
@@ -409,5 +413,29 @@
     "assignee": "Responsable",
     "unassigned": "Sin asignar",
     "teamTime": "Tiempo del equipo este mes"
+  },
+  "ui": {
+    "dismiss": "Cerrar",
+    "search": "Buscar",
+    "collapse": "Contraer barra lateral",
+    "expand": "Expandir barra lateral",
+    "menu": "Menú",
+    "closeMenu": "Cerrar menú",
+    "themeToLight": "Cambiar al tema claro",
+    "themeToDark": "Cambiar al tema oscuro",
+    "palette": {
+      "placeholder": "Buscar proyectos, tareas, clientes…",
+      "empty": "Sin resultados para «{query}»",
+      "pages": "Páginas",
+      "projects": "Proyectos",
+      "tasks": "Tareas",
+      "clients": "Clientes",
+      "actions": "Acciones",
+      "themeLight": "Tema: claro",
+      "themeDark": "Tema: oscuro",
+      "navigate": "para moverte",
+      "select": "para abrir",
+      "close": "para cerrar"
+    }
   }
 }

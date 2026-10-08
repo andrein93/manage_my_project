@@ -171,7 +171,11 @@
     "saveIgnore": "Save list",
     "language": "Language",
     "languageHint": "The language of this dashboard. Terminal and AI answers stay in English.",
-    "languageAuto": "Automatic (browser language)"
+    "languageAuto": "Automatic (browser language)",
+    "appearance": "Appearance",
+    "appearanceHint": "Stored in this browser.",
+    "themeLight": "Light",
+    "themeDark": "Dark"
   },
   "error": {
     "generic": "Something went wrong: {message}",
@@ -409,5 +413,29 @@
     "assignee": "Assignee",
     "unassigned": "Unassigned",
     "teamTime": "Team time this month"
+  },
+  "ui": {
+    "dismiss": "Dismiss",
+    "search": "Search",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
+    "menu": "Menu",
+    "closeMenu": "Close menu",
+    "palette": {
+      "placeholder": "Search projects, tasks, clients…",
+      "empty": "No results for “{query}”",
+      "pages": "Pages",
+      "projects": "Projects",
+      "tasks": "Tasks",
+      "clients": "Clients",
+      "actions": "Actions",
+      "themeLight": "Theme: light",
+      "themeDark": "Theme: dark",
+      "navigate": "to navigate",
+      "select": "to select",
+      "close": "to close"
+    },
+    "themeToLight": "Switch to light theme",
+    "themeToDark": "Switch to dark theme"
   }
 }

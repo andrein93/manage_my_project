@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { Motion } from 'motion-v'
+import { X } from 'lucide-vue-next'
 import { nextTick, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api, type Task, type TaskInput, type TeamMember } from '../api'
@@ -61,7 +63,7 @@ const done = () => props.task.status === 'done'
 </script>
 
 <template>
-  <div :key="renderKey" class="group flex items-start gap-3 py-2.5">
+  <Motion :key="renderKey" layout="position" class="group flex items-start gap-3 py-2.5">
     <input
       type="checkbox"
       class="mt-1 h-4 w-4 shrink-0 accent-[var(--action)]"
@@ -146,13 +148,14 @@ const done = () => props.task.status === 'done'
     </div>
     <button
       type="button"
-      class="shrink-0 rounded px-1.5 text-muted opacity-60 group-hover:opacity-100 hover:text-danger focus-visible:opacity-100"
+      class="shrink-0 rounded p-1 text-muted opacity-60 group-hover:opacity-100 hover:text-danger focus-visible:opacity-100"
       :class="{ '!text-danger !opacity-100': confirmDelete }"
       :aria-label="t('task.delete')"
       :title="t('task.delete')"
       @click="remove"
     >
-      {{ confirmDelete ? t('settings.removeConfirm') : '×' }}
+      <template v-if="confirmDelete">{{ t('settings.removeConfirm') }}</template>
+      <X v-else class="size-4" aria-hidden="true" />
     </button>
-  </div>
+  </Motion>
 </template>

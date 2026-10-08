@@ -171,7 +171,11 @@
     "saveIgnore": "Salva elenco",
     "language": "Lingua",
     "languageHint": "La lingua di questa dashboard. Le risposte del terminale e dell'AI restano in inglese.",
-    "languageAuto": "Automatica (lingua del browser)"
+    "languageAuto": "Automatica (lingua del browser)",
+    "appearance": "Aspetto",
+    "appearanceHint": "Salvato in questo browser.",
+    "themeLight": "Chiaro",
+    "themeDark": "Scuro"
   },
   "error": {
     "generic": "Qualcosa è andato storto: {message}",
@@ -409,5 +413,29 @@
     "assignee": "Assegnatario",
     "unassigned": "Non assegnata",
     "teamTime": "Tempo del team questo mese"
+  },
+  "ui": {
+    "dismiss": "Chiudi",
+    "search": "Cerca",
+    "collapse": "Comprimi barra laterale",
+    "expand": "Espandi barra laterale",
+    "menu": "Menu",
+    "closeMenu": "Chiudi menu",
+    "palette": {
+      "placeholder": "Cerca progetti, attività, clienti…",
+      "empty": "Nessun risultato per “{query}”",
+      "pages": "Pagine",
+      "projects": "Progetti",
+      "tasks": "Attività",
+      "clients": "Clienti",
+      "actions": "Azioni",
+      "themeLight": "Tema: chiaro",
+      "themeDark": "Tema: scuro",
+      "navigate": "per muoverti",
+      "select": "per aprire",
+      "close": "per chiudere"
+    },
+    "themeToLight": "Passa al tema chiaro",
+    "themeToDark": "Passa al tema scuro"
   }
 }

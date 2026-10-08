@@ -171,7 +171,11 @@
     "saveIgnore": "Enregistrer la liste",
     "language": "Langue",
     "languageHint": "La langue de ce tableau de bord. Les réponses du terminal et de l'IA restent en anglais.",
-    "languageAuto": "Automatique (langue du navigateur)"
+    "languageAuto": "Automatique (langue du navigateur)",
+    "appearance": "Apparence",
+    "appearanceHint": "Enregistré dans ce navigateur.",
+    "themeLight": "Clair",
+    "themeDark": "Sombre"
   },
   "error": {
     "generic": "Une erreur s'est produite : {message}",
@@ -409,5 +413,29 @@
     "assignee": "Responsable",
     "unassigned": "Non assignée",
     "teamTime": "Temps de l'équipe ce mois-ci"
+  },
+  "ui": {
+    "dismiss": "Fermer",
+    "search": "Rechercher",
+    "collapse": "Réduire la barre latérale",
+    "expand": "Déplier la barre latérale",
+    "menu": "Menu",
+    "closeMenu": "Fermer le menu",
+    "themeToLight": "Passer au thème clair",
+    "themeToDark": "Passer au thème sombre",
+    "palette": {
+      "placeholder": "Rechercher projets, tâches, clients…",
+      "empty": "Aucun résultat pour « {query} »",
+      "pages": "Pages",
+      "projects": "Projets",
+      "tasks": "Tâches",
+      "clients": "Clients",
+      "actions": "Actions",
+      "themeLight": "Thème : clair",
+      "themeDark": "Thème : sombre",
+      "navigate": "pour naviguer",
+      "select": "pour ouvrir",
+      "close": "pour fermer"
+    }
   }
 }

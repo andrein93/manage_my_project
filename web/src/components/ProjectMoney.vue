@@ -125,32 +125,32 @@ useAutoRefresh(load, 60_000)
 
     <dl v-if="totals" class="grid grid-cols-2 gap-4 sm:grid-cols-5">
       <div>
-        <dt class="text-sm text-muted">{{ t('finance.earned') }}</dt>
-        <dd class="text-xl font-semibold tabular-nums">{{ money(totals.earnedCents) }}</dd>
+        <dt class="label">{{ t('finance.earned') }}</dt>
+        <dd class="mt-1 text-xl font-semibold tracking-tight tabular-nums">{{ money(totals.earnedCents) }}</dd>
       </div>
       <div>
-        <dt class="text-sm text-muted">{{ owedCents < 0 ? t('finance.credit') : t('finance.owed') }}</dt>
-        <dd class="text-xl font-semibold tabular-nums" :class="{ 'text-aging': owedCents > 0 }">{{ money(Math.abs(owedCents)) }}</dd>
+        <dt class="label">{{ owedCents < 0 ? t('finance.credit') : t('finance.owed') }}</dt>
+        <dd class="mt-1 text-xl font-semibold tracking-tight tabular-nums" :class="{ 'text-aging': owedCents > 0 }">{{ money(Math.abs(owedCents)) }}</dd>
       </div>
       <div>
-        <dt class="text-sm text-muted">{{ t('finance.costs') }}</dt>
-        <dd class="text-xl font-semibold tabular-nums">{{ money(totals.costCents) }}</dd>
+        <dt class="label">{{ t('finance.costs') }}</dt>
+        <dd class="mt-1 text-xl font-semibold tracking-tight tabular-nums">{{ money(totals.costCents) }}</dd>
       </div>
       <div>
-        <dt class="text-sm text-muted">{{ t('finance.margin') }}</dt>
-        <dd class="text-xl font-semibold tabular-nums" :class="{ 'text-danger': totals.marginCents < 0 }">{{ money(totals.marginCents) }}</dd>
+        <dt class="label">{{ t('finance.margin') }}</dt>
+        <dd class="mt-1 text-xl font-semibold tracking-tight tabular-nums" :class="{ 'text-danger': totals.marginCents < 0 }">{{ money(totals.marginCents) }}</dd>
       </div>
       <div :title="t('finance.perHourHint')">
-        <dt class="text-sm text-muted">{{ t('finance.perHour') }}</dt>
-        <dd class="text-xl font-semibold tabular-nums">{{ totals.effectiveRateCents === null ? '-' : money(totals.effectiveRateCents) }}</dd>
+        <dt class="label">{{ t('finance.perHour') }}</dt>
+        <dd class="mt-1 text-xl font-semibold tracking-tight tabular-nums">{{ totals.effectiveRateCents === null ? '-' : money(totals.effectiveRateCents) }}</dd>
         <dd class="text-xs text-muted">{{ formatMinutes(totals.minutes) }}</dd>
       </div>
     </dl>
 
     <div class="mt-8 grid gap-10 lg:grid-cols-2">
       <div>
-        <h3 class="mb-2 text-sm font-semibold">{{ t('finance.agreements') }}</h3>
-        <ul v-if="agreements.length" class="divide-y divide-line border-y border-line text-sm">
+        <h3 class="label mb-2">{{ t('finance.agreements') }}</h3>
+        <ul v-if="agreements.length" class="divide-y divide-line text-sm">
           <li v-for="a in agreements" :key="a.id" class="flex items-center justify-between gap-3 py-2">
             <span class="min-w-0">
               <span class="font-medium">{{ terms(a) }}</span>
@@ -158,8 +158,8 @@ useAutoRefresh(load, 60_000)
               <span v-if="a.note" class="block truncate text-xs text-muted">{{ a.note }}</span>
             </span>
             <span class="flex shrink-0 gap-1">
-              <button v-if="!a.endDate && a.kind !== 'fixed'" class="btn !px-2 !py-1 text-xs" @click="endDeal(a.id)">{{ t('finance.end') }}</button>
-              <button class="btn !px-2 !py-1 text-xs" :class="{ '!border-danger !text-danger': confirm === a.id }" @click="removeDeal(a.id)">
+              <button v-if="!a.endDate && a.kind !== 'fixed'" class="btn btn-sm" @click="endDeal(a.id)">{{ t('finance.end') }}</button>
+              <button class="btn btn-sm" :class="{ '!border-danger !text-danger': confirm === a.id }" @click="removeDeal(a.id)">
                 {{ confirm === a.id ? t('finance.removeConfirm') : t('finance.remove') }}
               </button>
             </span>
@@ -190,8 +190,8 @@ useAutoRefresh(load, 60_000)
 
       <div class="space-y-10">
         <div>
-          <h3 class="mb-2 text-sm font-semibold">{{ t('finance.payments') }}</h3>
-          <ul v-if="payments.length" class="divide-y divide-line border-y border-line text-sm">
+          <h3 class="label mb-2">{{ t('finance.payments') }}</h3>
+          <ul v-if="payments.length" class="divide-y divide-line text-sm">
             <li v-for="p in payments" :key="p.id" class="flex items-center justify-between gap-3 py-2">
               <span class="min-w-0">
                 <span class="tabular-nums">{{ p.date }}</span>
@@ -215,8 +215,8 @@ useAutoRefresh(load, 60_000)
         </div>
 
         <div>
-          <h3 class="mb-2 text-sm font-semibold">{{ t('finance.directExpenses') }}</h3>
-          <ul v-if="expenses.length" class="divide-y divide-line border-y border-line text-sm">
+          <h3 class="label mb-2">{{ t('finance.directExpenses') }}</h3>
+          <ul v-if="expenses.length" class="divide-y divide-line text-sm">
             <li v-for="e in expenses" :key="e.id" class="flex items-center justify-between gap-3 py-2">
               <span class="min-w-0">
                 <span>{{ e.note || '-' }}</span>

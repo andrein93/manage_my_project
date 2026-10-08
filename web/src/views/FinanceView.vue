@@ -1,10 +1,15 @@
 <script setup lang="ts">
+import { Wallet } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { api, type FinanceReport, type FinanceRow, type OwedRow } from '../api'
 import { useAutoRefresh, useErrors } from '../composables'
 import { formatMinutes, formatMoney } from '../time'
+import PageHeader from '../ui/PageHeader.vue'
+import UiCard from '../ui/UiCard.vue'
+import UiEmpty from '../ui/UiEmpty.vue'
+import UiStat from '../ui/UiStat.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -81,103 +86,92 @@ watch(
   },
 )
 useAutoRefresh(load, 60_000)
+const moneyTick = (n: number) => money(Math.round(n))
 </script>
 
 <template>
   <section>
-    <h1 class="mb-5 text-2xl font-semibold tracking-tight">{{ t('app.finance') }}</h1>
+    <PageHeader :title="t('app.finance')" />
 
     <div class="mb-6 flex flex-wrap items-center gap-2">
       <select class="field !w-auto" :value="period" :aria-label="t('a11y.period')" @change="setQuery({ period: ($event.target as HTMLSelectElement).value === 'month' ? undefined : ($event.target as HTMLSelectElement).value })">
         <option v-for="p in PERIODS" :key="p" :value="p">{{ p === 'lifetime' ? t('finance.lifetime') : t(`time.period.${p}`) }}</option>
       </select>
-      <div class="inline-flex rounded-md border border-line p-0.5 text-sm" role="group">
+      <div class="inline-flex rounded-lg border border-line bg-surface-2 p-0.5 text-sm" role="group">
         <button
           v-for="g in ['project', 'client'] as const"
           :key="g"
           type="button"
-          class="rounded px-3 py-1"
-          :class="by === g ? 'bg-ink text-paper' : 'text-muted hover:text-ink'"
+          class="rounded-md px-3 py-1 transition-colors"
+          :class="by === g ? 'bg-surface text-ink shadow-card' : 'text-muted hover:text-ink'"
           :aria-pressed="by === g"
           @click="setQuery({ by: g === 'project' ? undefined : g })"
         >
           {{ g === 'project' ? t('finance.byProject') : t('finance.byClient') }}
         </button>
       </div>
-      <span v-if="report" class="text-sm text-muted tabular-nums">{{ report.range.from }} → {{ report.range.to }}</span>
+      <span v-if="report" class="font-mono text-xs text-muted">{{ report.range.from }} → {{ report.range.to }}</span>
     </div>
 
-    <p v-if="error" class="mb-4 text-sm text-danger" role="alert">{{ error }}</p>
+    <p v-if="error" class="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
 
     <template v-if="report">
-      <dl class="mb-8 grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-5">
-        <div :title="t('finance.earnedHint')">
-          <dt class="text-sm text-muted">{{ t('finance.earned') }}</dt>
-          <dd class="text-2xl font-semibold tracking-tight tabular-nums">{{ money(report.totals.earnedCents) }}</dd>
-        </div>
-        <div>
-          <dt class="text-sm text-muted">{{ t('finance.collected') }}</dt>
-          <dd class="text-2xl font-semibold tracking-tight tabular-nums">{{ money(report.totals.collectedCents) }}</dd>
-        </div>
-        <div>
-          <dt class="text-sm text-muted">{{ t('finance.costs') }}</dt>
-          <dd class="text-2xl font-semibold tracking-tight tabular-nums">{{ money(report.totals.costCents) }}</dd>
-        </div>
-        <div>
-          <dt class="text-sm text-muted">{{ t('finance.margin') }}</dt>
-          <dd class="text-2xl font-semibold tracking-tight tabular-nums" :class="{ 'text-danger': report.totals.marginCents < 0 }">
-            {{ money(report.totals.marginCents) }}
-          </dd>
-        </div>
+      <UiCard spotlight as="dl" class="mb-8 grid grid-cols-2 gap-x-8 gap-y-4 p-5 sm:grid-cols-5">
+        <UiStat :label="t('finance.earned')" :value="report.totals.earnedCents" :format="moneyTick" :hint="t('finance.earnedHint')" />
+        <UiStat :label="t('finance.collected')" :value="report.totals.collectedCents" :format="moneyTick" />
+        <UiStat :label="t('finance.costs')" :value="report.totals.costCents" :format="moneyTick" />
+        <UiStat :label="t('finance.margin')" :value="report.totals.marginCents" :format="moneyTick" :tone="report.totals.marginCents < 0 ? 'danger' : 'default'" />
         <div :title="t('finance.perHourHint')">
-          <dt class="text-sm text-muted">{{ t('finance.perHour') }}</dt>
-          <dd class="text-2xl font-semibold tracking-tight tabular-nums">
+          <dt class="label">{{ t('finance.perHour') }}</dt>
+          <dd class="mt-1.5 text-2xl font-semibold tracking-tight tabular-nums">
             {{ report.totals.effectiveRateCents === null ? '-' : money(report.totals.effectiveRateCents) }}
           </dd>
           <dd class="text-xs text-muted">{{ formatMinutes(report.totals.minutes) }}</dd>
         </div>
-      </dl>
+      </UiCard>
       <p v-if="report.totals.overheadCents" class="-mt-4 mb-6 text-xs text-muted">
         {{ t('finance.overhead', { amount: money(report.totals.overheadCents) }) }}
       </p>
 
-      <div v-if="rows.length || minorTotals.count" class="mb-12 overflow-x-auto">
+      <div v-if="rows.length || minorTotals.count" class="mb-12">
+        <UiCard class="overflow-x-auto">
         <table class="w-full min-w-[40rem] text-sm">
-          <thead class="border-b border-line text-left text-muted">
+          <thead class="border-b border-line text-left text-xs tracking-wider text-muted uppercase">
             <tr>
-              <th v-for="c in columns" :key="c.key" class="py-2 font-medium" :class="{ 'text-right': c.numeric }" :aria-sort="ariaSort(c.key)">
-                <button type="button" class="hover:text-ink" @click="sortBy(c.key)">
+              <th v-for="c in columns" :key="c.key" class="px-4 py-2.5 font-medium" :class="{ 'text-right': c.numeric }" :aria-sort="ariaSort(c.key)">
+                <button type="button" class="tracking-wider uppercase hover:text-ink" @click="sortBy(c.key)">
                   {{ t(c.label) }}<span v-if="sort.key === c.key" aria-hidden="true"> {{ sort.desc ? '↓' : '↑' }}</span>
                 </button>
               </th>
             </tr>
           </thead>
           <tbody class="divide-y divide-line">
-            <tr v-for="r in rows" :key="r.key">
-              <td class="py-2.5 pr-3">
+            <tr v-for="r in rows" :key="r.key" class="transition-colors hover:bg-surface-2/60">
+              <td class="px-4 py-2.5">
                 <RouterLink v-if="link(r.key)" :to="link(r.key)!" class="hover:underline">{{ r.label }}</RouterLink>
                 <span v-else>{{ t('list.noClient') }}</span>
               </td>
-              <td class="py-2.5 text-right tabular-nums">{{ formatMinutes(r.minutes) }}</td>
-              <td class="py-2.5 text-right tabular-nums">{{ money(r.earnedCents) }}</td>
-              <td class="py-2.5 text-right tabular-nums" :title="`${t('finance.ai')} ${money(r.aiCents)}, ${t('finance.expenses')} ${money(r.expenseCents)}`">
+              <td class="px-4 py-2.5 text-right tabular-nums">{{ formatMinutes(r.minutes) }}</td>
+              <td class="px-4 py-2.5 text-right tabular-nums">{{ money(r.earnedCents) }}</td>
+              <td class="px-4 py-2.5 text-right tabular-nums" :title="`${t('finance.ai')} ${money(r.aiCents)}, ${t('finance.expenses')} ${money(r.expenseCents)}`">
                 {{ money(r.costCents) }}
               </td>
-              <td class="py-2.5 text-right font-medium tabular-nums" :class="{ 'text-danger': r.marginCents < 0 }">{{ money(r.marginCents) }}</td>
-              <td class="py-2.5 text-right tabular-nums">{{ r.effectiveRateCents === null ? '-' : money(r.effectiveRateCents) }}</td>
+              <td class="px-4 py-2.5 text-right font-medium tabular-nums" :class="{ 'text-danger': r.marginCents < 0 }">{{ money(r.marginCents) }}</td>
+              <td class="px-4 py-2.5 text-right tabular-nums">{{ r.effectiveRateCents === null ? '-' : money(r.effectiveRateCents) }}</td>
             </tr>
           </tbody>
         </table>
+        </UiCard>
         <button v-if="minorTotals.count" type="button" class="mt-2 text-sm text-muted hover:text-ink" @click="showAll = !showAll">
           {{ showAll ? t('finance.hideMinor') : t('finance.showMinor', { n: minorTotals.count, hours: formatMinutes(minorTotals.minutes), costs: money(minorTotals.costCents) }) }}
         </button>
       </div>
-      <p v-else class="mb-12 border-y border-line py-10 text-center text-sm text-muted">{{ t('finance.empty') }}</p>
+      <UiEmpty v-else class="mb-12" :icon="Wallet" :title="t('finance.empty')" />
 
-      <section class="max-w-3xl">
+      <UiCard as="section" class="max-w-3xl p-5">
         <h2 class="text-lg font-semibold">{{ t('finance.owedTitle') }}</h2>
         <p class="mt-1 text-sm text-muted">{{ t('finance.owedHint') }}</p>
-        <ul v-if="owed?.rows.length" class="mt-3 divide-y divide-line border-y border-line text-sm">
+        <ul v-if="owed?.rows.length" class="mt-3 divide-y divide-line text-sm">
           <li v-for="o in owed.rows" :key="o.clientId" class="py-2.5">
             <div class="flex items-baseline justify-between gap-3">
               <RouterLink v-if="o.clientId !== 'none'" :to="{ name: 'client', params: { id: o.clientId } }" class="font-medium hover:underline">{{ o.clientName }}</RouterLink>
@@ -194,7 +188,7 @@ useAutoRefresh(load, 60_000)
           </li>
         </ul>
         <p v-else class="mt-3 text-sm text-muted">{{ t('finance.owedNone') }}</p>
-      </section>
+      </UiCard>
     </template>
   </section>
 </template>

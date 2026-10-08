@@ -171,7 +171,11 @@
     "saveIgnore": "Liste speichern",
     "language": "Sprache",
     "languageHint": "Die Sprache dieses Dashboards. Antworten im Terminal und von der KI bleiben auf Englisch.",
-    "languageAuto": "Automatisch (Browsersprache)"
+    "languageAuto": "Automatisch (Browsersprache)",
+    "appearance": "Darstellung",
+    "appearanceHint": "In diesem Browser gespeichert.",
+    "themeLight": "Hell",
+    "themeDark": "Dunkel"
   },
   "error": {
     "generic": "Etwas ist schiefgelaufen: {message}",
@@ -409,5 +413,29 @@
     "assignee": "Zuständig",
     "unassigned": "Nicht zugewiesen",
     "teamTime": "Teamzeit diesen Monat"
+  },
+  "ui": {
+    "dismiss": "Schließen",
+    "search": "Suchen",
+    "collapse": "Seitenleiste einklappen",
+    "expand": "Seitenleiste ausklappen",
+    "menu": "Menü",
+    "closeMenu": "Menü schließen",
+    "themeToLight": "Zum hellen Design wechseln",
+    "themeToDark": "Zum dunklen Design wechseln",
+    "palette": {
+      "placeholder": "Projekte, Aufgaben, Kunden suchen…",
+      "empty": "Keine Ergebnisse für „{query}“",
+      "pages": "Seiten",
+      "projects": "Projekte",
+      "tasks": "Aufgaben",
+      "clients": "Kunden",
+      "actions": "Aktionen",
+      "themeLight": "Design: hell",
+      "themeDark": "Design: dunkel",
+      "navigate": "zum Navigieren",
+      "select": "zum Öffnen",
+      "close": "zum Schließen"
+    }
   }
 }

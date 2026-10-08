@@ -62,14 +62,14 @@ async function copy(text: string) {
     <p v-if="error" class="mt-2 text-sm text-danger" role="alert">{{ error }}</p>
 
     <div class="mt-4 flex flex-wrap items-center gap-2">
-      <div class="inline-flex rounded-md border border-line p-0.5 text-sm" role="tablist">
+      <div class="inline-flex rounded-lg border border-line bg-surface-2 p-0.5 text-sm" role="tablist">
         <button
           v-for="id in ['cli', 'ai'] as const"
           :key="id"
           type="button"
           role="tab"
-          class="rounded px-3 py-1"
-          :class="tab === id ? 'bg-ink text-paper' : 'text-muted hover:text-ink'"
+          class="rounded-md px-3 py-1 transition-colors"
+          :class="tab === id ? 'bg-surface text-ink shadow-card' : 'text-muted hover:text-ink'"
           :aria-selected="tab === id"
           @click="tab = id"
         >
@@ -82,10 +82,10 @@ async function copy(text: string) {
     <!-- CLI -->
     <div v-if="tab === 'cli'" class="mt-4 space-y-6" role="tabpanel">
       <div v-for="[name, group] in groups" :key="name">
-        <h3 class="text-sm font-semibold">
+        <h3 class="label">
           mmp {{ name }} <span class="font-normal text-muted">{{ group.commands.length > 1 ? group.description : '' }}</span>
         </h3>
-        <ul class="mt-1 divide-y divide-line border-y border-line">
+        <ul class="mt-1 divide-y divide-line">
           <li v-for="c in group.commands" :key="c.command" class="py-2.5">
             <div class="flex items-start justify-between gap-3">
               <code class="font-mono text-sm break-all">{{ c.usage }}</code>
@@ -115,20 +115,20 @@ async function copy(text: string) {
     <!-- AI -->
     <div v-else class="mt-4 space-y-6" role="tabpanel">
       <div>
-        <h3 class="text-sm font-semibold">{{ t('commands.setup') }}</h3>
+        <h3 class="label">{{ t('commands.setup') }}</h3>
         <p class="mt-1 text-sm text-muted">{{ t('commands.setupHint') }}</p>
         <div class="mt-2 flex items-start gap-2">
-          <pre class="flex-1 overflow-x-auto rounded-md border border-line bg-surface p-3 font-mono text-sm">{{ mcpCommand }}</pre>
+          <pre class="flex-1 overflow-x-auto rounded-md border border-line bg-surface-2 p-3 font-mono text-sm">{{ mcpCommand }}</pre>
           <button class="btn shrink-0" @click="copy(mcpCommand)">{{ copied === mcpCommand ? t('commands.copied') : t('commands.copy') }}</button>
         </div>
       </div>
       <div>
-        <h3 class="text-sm font-semibold">{{ t('commands.examples') }}</h3>
+        <h3 class="label">{{ t('commands.examples') }}</h3>
         <ul class="mt-1 list-disc space-y-0.5 pl-5 text-sm text-muted">
           <li v-for="e in examples" :key="e">{{ e }}</li>
         </ul>
       </div>
-      <ul class="divide-y divide-line border-y border-line">
+      <ul class="divide-y divide-line">
         <li v-for="tool in tools" :key="tool.name" class="py-2.5">
           <code class="font-mono text-sm">{{ tool.name }}</code>
           <p class="mt-0.5 text-sm text-muted">{{ tool.description }}</p>

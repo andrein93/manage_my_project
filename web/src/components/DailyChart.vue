@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { Motion } from 'motion-v'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { reducedMotion, staggerDelay } from '../motion'
 import { dayLabel, formatMinutes, formatUsd } from '../time'
 
 const props = defineProps<{ days: { date: string; minutes: number; costUsd: number }[] }>()
@@ -69,12 +71,18 @@ const tooltip = computed(() => {
           <line :x1="PAD.left" :x2="width - PAD.right" :y1="y(tick)" :y2="y(tick)" class="stroke-line" :stroke-width="tick === 0 ? 1 : 0.5" />
           <text :x="PAD.left - 6" :y="y(tick)" dy="0.32em" text-anchor="end" class="fill-muted text-[11px] tabular-nums">{{ tick }}h</text>
         </g>
-        <path
+        <!-- Bars grow from the baseline; transform-box makes the origin the bar's own bottom edge. -->
+        <Motion
           v-for="(d, i) in days"
           :key="d.date"
+          as="path"
           :d="barPath(i, d.minutes)"
-          class="fill-chart"
-          :class="{ 'opacity-60': active !== null && active !== i }"
+          class="fill-chart transition-opacity"
+          :class="{ 'opacity-50': active !== null && active !== i }"
+          :style="{ transformOrigin: 'bottom', transformBox: 'fill-box' }"
+          :initial="reducedMotion ? false : { scaleY: 0 }"
+          :animate="{ scaleY: 1 }"
+          :transition="{ duration: 0.5, ease: 'easeOut', delay: staggerDelay(i, reducedMotion) }"
         />
         <text
           v-for="(d, i) in days"
@@ -108,7 +116,7 @@ const tooltip = computed(() => {
     </svg>
     <div
       v-if="tooltip"
-      class="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-md border border-line bg-surface px-2.5 py-1.5 text-xs whitespace-nowrap shadow-sm"
+      class="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-md border border-line-strong bg-surface-2 px-2.5 py-1.5 text-xs whitespace-nowrap shadow-pop"
       :style="{ left: `${tooltip.left}px`, top: `${tooltip.top - 8}px` }"
     >
       {{ tooltip.text }}

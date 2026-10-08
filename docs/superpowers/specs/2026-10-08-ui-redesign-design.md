@@ -28,7 +28,7 @@ i18n strings are kept; only new strings are added). No new pages.
 - **New dependencies (web only):** `motion-v` (Motion for Vue, Framer Motion API) and
   `lucide-vue-next` (icons, per-icon imports). Fonts: `@fontsource-variable/geist` and
   `@fontsource-variable/geist-mono` replace Schibsted Grotesk and Fragment Mono.
-- **Dark-first** palette; light theme kept. Theme preference `system | light | dark` is a
+- **Dark-first** palette; light theme kept. Theme is `dark` (default) or `light`, switched from a sidebar sun/moon button, Settings or the palette; it is a
   client-side preference stored in `localStorage` (same pattern as the language preference in
   `web/src/i18n.ts`), applied as `data-theme` on `<html>` before first paint (inline script in
   `web/index.html`) to avoid a flash.
@@ -41,7 +41,7 @@ classes keep working: `paper`, `surface`, `ink`, `muted`, `line`, `action`, `act
 `line-strong`, `glow` (accent at low alpha), radius scale (`sm 6px`, `md 8px`, `lg 12px`,
 `xl 16px`) and two shadows (`card`, `pop`).
 
-Dark (default when system is dark or `data-theme="dark"`):
+Dark (default, `:root`):
 paper `#0a0b0f`, surface `#111318`, surface-2 `#171a21`, line `rgb(255 255 255 / 0.08)`,
 line-strong `rgb(255 255 255 / 0.14)`, ink `#ececf1`, muted `#8b8d98`, action `#7c7cff`,
 action-ink `#0a0b0f`, fresh `#3ccf92`, aging `#e0b53c`, dormant `#6b6f7b`, danger `#f0776e`,
@@ -52,8 +52,8 @@ line-strong `rgb(0 0 0 / 0.14)`, ink `#16171d`, muted `#62646f`, action `#5b5bf0
 action-ink `#ffffff`, fresh `#1f9d6b`, aging `#b8901a`, dormant `#8a8d98`, danger `#c4372f`,
 chart `#5b5bf0`.
 
-Selection rules: `[data-theme="dark"]` and `[data-theme="light"]` force a theme;
-without the attribute (`system`), `prefers-color-scheme` decides.
+Selection rules: `:root` holds the dark tokens; `[data-theme="light"]` overrides them. The OS
+color-scheme preference is not followed (decided 2026-10-08: dark by default, explicit switch).
 
 Typography: Geist for UI, Geist Mono for numbers, paths and code; `tabular-nums` on all
 figures. Page titles 24px/semibold/tight tracking; section labels 12px uppercase muted with
@@ -81,7 +81,7 @@ the new look, so views can migrate incrementally.
 `web/src/components/CommandPalette.vue`, opened with Ctrl/Cmd+K or the sidebar button.
 
 - Groups: Pages (static nav list), Projects (`api.projects({})`), Tasks (`api.tasks({})`, open
-  tasks only), Clients (`api.clients()`), Actions (Rescan, Theme: system/light/dark).
+  tasks only), Clients (`api.clients()`), Actions (Rescan, Theme: dark/light).
 - Data is fetched when the palette first opens and refreshed on `scanTick` change.
 - Client-side fuzzy match (subsequence match with score: prefix > word start > contiguous),
   max 8 results per group.

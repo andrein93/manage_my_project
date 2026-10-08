@@ -102,13 +102,13 @@ useAutoRefresh(load)
   <section>
     <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
       <h2 class="text-lg font-semibold">{{ t('app.tasks') }}</h2>
-      <div class="inline-flex rounded-md border border-line p-0.5 text-sm" role="group">
+      <div class="inline-flex rounded-lg border border-line bg-surface-2 p-0.5 text-sm" role="group">
         <button
           v-for="m in ['list', 'board'] as const"
           :key="m"
           type="button"
-          class="rounded px-3 py-1"
-          :class="mode === m ? 'bg-ink text-paper' : 'text-muted hover:text-ink'"
+          class="rounded-md px-3 py-1 transition-colors"
+          :class="mode === m ? 'bg-surface text-ink shadow-card' : 'text-muted hover:text-ink'"
           :aria-pressed="mode === m"
           @click="mode = m"
         >
@@ -141,7 +141,7 @@ useAutoRefresh(load)
       <div
         v-for="status in TASK_STATUSES"
         :key="status"
-        class="flex min-h-40 flex-col rounded-lg border border-line bg-surface/60 p-2"
+        class="flex min-h-40 flex-col rounded-lg border border-line bg-surface-2/50 p-2 transition-colors"
         :class="{ '!border-action': over === status }"
         @dragover.prevent="over = status"
         @dragleave.self="over = null"
@@ -156,7 +156,7 @@ useAutoRefresh(load)
             v-for="(task, index) in columns[status]"
             :key="task.id"
             draggable="true"
-            class="cursor-grab rounded-md border border-line bg-paper p-2.5 text-sm active:cursor-grabbing"
+            class="cursor-grab rounded-md border border-line bg-surface p-2.5 text-sm shadow-card transition-shadow hover:border-line-strong active:cursor-grabbing"
             :class="{ 'opacity-40': dragging?.id === task.id }"
             @dragstart="dragging = task"
             @dragend="dragging = null; over = null"
