@@ -24,8 +24,8 @@ describe('CLI', () => {
     expect(await mmp('scan')).toMatch(/Scanned 2 projects .* 2 added/)
     output = []
     const list = await mmp('list')
-    expect(list).toMatch(/^NAME\s+STATUS\s+STACK/)
-    expect(list).toMatch(/shop\s+active\s+php/)
+    expect(list).toMatch(/^NAME\s+STATUS\s+CLIENT\s+CATEGORY\s+STACK/)
+    expect(list).toMatch(/shop\s+active\s+-\s+-\s+php/)
     expect(list).toContain('2 project(s)')
   })
 

@@ -17,6 +17,8 @@ const listQuery = z.object({
   tag: z.string().optional(),
   inactive: z.coerce.number().int().min(0).optional(),
   q: z.string().optional(),
+  client: z.string().optional(),
+  category: z.string().optional(),
   all: z
     .enum(['true', 'false', '1', '0'])
     .optional()
@@ -29,6 +31,8 @@ const projectPatch = z
     description: z.string().max(5000).optional(),
     status: z.enum(PROJECT_STATUSES).optional(),
     tags: z.array(z.string().max(50)).max(50).optional(),
+    clientId: z.string().nullable().optional(),
+    categoryId: z.string().nullable().optional(),
   })
   .strict()
 
@@ -47,7 +51,16 @@ export function registerRoutes(api: FastifyInstance, app: App, opener: Opener): 
 
   api.get('/projects', async (request) => {
     const q = listQuery.parse(request.query)
-    return app.projects.list({ status: q.status, stack: q.stack, tag: q.tag, inactiveDays: q.inactive, query: q.q, all: q.all })
+    return app.projects.list({
+      status: q.status,
+      stack: q.stack,
+      tag: q.tag,
+      inactiveDays: q.inactive,
+      query: q.q,
+      client: q.client,
+      category: q.category,
+      all: q.all,
+    })
   })
 
   api.post('/projects', async (request, reply) => {
@@ -106,6 +119,8 @@ export function registerRoutes(api: FastifyInstance, app: App, opener: Opener): 
       statuses: PROJECT_STATUSES,
       stacks: [...new Set(all.flatMap((p) => p.stack))].sort(),
       tags: app.projects.allTags(),
+      clients: app.clients.list().map(({ id, name }) => ({ id, name })),
+      categories: app.categories.list().map(({ id, name, color }) => ({ id, name, color })),
       counts: Object.fromEntries(PROJECT_STATUSES.map((s) => [s, all.filter((p) => p.status === s).length])),
     }
   })

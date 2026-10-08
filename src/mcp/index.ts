@@ -2,23 +2,11 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod'
 import type { App } from '../core/app.js'
-import { PROJECT_STATUSES, UserError } from '../core/types.js'
+import { PROJECT_STATUSES, type ProjectStatus } from '../core/types.js'
 import { VERSION } from '../version.js'
-
-type ToolResult = { content: { type: 'text'; text: string }[]; isError?: boolean }
-
-/** Wraps a handler: JSON result as text content, user errors as `isError` results. */
-function tool<A>(handler: (args: A) => unknown | Promise<unknown>) {
-  return async (args: A): Promise<ToolResult> => {
-    try {
-      const result = await handler(args)
-      return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] }
-    } catch (error) {
-      if (error instanceof UserError) return { content: [{ type: 'text', text: error.message }], isError: true }
-      throw error
-    }
-  }
-}
+import { resolveCategoryFilter, resolveCategoryPatch, resolveClientFilter, resolveClientPatch } from '../core/filters.js'
+import { registerOrganizeTools } from './organize-tools.js'
+import { tool } from './tool.js'
 
 const ref = z.string().describe('Project id, absolute path or name')
 
@@ -27,8 +15,10 @@ export function createMcpServer(app: App): McpServer {
     { name: 'mmp', version: VERSION },
     {
       instructions:
-        'mmp is the user\'s registry of local software projects. Use get_current_project with your working ' +
-        'directory to learn which project you are in. Project refs accept an id, an absolute path or a name.',
+        "mmp is the user's registry of local software projects, with clients, categories and tasks. " +
+        'Use get_current_project with your working directory to learn which project you are in before ' +
+        'creating or listing tasks for "this project". Project refs accept an id, an absolute path or a name; ' +
+        'client, category and task refs accept an id, an id prefix or a name.',
     },
   )
 
@@ -43,12 +33,33 @@ export function createMcpServer(app: App): McpServer {
         stack: z.string().optional().describe('e.g. laravel, vue, wordpress, python'),
         tag: z.string().optional(),
         inactive_days: z.number().int().min(0).optional().describe('Only projects with no activity in the last N days'),
-        query: z.string().optional().describe('Search name, description, path and tags'),
+        query: z.string().optional().describe('Search name, description, path, tags, client and category'),
+        client: z.string().optional().describe('Client name/id, or "none" for projects without a client'),
+        category: z.string().optional().describe('Category name/id, or "none"'),
         all: z.boolean().optional(),
       },
     },
-    tool((a: { status?: (typeof PROJECT_STATUSES)[number][]; stack?: string; tag?: string; inactive_days?: number; query?: string; all?: boolean }) =>
-      app.projects.list({ status: a.status, stack: a.stack, tag: a.tag, inactiveDays: a.inactive_days, query: a.query, all: a.all }),
+    tool(
+      (a: {
+        status?: ProjectStatus[]
+        stack?: string
+        tag?: string
+        inactive_days?: number
+        query?: string
+        client?: string
+        category?: string
+        all?: boolean
+      }) =>
+        app.projects.list({
+          status: a.status,
+          stack: a.stack,
+          tag: a.tag,
+          inactiveDays: a.inactive_days,
+          query: a.query,
+          client: resolveClientFilter(app, a.client),
+          category: resolveCategoryFilter(app, a.category),
+          all: a.all,
+        }),
     ),
   )
 
@@ -105,16 +116,33 @@ export function createMcpServer(app: App): McpServer {
     'update_project',
     {
       title: 'Update project',
-      description: 'Change the name, description or status of a project.',
+      description:
+        'Change the name, description, status, client or category of a project. Pass null for client/category to clear it.',
       inputSchema: {
         ref,
         name: z.string().optional(),
         description: z.string().optional(),
         status: z.enum(PROJECT_STATUSES).optional(),
+        client: z.string().nullable().optional().describe('Existing client name/id (create it first with create_client)'),
+        category: z.string().nullable().optional().describe('Existing category name/id'),
       },
     },
-    tool((a: { ref: string; name?: string; description?: string; status?: (typeof PROJECT_STATUSES)[number] }) =>
-      app.projects.update(app.projects.resolve(a.ref).id, { name: a.name, description: a.description, status: a.status }),
+    tool(
+      (a: {
+        ref: string
+        name?: string
+        description?: string
+        status?: ProjectStatus
+        client?: string | null
+        category?: string | null
+      }) =>
+        app.projects.update(app.projects.resolve(a.ref).id, {
+          name: a.name,
+          description: a.description,
+          status: a.status,
+          clientId: resolveClientPatch(app, a.client),
+          categoryId: resolveCategoryPatch(app, a.category),
+        }),
     ),
   )
 
@@ -130,6 +158,7 @@ export function createMcpServer(app: App): McpServer {
     ),
   )
 
+  registerOrganizeTools(server, app)
   return server
 }
 

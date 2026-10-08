@@ -6,6 +6,7 @@ import { ZodError } from 'zod'
 import type { App } from '../core/app.js'
 import { UserError } from '../core/types.js'
 import { systemOpener, type Opener } from './open.js'
+import { registerOrganizeRoutes } from './organize-routes.js'
 import { registerRoutes } from './routes.js'
 
 export interface ServerOptions {
@@ -47,7 +48,13 @@ export async function buildServer(app: App, options: ServerOptions = {}): Promis
     return reply.code(500).send({ error: 'Internal error' })
   })
 
-  await server.register(async (api) => registerRoutes(api, app, options.opener ?? systemOpener), { prefix: '/api' })
+  await server.register(
+    async (api) => {
+      registerRoutes(api, app, options.opener ?? systemOpener)
+      registerOrganizeRoutes(api, app)
+    },
+    { prefix: '/api' },
+  )
 
   const webDir = options.webDir ?? join(app.config.installDir, 'dist', 'web')
   if (existsSync(join(webDir, 'index.html'))) {

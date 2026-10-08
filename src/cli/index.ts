@@ -1,9 +1,31 @@
 import { Command, InvalidArgumentError, Option } from 'commander'
 import { createApp, type App } from '../core/app.js'
 import { PROJECT_STATUSES, UserError, type Project, type ProjectFilters, type ProjectStatus } from '../core/types.js'
+import { resolveCategoryFilter, resolveCategoryPatch, resolveClientFilter, resolveClientPatch } from '../core/filters.js'
 import { VERSION } from '../version.js'
 import { formatProject, formatTable, relativeTime } from './format.js'
+import { registerOrganizeCommands } from './organize.js'
 
+
+interface ListOptions {
+  status?: ProjectStatus
+  stack?: string
+  tag?: string
+  inactive?: number
+  query?: string
+  client?: string
+  category?: string
+  all?: boolean
+  json?: boolean
+}
+
+interface SetOptions {
+  name?: string
+  description?: string
+  status?: ProjectStatus
+  client?: string
+  category?: string
+}
 
 /** Builds the CLI. `getApp` is lazy so `--help` works without touching the database. */
 export function buildCli(getApp: () => App, out: (line: string) => void = console.log): Command {
@@ -54,27 +76,34 @@ export function buildCli(getApp: () => App, out: (line: string) => void = consol
     .option('--stack <stack>', 'filter by stack, e.g. laravel')
     .option('--tag <tag>', 'filter by tag')
     .option('--inactive <days>', 'only projects with no activity in the last N days', parsePositiveInt)
-    .option('-q, --query <text>', 'search name, description, path and tags')
+    .option('-q, --query <text>', 'search name, description, path, tags, client and category')
+    .option('--client <ref>', 'filter by client (name or id), or "none"')
+    .option('--category <ref>', 'filter by category (name or id), or "none"')
     .option('-a, --all', 'include archived and ignored projects')
     .option('--json', 'print JSON')
-    .action((opts: { status?: ProjectStatus; stack?: string; tag?: string; inactive?: number; query?: string; all?: boolean; json?: boolean }) => {
+    .action((opts: ListOptions) => {
+      const app = getApp()
       const filters: ProjectFilters = {
         status: opts.status ? [opts.status] : undefined,
         stack: opts.stack,
         tag: opts.tag,
         inactiveDays: opts.inactive,
         query: opts.query,
+        client: resolveClientFilter(app, opts.client),
+        category: resolveCategoryFilter(app, opts.category),
         all: opts.all,
       }
-      const projects = getApp().projects.list(filters)
+      const projects = app.projects.list(filters)
       if (opts.json) return out(JSON.stringify(projects, null, 2))
       if (projects.length === 0) return out('No projects found.')
       out(
         formatTable(
-          ['NAME', 'STATUS', 'STACK', 'ACTIVITY', 'PATH'],
+          ['NAME', 'STATUS', 'CLIENT', 'CATEGORY', 'STACK', 'ACTIVITY', 'PATH'],
           projects.map((p) => [
             p.name + (p.missingSince ? ' (missing)' : ''),
             p.status,
+            p.client?.name ?? '-',
+            p.category?.name ?? '-',
             p.stack.join(',') || '-',
             relativeTime(p.lastActivityAt),
             p.path,
@@ -128,13 +157,21 @@ export function buildCli(getApp: () => App, out: (line: string) => void = consol
 
   program
     .command('set <ref>')
-    .description('edit name, description or status of a project')
+    .description('edit name, description, status, client or category of a project')
     .option('--name <name>')
     .option('--description <text>')
     .addOption(new Option('--status <status>').choices([...PROJECT_STATUSES]))
-    .action((ref: string, opts: { name?: string; description?: string; status?: ProjectStatus }) => {
+    .option('--client <ref>', 'client name or id, or "none" to clear')
+    .option('--category <ref>', 'category name or id, or "none" to clear')
+    .action((ref: string, opts: SetOptions) => {
       const app = getApp()
-      const project = app.projects.update(app.projects.resolve(ref).id, opts)
+      const project = app.projects.update(app.projects.resolve(ref).id, {
+        name: opts.name,
+        description: opts.description,
+        status: opts.status,
+        clientId: resolveClientPatch(app, opts.client),
+        categoryId: resolveCategoryPatch(app, opts.category),
+      })
       out(formatProject(project))
     })
 
@@ -148,6 +185,8 @@ export function buildCli(getApp: () => App, out: (line: string) => void = consol
       const project: Project = app.projects.editTags(app.projects.resolve(ref).id, opts.add, opts.remove)
       out(`${project.name}: ${project.tags.join(', ') || '(no tags)'}`)
     })
+
+  registerOrganizeCommands(program, getApp, out)
 
   program
     .command('mcp')

@@ -31,12 +31,20 @@ describe('MCP server', () => {
     expect(tools.map((t) => t.name).sort()).toEqual([
       'add_project',
       'add_workspace',
+      'create_client',
+      'create_tasks',
+      'delete_task',
       'get_current_project',
       'get_project',
+      'list_categories',
+      'list_clients',
       'list_projects',
+      'list_tasks',
       'scan_projects',
       'tag_project',
+      'update_client',
       'update_project',
+      'update_task',
     ])
   })
 
@@ -46,6 +54,33 @@ describe('MCP server', () => {
     expect((await call('get_current_project', { path: join(fx.root, 'shop', 'src', 'a.php') })).data.name).toBe('shop')
     expect((await call('update_project', { ref: 'shop', status: 'paused' })).data.status).toBe('paused')
     expect((await call('tag_project', { ref: 'blog', add: ['client'] })).data.tags).toEqual(['client'])
+  })
+
+  it('classifies projects and manages tasks', async () => {
+    await call('scan_projects')
+    expect((await call('create_client', { name: 'Acme' })).data.name).toBe('Acme')
+    const updated = await call('update_project', { ref: 'shop', client: 'acme', category: 'Client work' })
+    expect(updated.data).toMatchObject({ client: { name: 'Acme' }, category: { name: 'Client work' } })
+    expect((await call('list_projects', { client: 'none' })).data.map((p: { name: string }) => p.name)).toEqual(['blog'])
+    expect((await call('list_categories')).data).toHaveLength(4)
+
+    const created = await call('create_tasks', {
+      project: 'shop',
+      tasks: [{ title: 'Login', priority: 'high', due_date: '2026-10-01' }, { title: 'Checkout' }],
+    })
+    expect(created.data).toHaveLength(2)
+    expect((await call('list_tasks', { client: 'Acme', due: 'overdue' })).data.map((t: { title: string }) => t.title)).toEqual(['Login'])
+
+    const id = created.data[0].id.slice(0, 8)
+    expect((await call('update_task', { ref: id, status: 'done' })).data.status).toBe('done')
+    expect((await call('list_tasks', { project: 'shop' })).data.map((t: { title: string }) => t.title)).toEqual(['Checkout'])
+    expect((await call('list_clients')).data[0].openTaskCount).toBe(1)
+    await call('delete_task', { ref: created.data[1].id })
+    expect((await call('list_tasks', {})).data).toEqual([])
+
+    const bad = await call('update_project', { ref: 'shop', client: 'Unknown Ltd' })
+    expect(bad.isError).toBe(true)
+    expect(bad.text).toMatch(/Client not found/)
   })
 
   it('reports user errors as tool errors', async () => {
