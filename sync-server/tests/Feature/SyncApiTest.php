@@ -49,6 +49,17 @@ class SyncApiTest extends TestCase
             ]);
     }
 
+    public function test_record_data_is_stored_verbatim(): void
+    {
+        $data = ['name' => '  Acme  ', 'email' => '', 'notes' => "line
+"];
+        $change = $this->change(['data' => $data]);
+
+        $this->postJson('/api/v1/sync/push', ['changes' => [$change]])->assertOk();
+
+        $this->assertSame($data, $this->getJson('/api/v1/sync/pull')->json('changes.0.data'));
+    }
+
     public function test_last_write_wins(): void
     {
         $id = (string) Str::uuid();

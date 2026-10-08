@@ -334,6 +334,9 @@ export class SyncService {
       if (typeof data[column] === 'string' && !this.exists(target, data[column] as string)) data[column] = null
     }
     const columns = COLUMNS[table]
+    const defaults = this.notNullDefaults(table)
+    // A null where the column requires a value falls back to the column default ("" for text).
+    for (const c of columns) if ((data[c] === null || data[c] === undefined) && c in defaults) data[c] = defaults[c]
     const all = ['id', ...columns, 'updated_at', 'deleted_at', 'sync_rev']
     const values = [change.id, ...columns.map((c) => toSql(data[c])), change.updated_at, change.deleted_at, change.updated_at]
     this.db
@@ -444,6 +447,23 @@ export class SyncService {
       this.db.prepare('INSERT OR IGNORE INTO project_tags (project_id, tag_id) SELECT ?, id FROM tags WHERE name = ?').run(projectId, name)
     }
     this.db.prepare('DELETE FROM tags WHERE id NOT IN (SELECT tag_id FROM project_tags)').run()
+  }
+
+  private defaultsCache = new Map<string, Record<string, unknown>>()
+
+  /** NOT NULL columns that have a default, with that default value. */
+  private notNullDefaults(table: string): Record<string, unknown> {
+    let defaults = this.defaultsCache.get(table)
+    if (!defaults) {
+      const info = this.db.prepare(`PRAGMA table_info(${table})`).all() as { name: string; notnull: number; dflt_value: string | null }[]
+      defaults = Object.fromEntries(
+        info
+          .filter((c) => c.notnull && c.dflt_value !== null)
+          .map((c) => [c.name, /^'.*'$/.test(c.dflt_value!) ? c.dflt_value!.slice(1, -1) : Number(c.dflt_value)]),
+      )
+      this.defaultsCache.set(table, defaults)
+    }
+    return defaults
   }
 
   private exists(table: string, id: string, includeDeleted = false): boolean {

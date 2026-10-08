@@ -15,6 +15,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // API-only server: unauthenticated requests get a 401 JSON response, never a login redirect.
         $middleware->redirectGuestsTo(fn () => null);
+
+        // Synced records are opaque client data: store them byte for byte ("" stays "", spaces stay).
+        $middleware->convertEmptyStringsToNull(except: [fn (Request $request) => $request->is('api/v1/sync/*')]);
+        $middleware->trimStrings(except: [fn (Request $request) => $request->is('api/v1/sync/*')]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
