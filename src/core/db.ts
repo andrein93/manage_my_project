@@ -104,6 +104,49 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX tasks_project ON tasks(project_id) WHERE deleted_at IS NULL;
   `,
+  `
+  CREATE TABLE activity (
+    cwd_key TEXT NOT NULL,
+    cwd TEXT NOT NULL,
+    minute TEXT NOT NULL,
+    source TEXT NOT NULL CHECK (source IN ('claude', 'git')),
+    session_id TEXT,
+    PRIMARY KEY (cwd_key, minute, source)
+  ) WITHOUT ROWID;
+  CREATE INDEX activity_minute ON activity(minute);
+  CREATE INDEX activity_session ON activity(session_id) WHERE session_id IS NOT NULL;
+
+  CREATE TABLE ai_sessions (
+    session_id TEXT PRIMARY KEY,
+    cwd_key TEXT NOT NULL,
+    cwd TEXT NOT NULL,
+    cost_usd REAL NOT NULL DEFAULT 0,
+    model_usage TEXT NOT NULL DEFAULT '{}',
+    first_at TEXT,
+    last_at TEXT,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE time_entries (
+    id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL REFERENCES users(id),
+    project_id TEXT NOT NULL REFERENCES projects(id),
+    date TEXT NOT NULL,
+    minutes INTEGER NOT NULL CHECK (minutes BETWEEN 1 AND 1440),
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  );
+  CREATE INDEX time_entries_date ON time_entries(date) WHERE deleted_at IS NULL;
+
+  CREATE TABLE import_state (
+    source_key TEXT PRIMARY KEY,
+    offset INTEGER NOT NULL DEFAULT 0,
+    size INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL
+  );
+  `,
 ]
 
 /** Starter categories, created once when the categories table has never been used. */

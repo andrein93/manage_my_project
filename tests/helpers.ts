@@ -36,6 +36,8 @@ export function createFixture(files: Record<string, string> = {}): Fixture {
   write(files)
   const config = loadConfig({ env: { MMP_DATA_DIR: join(root, '.data') }, installDir, envFile: join(root, 'none') })
   const app = createApp({ config, dbFile: ':memory:', today: () => TODAY })
+  // Never read the developer's real Claude Code transcripts in tests.
+  app.settings.update({ claudeProjectsDir: join(root, '.claude-projects-empty') })
   return {
     root,
     installDir,

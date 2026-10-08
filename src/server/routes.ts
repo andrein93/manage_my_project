@@ -39,7 +39,14 @@ const projectPatch = z
 const tagsBody = z.object({ tags: z.array(z.string().max(50)).max(50) })
 const pathBody = z.object({ path: z.string().min(1) })
 const openBody = z.object({ target: z.enum(['folder', 'vscode']) })
-const settingsBody = z.object({ ignoreNames: z.array(z.string().max(255)).max(500).optional() }).strict()
+const settingsBody = z
+  .object({
+    ignoreNames: z.array(z.string().max(255)).max(500).optional(),
+    idleMinutes: z.number().int().optional(),
+    claudeProjectsDir: z.string().max(1000).optional(),
+    weekStart: z.enum(['monday', 'sunday']).optional(),
+  })
+  .strict()
 const idParams = z.object({ id: z.string().min(1) })
 
 export function registerRoutes(api: FastifyInstance, app: App, opener: Opener): void {

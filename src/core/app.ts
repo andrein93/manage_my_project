@@ -8,6 +8,7 @@ import { ProjectRepository } from './projects.js'
 import { detect, scan } from './scanner.js'
 import { SettingsRepository } from './settings.js'
 import { TaskRepository } from './tasks.js'
+import { TimeService } from './time/service.js'
 import { UserError, type Project, type ScanResult } from './types.js'
 import { assertDirectory, WorkspaceRepository } from './workspaces.js'
 
@@ -20,6 +21,7 @@ export interface App {
   clients: ClientRepository
   categories: CategoryRepository
   tasks: TaskRepository
+  time: TimeService
   scan(): Promise<ScanResult>
   /** Registers a single folder as a manual project (or returns the existing one). */
   addProject(path: string): Promise<Project>
@@ -44,6 +46,7 @@ export function createApp(options: CreateAppOptions = {}): App {
   const clients = new ClientRepository(db)
   const categories = new CategoryRepository(db)
   const tasks = new TaskRepository(db, options.today)
+  const time = new TimeService(db, projects, settings)
 
   // First run only (counting removed rows too, so a deliberately removed workspace stays removed):
   // the folder that contains mmp becomes the default workspace.
@@ -72,6 +75,7 @@ export function createApp(options: CreateAppOptions = {}): App {
     clients,
     categories,
     tasks,
+    time,
     scan() {
       // One scan at a time per process. Callers arriving mid-scan share a single follow-up
       // scan, so they always see changes made before their call (e.g. a new workspace).

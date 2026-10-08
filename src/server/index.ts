@@ -8,13 +8,18 @@ import { UserError } from '../core/types.js'
 import { systemOpener, type Opener } from './open.js'
 import { registerOrganizeRoutes } from './organize-routes.js'
 import { registerRoutes } from './routes.js'
+import { registerTimeRoutes } from './time-routes.js'
 
 export interface ServerOptions {
   opener?: Opener
   /** Folder with the built dashboard; defaults to `<installDir>/dist/web`. */
   webDir?: string
   logger?: boolean
+  /** Import time activity on start and every few minutes (default true for startServer). */
+  backgroundSync?: boolean
 }
+
+const SYNC_INTERVAL_MS = 5 * 60_000
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
 const MUTATING = new Set(['POST', 'PUT', 'PATCH'])
@@ -52,6 +57,7 @@ export async function buildServer(app: App, options: ServerOptions = {}): Promis
     async (api) => {
       registerRoutes(api, app, options.opener ?? systemOpener)
       registerOrganizeRoutes(api, app)
+      registerTimeRoutes(api, app)
     },
     { prefix: '/api' },
   )
@@ -87,6 +93,14 @@ export async function startServer(app: App, options: ServerOptions = {}): Promis
       throw new UserError(`Port ${app.config.port} is already in use. Is mmp already running? Change MMP_PORT in .env.`)
     }
     throw error
+  }
+  if (options.backgroundSync !== false) {
+    // Not awaited: the first import of a long history must not delay the dashboard.
+    const sync = () => app.time.sync().catch((error) => server.log.error(error))
+    sync()
+    const timer = setInterval(sync, SYNC_INTERVAL_MS)
+    timer.unref()
+    server.addHook('onClose', async () => clearInterval(timer))
   }
   return { url: `http://localhost:${app.config.port}`, server }
 }

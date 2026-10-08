@@ -1,13 +1,23 @@
+import { homedir } from 'node:os'
+import { join, resolve } from 'node:path'
 import type { DB } from './db.js'
 import { UserError } from './types.js'
 
 export interface Settings {
   /** Folder names never treated as projects. */
   ignoreNames: string[]
+  /** A gap longer than this closes a work block. */
+  idleMinutes: number
+  /** Where Claude Code keeps its session transcripts. */
+  claudeProjectsDir: string
+  weekStart: 'monday' | 'sunday'
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   ignoreNames: ['node_modules', 'vendor', '$RECYCLE.BIN', 'System Volume Information'],
+  idleMinutes: 15,
+  claudeProjectsDir: join(homedir(), '.claude', 'projects'),
+  weekStart: 'monday',
 }
 
 export class SettingsRepository {
@@ -20,14 +30,31 @@ export class SettingsRepository {
   }
 
   update(patch: Partial<Settings>): Settings {
+    const values: Partial<Settings> = {}
     if (patch.ignoreNames !== undefined) {
       if (!Array.isArray(patch.ignoreNames) || patch.ignoreNames.some((n) => typeof n !== 'string')) {
         throw new UserError('ignoreNames must be a list of folder names')
       }
-      const names = [...new Set(patch.ignoreNames.map((n) => n.trim()).filter(Boolean))]
+      values.ignoreNames = [...new Set(patch.ignoreNames.map((n) => n.trim()).filter(Boolean))]
+    }
+    if (patch.idleMinutes !== undefined) {
+      if (!Number.isInteger(patch.idleMinutes) || patch.idleMinutes < 5 || patch.idleMinutes > 120) {
+        throw new UserError('idleMinutes must be a whole number between 5 and 120')
+      }
+      values.idleMinutes = patch.idleMinutes
+    }
+    if (patch.claudeProjectsDir !== undefined) {
+      const dir = String(patch.claudeProjectsDir).trim()
+      values.claudeProjectsDir = dir ? resolve(dir) : DEFAULT_SETTINGS.claudeProjectsDir
+    }
+    if (patch.weekStart !== undefined) {
+      if (patch.weekStart !== 'monday' && patch.weekStart !== 'sunday') throw new UserError('weekStart must be monday or sunday')
+      values.weekStart = patch.weekStart
+    }
+    for (const [key, value] of Object.entries(values)) {
       this.db
         .prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
-        .run('ignoreNames', JSON.stringify(names))
+        .run(key, JSON.stringify(value))
     }
     return this.get()
   }
