@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { AnimatePresence, Motion, MotionConfig } from 'motion-v'
-import { CheckSquare, Clock, FolderGit2, LayoutDashboard, Menu, Settings, Users, Wallet } from 'lucide-vue-next'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { CheckSquare, Clock, FolderGit2, LayoutDashboard, Menu, Settings, Users, Wallet, X } from 'lucide-vue-next'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { api } from './api'
@@ -36,6 +36,32 @@ function toggleSidebar() {
 const drawerOpen = ref(false)
 const paletteOpen = ref(false)
 
+const drawer = ref<{ $el: HTMLElement } | null>(null)
+const menuButton = ref<HTMLButtonElement | null>(null)
+const focusables = () => [...(drawer.value?.$el.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? [])]
+
+// Modal drawer: focus moves in on open and back to the menu button on close.
+watch(drawerOpen, async (open) => {
+  await nextTick()
+  if (open) focusables()[0]?.focus()
+  else if (!paletteOpen.value) menuButton.value?.focus()
+})
+
+/** Keeps Tab inside the open drawer. */
+function trapTab(e: KeyboardEvent) {
+  const items = focusables()
+  if (!items.length) return
+  const first = items[0]
+  const last = items[items.length - 1]
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault()
+    last.focus()
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault()
+    first.focus()
+  }
+}
+
 function openPaletteFromDrawer() {
   drawerOpen.value = false
   paletteOpen.value = true
@@ -64,6 +90,8 @@ function onKeydown(e: KeyboardEvent) {
     paletteOpen.value = !paletteOpen.value
   } else if (e.key === 'Escape' && drawerOpen.value) {
     drawerOpen.value = false
+  } else if (e.key === 'Tab' && drawerOpen.value) {
+    trapTab(e)
   }
 }
 onMounted(() => window.addEventListener('keydown', onKeydown))
@@ -93,7 +121,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
         />
         <Motion
           v-if="drawerOpen"
+          ref="drawer"
           as="aside"
+          role="dialog"
+          aria-modal="true"
+          :aria-label="t('ui.menu')"
           class="fixed inset-y-0 left-0 z-50 w-64 border-r border-line bg-paper shadow-pop md:hidden"
           :initial="{ x: -280 }"
           :animate="{ x: 0 }"
@@ -101,12 +133,21 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
           :transition="{ type: 'spring', stiffness: 380, damping: 36 }"
         >
           <AppSidebar :links="links" :collapsed="false" :scanning="scanning" @rescan="rescan" @search="openPaletteFromDrawer" @navigate="drawerOpen = false" />
+          <button class="absolute top-3.5 right-3 rounded-md p-1 text-muted hover:bg-surface-2 hover:text-ink" :aria-label="t('ui.closeMenu')" @click="drawerOpen = false">
+            <X class="size-4" aria-hidden="true" />
+          </button>
         </Motion>
       </AnimatePresence>
 
       <div class="min-w-0 flex-1">
         <div class="sticky top-0 z-30 flex items-center gap-3 border-b border-line bg-paper/80 px-4 py-2.5 backdrop-blur md:hidden">
-          <button class="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink" :aria-label="t('ui.menu')" @click="drawerOpen = true">
+          <button
+            ref="menuButton"
+            class="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink"
+            :aria-label="t('ui.menu')"
+            :aria-expanded="drawerOpen"
+            @click="drawerOpen = true"
+          >
             <Menu class="size-5" aria-hidden="true" />
           </button>
           <span class="font-semibold tracking-tight">mmp</span>

@@ -83,3 +83,11 @@ describe('isPaletteShortcut', () => {
     expect(isPaletteShortcut(key('k', { ctrlKey: true, altKey: true }))).toBe(false)
   })
 })
+
+describe('isPaletteShortcut with key-less events', () => {
+  it('does not throw when key is missing (Chrome autofill keydown)', () => {
+    const e = { key: undefined as unknown as string, ctrlKey: true, metaKey: false, altKey: false, shiftKey: false }
+    expect(() => isPaletteShortcut(e)).not.toThrow()
+    expect(isPaletteShortcut(e)).toBe(false)
+  })
+})

@@ -35,5 +35,5 @@ onBeforeUnmount(() => cancelAnimationFrame(frame))
 </script>
 
 <template>
-  <span class="tabular-nums" :aria-label="format(value)"><span aria-hidden="true">{{ format(shown) }}</span></span>
+  <span class="tabular-nums"><span class="sr-only">{{ format(value) }}</span><span aria-hidden="true">{{ format(shown) }}</span></span>
 </template>

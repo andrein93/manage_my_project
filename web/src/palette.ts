@@ -64,5 +64,5 @@ export function searchPalette(items: PaletteItem[], query: string): { group: Pal
 type KeyLike = Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'altKey' | 'shiftKey'>
 
 export function isPaletteShortcut(e: KeyLike): boolean {
-  return e.key.toLowerCase() === 'k' && (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey
+  return e.key?.toLowerCase() === 'k' && (e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey
 }

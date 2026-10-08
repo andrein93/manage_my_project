@@ -5,7 +5,6 @@ import { computed, nextTick, ref, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { api } from '../api'
-import { scanTick } from '../composables'
 import { searchPalette, type PaletteGroup, type PaletteItem } from '../palette'
 import { THEME_PREFERENCES, setThemePreference } from '../theme'
 import UiKbd from '../ui/UiKbd.vue'
@@ -20,23 +19,21 @@ const query = ref('')
 const active = ref(0)
 const input = ref<HTMLInputElement | null>(null)
 const remote = ref<PaletteItem[]>([])
-let loadedTick = -1
 let returnFocus: HTMLElement | null = null
 
 const groupIcon: Record<PaletteGroup, Component> = { pages: Search, projects: FolderGit2, tasks: CheckSquare, clients: Users, actions: SunMoon }
 
+/** Reloaded on every open (three local requests) so new, renamed or finished items show up; the old list stays visible meanwhile. */
 async function load() {
-  if (loadedTick === scanTick.value) return
   try {
     const [projects, tasks, clients] = await Promise.all([api.projects({}), api.tasks({ status: 'todo,in_progress' }), api.clients()])
-    loadedTick = scanTick.value
     remote.value = [
       ...projects.map((p) => ({ id: `project:${p.id}`, group: 'projects' as const, label: p.name, hint: p.client?.name, keywords: p.path })),
       ...tasks.map((x) => ({ id: `task:${x.id}:${x.project.id}`, group: 'tasks' as const, label: x.title, hint: x.project.name })),
       ...clients.map((c) => ({ id: `client:${c.id}`, group: 'clients' as const, label: c.name, keywords: c.email })),
     ]
   } catch {
-    // Offline: pages and actions still work; retry on next open.
+    // Offline: pages and actions still work, with the last loaded items.
   }
 }
 
@@ -97,6 +94,11 @@ function onKey(e: KeyboardEvent) {
   }
 }
 
+/** Clicks inside the dialog must not move focus off the search field (keyboard handling lives there). */
+function keepFocus(e: MouseEvent) {
+  if (e.target !== input.value) e.preventDefault()
+}
+
 watch(active, async (i) => {
   await nextTick()
   document.getElementById(`palette-item-${i}`)?.scrollIntoView({ block: 'nearest' })
@@ -120,6 +122,8 @@ watch(active, async (i) => {
       role="dialog"
       aria-modal="true"
       :aria-label="t('ui.search')"
+      @keydown="onKey"
+      @mousedown="keepFocus"
       :initial="{ opacity: 0, scale: 0.97, y: -8 }"
       :animate="{ opacity: 1, scale: 1, y: 0 }"
       :exit="{ opacity: 0, scale: 0.98 }"
@@ -136,7 +140,6 @@ watch(active, async (i) => {
           aria-expanded="true"
           aria-controls="palette-list"
           :aria-activedescendant="flat.length ? `palette-item-${active}` : undefined"
-          @keydown="onKey"
         />
         <UiKbd>Esc</UiKbd>
       </div>
