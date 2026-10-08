@@ -385,5 +385,13 @@
     "project": "Progetto",
     "priority": "Priorità",
     "removeTag": "Rimuovi il tag {tag}"
+  },
+  "ui": {
+    "dismiss": "Chiudi",
+    "search": "Cerca",
+    "collapse": "Comprimi barra laterale",
+    "expand": "Espandi barra laterale",
+    "menu": "Menu",
+    "closeMenu": "Chiudi menu"
   }
 }
