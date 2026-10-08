@@ -69,7 +69,11 @@ export class FinanceService {
     for (const g of groups.values()) merge(total, g.acc)
     const overheadCents = filtered ? 0 : Math.round(overhead)
     // Hours in totals are wall-clock time (parallel projects count once, as in the Time page).
-    total.minutes = this.time.report(range, 'project', { projectId: filters.projectId, clientId: filters.clientId }).totals.minutes
+    total.minutes = this.time.report(range, 'project', {
+      projectId: filters.projectId,
+      clientId: filters.clientId,
+      projectsOnly: true,
+    }).totals.minutes
     const totals = numbers(total, overheadCents)
     return { range, lifetime, by, currency: this.settings.get().currency, totals: { ...totals, overheadCents }, rows }
   }
@@ -77,6 +81,13 @@ export class FinanceService {
   /** Lifetime earned vs collected per client (and project), up to today. Zero balances omitted. */
   owed(): OwedRow[] {
     const { perProject } = this.compute(this.lifetimeRange())
+    // Every payment counts, including ones dated in the future (prepayments).
+    for (const acc of perProject.values()) acc.collected = 0
+    for (const p of this.repo.payments()) {
+      let acc = perProject.get(p.projectId)
+      if (!acc) perProject.set(p.projectId, (acc = emptyAcc()))
+      acc.collected += p.amountCents
+    }
     const byClient = new Map<string, OwedRow>()
     for (const project of this.projects.list({ all: true })) {
       const acc = perProject.get(project.id)
@@ -187,8 +198,11 @@ export class FinanceService {
     for (const plan of plans.filter((p) => p.kind === 'subscription')) {
       for (const day of feeDates(plan, range.to)) {
         if (day < range.from) continue
+        // Weights: usage on the days of this month that this plan covers.
         const month = monthOf(day)
-        const usage = [...daily].map(([key, d]) => [key, sumMap(d.costUsd, month.from, month.to)] as const).filter(([, u]) => u > 0)
+        const from = month.from > plan.startDate ? month.from : plan.startDate
+        const to = plan.endDate && plan.endDate < month.to ? plan.endDate : month.to
+        const usage = [...daily].map(([key, d]) => [key, sumMap(d.costUsd, from, to)] as const).filter(([, u]) => u > 0)
         const total = usage.reduce((s, [, u]) => s + u, 0)
         const fee = plan.monthlyCents ?? 0
         if (!total) {

@@ -105,11 +105,20 @@ export class FinanceRepository {
     return transaction(this.db, () => {
       const current = this.agreement(id)
       if (!current) throw new UserError(`Agreement not found: ${id}`, 'not_found')
+      if (input.projectId && input.projectId !== current.projectId) {
+        throw new UserError('An agreement cannot move to another project; remove it and add a new one')
+      }
+      const kind = input.kind ?? current.kind
+      // A fixed price without an end date is booked on its start date; ending it later would
+      // silently re-spread revenue that past reports already showed.
+      if (kind === 'fixed' && current.kind === 'fixed' && current.endDate === null && input.endDate) {
+        throw new UserError('This fixed price has no end date, so it is booked on its start date. Remove it and add it again with an end date to spread it.')
+      }
       const merged: AgreementInput = {
-        projectId: input.projectId ?? current.projectId,
-        kind: input.kind ?? current.kind,
+        projectId: current.projectId,
+        kind,
         amount: input.amount ?? current.amountCents / 100,
-        interval: input.interval === undefined ? current.interval : input.interval,
+        interval: kind === 'recurring' ? (input.interval === undefined ? (current.interval ?? 'month') : input.interval) : (input.interval ?? null),
         startDate: input.startDate ?? current.startDate,
         endDate: input.endDate === undefined ? current.endDate : input.endDate,
         note: input.note ?? current.note,
@@ -341,7 +350,10 @@ export class FinanceRepository {
   resolve(table: 'agreements' | 'payments' | 'expenses' | 'ai_plans', ref: string): string {
     const value = ref.trim().toLowerCase()
     if (value.length < 6) throw new UserError('Use at least 6 characters of the id')
-    const rows = this.db.prepare(`SELECT id FROM ${table} WHERE deleted_at IS NULL AND id LIKE ?`).all(`${value}%`) as { id: string }[]
+    // Plain prefix comparison: no LIKE wildcards from user input.
+    const rows = this.db
+      .prepare(`SELECT id FROM ${table} WHERE deleted_at IS NULL AND substr(id, 1, ?) = ?`)
+      .all(value.length, value) as { id: string }[]
     if (rows.length === 1) return rows[0].id
     if (rows.length > 1) throw new UserError(`"${ref}" matches ${rows.length} records; use more characters`, 'conflict')
     throw new UserError(`Not found: ${ref}`, 'not_found')

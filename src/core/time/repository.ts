@@ -18,6 +18,8 @@ export interface ReportFilters {
   projectId?: string
   clientId?: string
   categoryId?: string
+  /** Leave activity in folders that are not projects out of totals. */
+  projectsOnly?: boolean
 }
 
 export interface EntryInput {
@@ -61,7 +63,7 @@ export class TimeRepository {
         (!filters.categoryId || (p.category?.id ?? 'none') === filters.categoryId),
     )
     const includedIds = new Set(included.map((p) => p.id))
-    const filtered = !!(filters.projectId || filters.clientId || filters.categoryId)
+    const filtered = !!(filters.projectId || filters.clientId || filters.categoryId || filters.projectsOnly)
     const days = daysOf(range)
     const { buckets, signals, unassignedCwd } = this.collect(range, idleMinutes, this.attributor(all))
     const inRange = new Set(days)
@@ -306,7 +308,7 @@ export class TimeRepository {
   resolveEntry(ref: string): TimeEntry {
     const value = ref.trim().toLowerCase()
     const rows = value.length >= 6
-      ? (this.db.prepare(`${ENTRY_SELECT} AND e.id LIKE ?`).all(`${value}%`) as unknown as EntryRow[])
+      ? (this.db.prepare(`${ENTRY_SELECT} AND substr(e.id, 1, ?) = ?`).all(value.length, value) as unknown as EntryRow[])
       : []
     if (rows.length === 1) return toEntry(rows[0])
     if (rows.length > 1) throw new UserError(`"${ref}" matches ${rows.length} time entries; use more characters`, 'conflict')

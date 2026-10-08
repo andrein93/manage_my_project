@@ -17,7 +17,7 @@ describe('parseAmount', () => {
     [49.99, 4999],
   ])('%s → %d cents', (input, cents) => expect(parseAmount(input)).toBe(cents))
 
-  it.each(['', 'abc', '0', '-5', '1.2.3,4,5', '1.2345', '20000000'])('rejects %j', (input) => {
+  it.each(['', 'abc', '0', '-5', '1.2.3,4,5', '1.2345', '20000000', '1.2.3', '8.10.2026', '0.125', '1.50.000,00', 12.345])('rejects %j', (input) => {
     expect(() => parseAmount(input)).toThrow()
   })
 

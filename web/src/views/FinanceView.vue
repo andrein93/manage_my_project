@@ -34,7 +34,7 @@ async function load() {
     owed.value = o
     error.value = null
   } catch (e) {
-    reportError(e)
+    if (request === latest) reportError(e)
   }
 }
 
@@ -73,7 +73,13 @@ const columns: { key: SortKey; label: string; numeric: boolean }[] = [
 const link = (key: string) =>
   by.value === 'project' ? { name: 'project', params: { id: key } } : key !== 'none' ? { name: 'client', params: { id: key } } : null
 
-watch(() => route.query, load)
+watch(
+  () => route.query,
+  () => {
+    report.value = null
+    load()
+  },
+)
 useAutoRefresh(load, 60_000)
 </script>
 

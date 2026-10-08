@@ -46,18 +46,14 @@ async function load(force = false) {
 
 /** Time and money are optional on this page: a failure here must not hide the client. */
 async function loadMonth(id: string) {
-  try {
-    const [time, money] = await Promise.all([
-      api.timeReport({ period: 'month', client: id }),
-      api.financeReport({ lifetime: 'true', client: id }),
-    ])
-    if (id !== props.id) return
-    month.value = time
-    lifetime.value = money
-  } catch {
-    month.value = null
-    lifetime.value = null
-  }
+  // Independent: a failure in one block must not hide the other.
+  const [time, money] = await Promise.allSettled([
+    api.timeReport({ period: 'month', client: id }),
+    api.financeReport({ lifetime: 'true', client: id }),
+  ])
+  if (id !== props.id) return
+  month.value = time.status === 'fulfilled' ? time.value : null
+  lifetime.value = money.status === 'fulfilled' ? money.value : null
 }
 
 async function save() {

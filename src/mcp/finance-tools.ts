@@ -68,7 +68,8 @@ export function registerFinanceTools(server: McpServer, app: App): void {
       description: 'Lifetime earned minus collected per client (positive = owed to the user, negative = prepaid credit).',
       inputSchema: {},
     },
-    tool(() => {
+    tool(async () => {
+      await app.time.freshen()
       const currency = app.settings.get().currency
       return app.finance.owed().map((r) => ({
         client: r.clientName,

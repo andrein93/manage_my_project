@@ -46,7 +46,7 @@ describe('HTTP API: finance', () => {
     expect(owed).toMatchObject({ currency: 'EUR', rows: [{ clientName: 'No client', owedCents: 150000 }] })
 
     const ended = await server.inject({ method: 'PATCH', url: `/api/agreements/${deal.json().id}`, headers: json, payload: { endDate: '2026-10-31' } })
-    expect(ended.json().endDate).toBe('2026-10-31')
+    expect(ended.statusCode).toBe(400) // an open fixed price stays booked on its start date
     expect((await server.inject({ method: 'DELETE', url: `/api/agreements/${deal.json().id}` })).statusCode).toBe(204)
     expect((await server.inject({ url: '/api/expenses?shared=true' })).json()).toHaveLength(1)
   })

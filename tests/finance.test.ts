@@ -71,6 +71,19 @@ describe('finance report', () => {
     expect(row(report, 'blog').aiCents).toBe(3000)
   })
 
+  it('weights a mid-month subscription only by usage on the days it covers', () => {
+    fx.app.finance.repo.addAiPlan({ kind: 'subscription', monthlyAmount: 90, startDate: '2026-10-02' })
+    const report = fx.app.finance.report({ range: OCT })
+    expect(row(report, 'shop').aiCents).toBe(900) // Oct 1 is pay-as-you-go: $10 × 0.9
+    expect(row(report, 'blog').aiCents).toBe(9000) // the only usage under the subscription
+  })
+
+  it('counts future-dated payments as credit in what clients owe', () => {
+    fx.app.finance.repo.addAgreement({ projectId: id('blog'), kind: 'fixed', amount: 100, startDate: '2026-10-01' })
+    fx.app.finance.repo.addPayment({ projectId: id('blog'), amount: 300, date: '2026-12-01' })
+    expect(fx.app.finance.owed()[0]).toMatchObject({ earnedCents: 10000, collectedCents: 30000, owedCents: -20000 })
+  })
+
   it('keeps costs without project hours or usage as overhead', () => {
     fx.app.finance.repo.addExpense({ amount: 20, startDate: '2026-11-05', note: 'Tool' })
     fx.app.finance.repo.addAiPlan({ kind: 'subscription', monthlyAmount: 90, startDate: '2026-11-01' })
@@ -116,8 +129,17 @@ describe('finance records', () => {
     expect(() => f.addAgreement({ projectId: id('shop'), kind: 'bonus' as never, amount: 1 })).toThrow(/Invalid agreement type/)
     expect(() => f.addAgreement({ projectId: 'nope', kind: 'fixed', amount: 1 })).toThrow(/Project not found/)
     const fixed = f.addAgreement({ projectId: id('shop'), kind: 'fixed', amount: 100, startDate: '2026-05-01' })
-    expect(f.updateAgreement(fixed.id, { endDate: '2026-05-31' }).endDate).toBe('2026-05-31')
+    // Ending an open fixed price would re-spread past revenue.
+    expect(() => f.updateAgreement(fixed.id, { endDate: '2026-05-31' })).toThrow(/booked on its start date/)
+    expect(() => f.updateAgreement(fixed.id, { projectId: id('blog') })).toThrow(/cannot move/)
+    const fee = f.addAgreement({ projectId: id('shop'), kind: 'recurring', amount: 50, startDate: '2026-05-01' })
+    expect(f.updateAgreement(fee.id, { endDate: '2026-05-31' }).endDate).toBe('2026-05-31')
+    // Changing kind away from recurring drops the interval.
+    expect(f.updateAgreement(fee.id, { kind: 'fixed' })).toMatchObject({ kind: 'fixed', interval: null })
+    f.removeAgreement(fee.id)
     expect(f.resolve('agreements', fixed.id.slice(0, 8))).toBe(fixed.id)
+    expect(() => f.resolve('agreements', '%%%%%%')).toThrow(/Not found/)
+    expect(() => f.resolve('agreements', '______')).toThrow(/Not found/)
     f.removeAgreement(fixed.id)
     expect(f.agreements(id('shop'))).toHaveLength(2)
   })

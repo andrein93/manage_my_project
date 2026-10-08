@@ -82,9 +82,11 @@ export function registerFinanceCommands(program: Command, getApp: () => App, out
   finance
     .command('owed')
     .description('who still owes you money (lifetime earned minus collected)')
+    .option('--no-sync', 'skip importing new activity first')
     .option('--json', 'print JSON')
-    .action((o: { json?: boolean }) => {
+    .action(async (o: { json?: boolean; sync: boolean }) => {
       const app = getApp()
+      if (o.sync) await app.time.sync()
       const rows = app.finance.owed()
       if (o.json) return out(JSON.stringify(rows, null, 2))
       if (!rows.length) return out('Nobody owes you anything.')

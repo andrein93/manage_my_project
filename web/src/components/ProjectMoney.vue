@@ -38,7 +38,7 @@ async function load() {
     expenses.value = e
     error.value = null
   } catch (err) {
-    reportError(err)
+    if (request === latest) reportError(err)
   }
 }
 
@@ -105,7 +105,13 @@ const removeDeal = (id: string) => removeWith(id, () => api.removeAgreement(id))
 const removePay = (id: string) => removeWith(id, () => api.removePayment(id))
 const removeExp = (id: string) => removeWith(id, () => api.removeExpense(id))
 
-watch(() => props.projectId, load)
+watch(
+  () => props.projectId,
+  () => {
+    summary.value = null
+    load()
+  },
+)
 useAutoRefresh(load, 60_000)
 </script>
 
@@ -152,7 +158,7 @@ useAutoRefresh(load, 60_000)
               <span v-if="a.note" class="block truncate text-xs text-muted">{{ a.note }}</span>
             </span>
             <span class="flex shrink-0 gap-1">
-              <button v-if="!a.endDate" class="btn !px-2 !py-1 text-xs" @click="endDeal(a.id)">{{ t('finance.end') }}</button>
+              <button v-if="!a.endDate && a.kind !== 'fixed'" class="btn !px-2 !py-1 text-xs" @click="endDeal(a.id)">{{ t('finance.end') }}</button>
               <button class="btn !px-2 !py-1 text-xs" :class="{ '!border-danger !text-danger': confirm === a.id }" @click="removeDeal(a.id)">
                 {{ confirm === a.id ? t('finance.removeConfirm') : t('finance.remove') }}
               </button>
