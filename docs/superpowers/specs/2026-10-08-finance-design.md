@@ -94,6 +94,20 @@ All rules produce **amounts per local day**; a period sums its days.
   agreements, payments, direct expenses with add/remove); lifetime summary on the client page;
   Settings: currency, USD rate, AI plans, shared expenses.
 
+## Command reference in Settings (requested 2026-10-08)
+
+A **Commands** section in Settings documents everything the user can do outside the UI:
+
+- **CLI:** every `mmp` command and subcommand with its usage line, description and options
+  (flag + description, choices, defaults), **generated at runtime from the commander program**
+  (`buildCli`), so it can never drift from the real CLI.
+- **AI (MCP):** every MCP tool with its description and parameters, **generated from the
+  running MCP server definition** (listed through an in-memory MCP client), plus a short list of
+  example requests to ask an AI assistant (static, translatable strings).
+- The MCP setup command already shown in Settings moves into this section.
+- UI: tabs *CLI* / *AI*, a search box filtering by name or description, a copy button per usage
+  line. Served by `GET /api/help` → `{ cli: CommandDoc[], mcp: ToolDoc[] }`.
+
 ## Validation and errors
 
 Amounts > 0 (max 10 000 000.00), valid dates, `end_date ≥ start_date`, `interval` only for
