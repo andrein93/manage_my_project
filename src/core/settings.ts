@@ -12,6 +12,10 @@ export interface Settings {
   /** Where Claude Code keeps its session transcripts. */
   claudeProjectsDir: string
   weekStart: 'monday' | 'sunday'
+  /** Base currency for all money (ISO 4217 code). */
+  currency: string
+  /** Base-currency units per US dollar, used to convert AI costs. */
+  usdRate: number
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -19,6 +23,8 @@ export const DEFAULT_SETTINGS: Settings = {
   idleMinutes: 15,
   claudeProjectsDir: join(homedir(), '.claude', 'projects'),
   weekStart: 'monday',
+  currency: 'EUR',
+  usdRate: 1,
 }
 
 export class SettingsRepository {
@@ -60,6 +66,17 @@ export class SettingsRepository {
     if (patch.weekStart !== undefined) {
       if (patch.weekStart !== 'monday' && patch.weekStart !== 'sunday') throw new UserError('weekStart must be monday or sunday')
       values.weekStart = patch.weekStart
+    }
+    if (patch.currency !== undefined) {
+      const currency = String(patch.currency).trim().toUpperCase()
+      if (!/^[A-Z]{3}$/.test(currency)) throw new UserError('currency must be a 3-letter code such as EUR or USD')
+      values.currency = currency
+    }
+    if (patch.usdRate !== undefined) {
+      if (typeof patch.usdRate !== 'number' || !(patch.usdRate > 0) || patch.usdRate > 10_000) {
+        throw new UserError('usdRate must be a positive number (base currency units per US dollar)')
+      }
+      values.usdRate = patch.usdRate
     }
     for (const [key, value] of Object.entries(values)) {
       this.db

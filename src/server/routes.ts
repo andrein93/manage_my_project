@@ -45,6 +45,8 @@ const settingsBody = z
     idleMinutes: z.number().int().optional(),
     claudeProjectsDir: z.string().max(1000).optional(),
     weekStart: z.enum(['monday', 'sunday']).optional(),
+    currency: z.string().max(3).optional(),
+    usdRate: z.number().optional(),
   })
   .strict()
 const idParams = z.object({ id: z.string().min(1) })

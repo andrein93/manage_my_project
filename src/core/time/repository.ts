@@ -63,62 +63,8 @@ export class TimeRepository {
     const includedIds = new Set(included.map((p) => p.id))
     const filtered = !!(filters.projectId || filters.clientId || filters.categoryId)
     const days = daysOf(range)
+    const { buckets, signals, unassignedCwd } = this.collect(range, idleMinutes, this.attributor(all))
     const inRange = new Set(days)
-
-    const attribute = this.attributor(all)
-    // Look back one idle window so a block that started before the range keeps its true shape;
-    // per-day minutes are clipped to the range below.
-    const rows = this.activity(range, idleMinutes)
-
-    // Group signals by project id, or by cwd for unassigned activity.
-    const signals = new Map<string, Signal[]>()
-    const unassignedCwd = new Map<string, string>()
-    for (const r of rows) {
-      const project = attribute(r.cwd_key)
-      const key = project ? project.id : `cwd:${r.cwd_key}`
-      if (!project) unassignedCwd.set(key, r.cwd)
-      let list = signals.get(key)
-      if (!list) signals.set(key, (list = []))
-      list.push({ at: minuteToMs(r.minute), source: r.source, sessionId: r.session_id })
-    }
-
-    const buckets = new Map<string, Bucket>()
-    const bucket = (key: string) => {
-      let b = buckets.get(key)
-      if (!b) buckets.set(key, (b = { autoPerDay: new Map(), manualPerDay: new Map(), costPerDay: new Map() }))
-      return b
-    }
-
-    for (const [key, list] of signals) {
-      const b = bucket(key)
-      for (const [day, minutes] of minutesPerDay(buildBlocks(list, idleMinutes))) {
-        if (inRange.has(day)) b.autoPerDay.set(day, (b.autoPerDay.get(day) ?? 0) + minutes)
-      }
-    }
-
-    // AI cost: each session's cost is spread over its active minutes, then clipped to the range.
-    const sessionDays = new Map<string, Map<string, number>>()
-    for (const r of this.sessionMinutes(range)) {
-      let perDay = sessionDays.get(r.session_id)
-      if (!perDay) sessionDays.set(r.session_id, (perDay = new Map()))
-      const day = localDateOf(minuteToMs(r.minute))
-      perDay.set(day, (perDay.get(day) ?? 0) + 1)
-    }
-    for (const session of this.sessions([...sessionDays.keys()])) {
-      // Sessions whose folder is still unknown carry no attribution yet.
-      if (session.total === 0 || session.cost_usd === 0 || !session.cwd_key) continue
-      const project = attribute(session.cwd_key)
-      const b = bucket(project ? project.id : `cwd:${session.cwd_key}`)
-      if (!project) unassignedCwd.set(`cwd:${session.cwd_key}`, session.cwd)
-      for (const [day, minutes] of sessionDays.get(session.session_id)!) {
-        if (inRange.has(day)) b.costPerDay.set(day, (b.costPerDay.get(day) ?? 0) + (session.cost_usd * minutes) / session.total)
-      }
-    }
-
-    for (const entry of this.entryRows(range)) {
-      const b = bucket(entry.project_id)
-      b.manualPerDay.set(entry.date, (b.manualPerDay.get(entry.date) ?? 0) + entry.minutes)
-    }
 
     // Keep the buckets this report covers.
     const kept = [...buckets].filter(([key]) => (key.startsWith('cwd:') ? !filtered : includedIds.has(key)))
@@ -202,6 +148,81 @@ export class TimeRepository {
       days: [...daySeries.values()].map((d) => ({ date: d.date, minutes: Math.round(d.minutes), costUsd: round(d.costUsd) })),
       unassigned,
     }
+  }
+
+  /**
+   * Per project (or `cwd:<key>` for unassigned folders): minutes per local day (automatic
+   * per-project blocks + manual entries) and API-equivalent AI cost (USD) per day.
+   */
+  daily(range: DateRange): Map<string, { minutes: Map<string, number>; costUsd: Map<string, number> }> {
+    const { idleMinutes } = this.settings.get()
+    const { buckets } = this.collect(range, idleMinutes, this.attributor(this.projects.list({ all: true })))
+    const out = new Map<string, { minutes: Map<string, number>; costUsd: Map<string, number> }>()
+    for (const [key, b] of buckets) {
+      const minutes = new Map(b.autoPerDay)
+      for (const [day, m] of b.manualPerDay) minutes.set(day, (minutes.get(day) ?? 0) + m)
+      out.set(key, { minutes, costUsd: new Map(b.costPerDay) })
+    }
+    return out
+  }
+
+  private collect(range: DateRange, idleMinutes: number, attribute: (cwdKey: string) => Project | null) {
+    const inRange = new Set(daysOf(range))
+    // Look back one idle window so a block that started before the range keeps its true shape;
+    // per-day minutes are clipped to the range below.
+    const rows = this.activity(range, idleMinutes)
+
+    // Group signals by project id, or by cwd for unassigned activity.
+    const signals = new Map<string, Signal[]>()
+    const unassignedCwd = new Map<string, string>()
+    for (const r of rows) {
+      const project = attribute(r.cwd_key)
+      const key = project ? project.id : `cwd:${r.cwd_key}`
+      if (!project) unassignedCwd.set(key, r.cwd)
+      let list = signals.get(key)
+      if (!list) signals.set(key, (list = []))
+      list.push({ at: minuteToMs(r.minute), source: r.source, sessionId: r.session_id })
+    }
+
+    const buckets = new Map<string, Bucket>()
+    const bucket = (key: string) => {
+      let b = buckets.get(key)
+      if (!b) buckets.set(key, (b = { autoPerDay: new Map(), manualPerDay: new Map(), costPerDay: new Map() }))
+      return b
+    }
+
+    for (const [key, list] of signals) {
+      const b = bucket(key)
+      for (const [day, minutes] of minutesPerDay(buildBlocks(list, idleMinutes))) {
+        if (inRange.has(day)) b.autoPerDay.set(day, (b.autoPerDay.get(day) ?? 0) + minutes)
+      }
+    }
+
+    // AI cost: each session's cost is spread over its active minutes, then clipped to the range.
+    const sessionDays = new Map<string, Map<string, number>>()
+    for (const r of this.sessionMinutes(range)) {
+      let perDay = sessionDays.get(r.session_id)
+      if (!perDay) sessionDays.set(r.session_id, (perDay = new Map()))
+      const day = localDateOf(minuteToMs(r.minute))
+      perDay.set(day, (perDay.get(day) ?? 0) + 1)
+    }
+    for (const session of this.sessions([...sessionDays.keys()])) {
+      // Sessions whose folder is still unknown carry no attribution yet.
+      if (session.total === 0 || session.cost_usd === 0 || !session.cwd_key) continue
+      const project = attribute(session.cwd_key)
+      const b = bucket(project ? project.id : `cwd:${session.cwd_key}`)
+      if (!project) unassignedCwd.set(`cwd:${session.cwd_key}`, session.cwd)
+      for (const [day, minutes] of sessionDays.get(session.session_id)!) {
+        if (inRange.has(day)) b.costPerDay.set(day, (b.costPerDay.get(day) ?? 0) + (session.cost_usd * minutes) / session.total)
+      }
+    }
+
+    for (const entry of this.entryRows(range)) {
+      const b = bucket(entry.project_id)
+      b.manualPerDay.set(entry.date, (b.manualPerDay.get(entry.date) ?? 0) + entry.minutes)
+    }
+
+    return { buckets, signals, unassignedCwd }
   }
 
   /** Automatic work blocks of one project, newest first. */

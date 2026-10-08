@@ -156,6 +156,63 @@ export const MIGRATIONS: string[] = [
   CREATE INDEX session_minutes_minute ON session_minutes(minute);
   DELETE FROM import_state WHERE source_key LIKE 'claude:%';
   `,
+  `
+  CREATE TABLE agreements (
+    id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL REFERENCES users(id),
+    project_id TEXT NOT NULL REFERENCES projects(id),
+    kind TEXT NOT NULL CHECK (kind IN ('hourly', 'fixed', 'recurring')),
+    amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+    interval TEXT CHECK (interval IN ('month', 'year')),
+    start_date TEXT NOT NULL,
+    end_date TEXT,
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  );
+  CREATE INDEX agreements_project ON agreements(project_id) WHERE deleted_at IS NULL;
+
+  CREATE TABLE payments (
+    id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL REFERENCES users(id),
+    project_id TEXT NOT NULL REFERENCES projects(id),
+    agreement_id TEXT REFERENCES agreements(id),
+    date TEXT NOT NULL,
+    amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  );
+
+  CREATE TABLE expenses (
+    id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL REFERENCES users(id),
+    project_id TEXT REFERENCES projects(id),
+    amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+    interval TEXT CHECK (interval IN ('month', 'year')),
+    start_date TEXT NOT NULL,
+    end_date TEXT,
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  );
+
+  CREATE TABLE ai_plans (
+    id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL REFERENCES users(id),
+    kind TEXT NOT NULL CHECK (kind IN ('api', 'subscription')),
+    monthly_cents INTEGER,
+    start_date TEXT NOT NULL,
+    end_date TEXT,
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  );
+  `,
 ]
 
 /** Starter categories, created once when the categories table has never been used. */
