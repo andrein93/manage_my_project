@@ -1,4 +1,5 @@
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ApiError } from './api'
 
@@ -62,3 +63,51 @@ export function useRelativeTime() {
 
 /** Incremented after a scan so open views reload. */
 export const scanTick = ref(0)
+
+/**
+ * Remembers some query parameters of a page per browser: when the user comes back to the page
+ * without any of them in the URL, the saved ones are restored. `reset()` clears both.
+ */
+export function useSavedQuery(storageKey: string, keys: string[]) {
+  const route = useRoute()
+  const router = useRouter()
+  const pick = (query: Record<string, unknown>) =>
+    Object.fromEntries(keys.filter((k) => typeof query[k] === 'string' && query[k] !== '').map((k) => [k, query[k] as string]))
+
+  const read = (): Record<string, string> => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) ?? '{}')
+      return saved && typeof saved === 'object' ? pick(saved) : {}
+    } catch {
+      return {}
+    }
+  }
+  const write = (values: Record<string, string>) => {
+    try {
+      if (Object.keys(values).length) localStorage.setItem(storageKey, JSON.stringify(values))
+      else localStorage.removeItem(storageKey)
+    } catch {
+      // Storage unavailable: filters simply are not remembered.
+    }
+  }
+
+  // Restore before the page loads its data, only when the URL carries no filters of its own.
+  const saved = read()
+  const restoring = Object.keys(pick(route.query)).length === 0 && Object.keys(saved).length > 0
+  if (restoring) router.replace({ query: { ...route.query, ...saved } })
+
+  // Save on arrival too (a link may carry filters), except while restoring the saved ones.
+  watch(
+    () => route.query,
+    (query) => write(pick(query)),
+    { immediate: !restoring },
+  )
+
+  function reset() {
+    write({})
+    const rest = Object.fromEntries(Object.entries(route.query).filter(([k]) => !keys.includes(k)))
+    router.replace({ query: rest })
+  }
+
+  return { reset, restoring }
+}

@@ -37,12 +37,13 @@
     "count": "Nessun progetto | 1 progetto | {n} progetti",
     "emptyTitle": "Nessun progetto corrisponde ai filtri",
     "emptyHint": "Azzera i filtri oppure aggiungi una cartella di lavoro nelle Impostazioni.",
-    "clear": "Azzera filtri",
+    "clear": "Reimposta filtri",
     "missing": "cartella mancante",
     "uncommitted": "modifiche non committate",
     "anyHealth": "Qualsiasi stato",
     "needsAttention": "Da controllare ({n})",
-    "anyFramework": "Qualsiasi framework"
+    "anyFramework": "Qualsiasi framework",
+    "filtersRemembered": "I filtri restano salvati su questo browser."
   },
   "fresh": {
     "today": "oggi",

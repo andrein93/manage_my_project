@@ -37,12 +37,13 @@
     "count": "No projects | 1 project | {n} projects",
     "emptyTitle": "No projects match these filters",
     "emptyHint": "Clear the filters, or add a workspace in Settings.",
-    "clear": "Clear filters",
+    "clear": "Reset filters",
     "missing": "folder missing",
     "uncommitted": "uncommitted changes",
     "anyHealth": "Any health",
     "needsAttention": "Needs attention ({n})",
-    "anyFramework": "Any framework"
+    "anyFramework": "Any framework",
+    "filtersRemembered": "Your filters are remembered on this browser."
   },
   "fresh": {
     "today": "today",

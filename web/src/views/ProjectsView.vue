@@ -6,7 +6,7 @@ import { api, type Meta, type Project } from '../api'
 import CategoryDot from '../components/CategoryDot.vue'
 import FreshnessStrip from '../components/FreshnessStrip.vue'
 import StatusMark from '../components/StatusMark.vue'
-import { scanTick, useAutoRefresh, useErrors } from '../composables'
+import { scanTick, useAutoRefresh, useErrors, useSavedQuery } from '../composables'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -36,7 +36,14 @@ function setFilter(key: string, value: string) {
 }
 /** Most important health flag, skipping "uncommitted" which already has its own marker. */
 const mainFlag = (p: Project) => p.health.find((f) => f.kind !== 'uncommitted')?.kind ?? null
-const hasFilters = computed(() => ['q', 'status', 'stack', 'tag', 'inactive', 'client', 'category', 'attention', 'framework'].some((k) => q(k)))
+// Filters (and sort) are remembered per browser; "Reset filters" forgets them.
+const FILTER_KEYS = ['q', 'status', 'stack', 'tag', 'inactive', 'client', 'category', 'attention', 'framework', 'sort']
+const { reset: resetQuery } = useSavedQuery('mmp.projects.filters', FILTER_KEYS)
+function resetFilters() {
+  search.value = ''
+  resetQuery()
+}
+const hasFilters = computed(() => FILTER_KEYS.some((k) => q(k)))
 
 let latestRequest = 0
 async function load() {
@@ -140,6 +147,7 @@ useAutoRefresh(load)
         <option value="activity">{{ t('list.sortActivity') }}</option>
         <option value="name">{{ t('list.sortName') }}</option>
       </select>
+      <button v-if="hasFilters" type="button" class="btn justify-center" :title="t('list.filtersRemembered')" @click="resetFilters">{{ t('list.clear') }}</button>
     </div>
 
     <p v-if="error" class="mb-4 text-sm text-danger">{{ error }}</p>
@@ -176,7 +184,7 @@ useAutoRefresh(load)
       <p class="font-medium">{{ t('list.emptyTitle') }}</p>
       <p class="mt-1 text-sm text-muted">{{ t('list.emptyHint') }}</p>
       <div class="mt-4 flex justify-center gap-2">
-        <button v-if="hasFilters" class="btn" @click="search = ''; router.replace({ query: {} })">{{ t('list.clear') }}</button>
+        <button v-if="hasFilters" class="btn" @click="resetFilters">{{ t('list.clear') }}</button>
         <RouterLink to="/settings" class="btn">{{ t('app.settings') }}</RouterLink>
       </div>
     </div>
