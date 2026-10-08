@@ -5,6 +5,7 @@ import { resolveCategoryFilter, resolveCategoryPatch, resolveClientFilter, resol
 import { VERSION } from '../version.js'
 import { formatProject, formatTable, relativeTime } from './format.js'
 import { registerOrganizeCommands } from './organize.js'
+import { registerFinanceCommands } from './finance.js'
 import { registerTimeCommands } from './time.js'
 
 
@@ -189,6 +190,7 @@ export function buildCli(getApp: () => App, out: (line: string) => void = consol
 
   registerOrganizeCommands(program, getApp, out)
   registerTimeCommands(program, getApp, out)
+  registerFinanceCommands(program, getApp, out)
 
   program
     .command('mcp')

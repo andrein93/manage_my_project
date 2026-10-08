@@ -6,6 +6,7 @@ import { PROJECT_STATUSES, type ProjectStatus } from '../core/types.js'
 import { VERSION } from '../version.js'
 import { resolveCategoryFilter, resolveCategoryPatch, resolveClientFilter, resolveClientPatch } from '../core/filters.js'
 import { registerOrganizeTools } from './organize-tools.js'
+import { registerFinanceTools } from './finance-tools.js'
 import { registerTimeTools } from './time-tools.js'
 import { tool } from './tool.js'
 
@@ -161,6 +162,7 @@ export function createMcpServer(app: App): McpServer {
 
   registerOrganizeTools(server, app)
   registerTimeTools(server, app)
+  registerFinanceTools(server, app)
   return server
 }
 
