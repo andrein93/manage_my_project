@@ -1,20 +1,22 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import type { ProjectStatus } from '../api'
+import UiBadge from '../ui/UiBadge.vue'
 
 defineProps<{ status: ProjectStatus }>()
 const { t } = useI18n()
-const shape: Record<ProjectStatus, string> = {
-  active: 'bg-ink',
-  paused: 'border-2 border-ink',
-  archived: 'border border-dashed border-muted',
-  ignored: 'bg-line',
+const tone = { active: 'fresh', paused: 'aging', archived: 'dormant', ignored: 'neutral' } as const
+const dot: Record<ProjectStatus, string> = {
+  active: 'bg-current',
+  paused: 'border-[1.5px] border-current',
+  archived: 'border border-dashed border-current',
+  ignored: 'bg-line-strong',
 }
 </script>
 
 <template>
-  <span class="inline-flex items-center gap-2 text-sm">
-    <span class="h-2 w-2 rounded-full" :class="shape[status]" aria-hidden="true" />
+  <UiBadge :tone="tone[status]">
+    <span class="size-1.5 rounded-full" :class="dot[status]" aria-hidden="true" />
     {{ t(`status.${status}`) }}
-  </span>
+  </UiBadge>
 </template>

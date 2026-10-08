@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ArrowLeft, CircleDot, Code, FolderOpen, TriangleAlert } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api, type CategoryRef, type NamedRef, type Project, type ProjectStatus } from '../api'
@@ -10,6 +11,11 @@ import { uiLocale } from '../i18n'
 import ProjectTime from '../components/ProjectTime.vue'
 import TagEditor from '../components/TagEditor.vue'
 import { scanTick, useAutoRefresh, useErrors } from '../composables'
+import PageHeader from '../ui/PageHeader.vue'
+import UiBadge from '../ui/UiBadge.vue'
+import UiButton from '../ui/UiButton.vue'
+import UiCard from '../ui/UiCard.vue'
+import UiSkeleton from '../ui/UiSkeleton.vue'
 
 const props = defineProps<{ id: string }>()
 const { t } = useI18n()
@@ -139,40 +145,50 @@ useAutoRefresh(() => load())
 
 <template>
   <div>
-    <RouterLink to="/projects" class="text-sm text-muted hover:text-ink">← {{ t('detail.back') }}</RouterLink>
-    <p v-if="error" class="mt-4 text-sm text-danger" role="alert">{{ error }}</p>
+    <p v-if="error" class="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
+
+    <div v-if="!project && !error" class="space-y-4">
+      <UiSkeleton class="h-8 w-1/3" />
+      <UiSkeleton class="h-40" />
+    </div>
 
     <template v-if="project">
-      <div class="mt-3 flex flex-wrap items-start justify-between gap-4">
-        <div class="min-w-0">
-          <h1 class="text-2xl font-semibold tracking-tight">{{ project.name }}</h1>
-          <p v-if="project.client || project.category" class="mt-1 flex flex-wrap items-center gap-x-3 text-sm text-muted">
-            <RouterLink v-if="project.client" :to="{ name: 'client', params: { id: project.client.id } }" class="hover:text-ink">
-              {{ project.client.name }}
-            </RouterLink>
-            <CategoryDot :category="project.category" show-name />
-          </p>
-          <p class="mt-1 font-mono text-xs break-all text-muted">{{ project.path }}</p>
-        </div>
-        <div class="flex gap-2">
-          <button class="btn" :disabled="!!project.missingSince" @click="open('folder')">{{ t('detail.openFolder') }}</button>
-          <button class="btn" :disabled="!!project.missingSince" @click="open('vscode')">{{ t('detail.openVscode') }}</button>
-        </div>
+      <PageHeader :title="project.name">
+        <template #before>
+          <RouterLink to="/projects" class="mb-2 inline-flex items-center gap-1 text-sm text-muted hover:text-ink">
+            <ArrowLeft class="size-3.5" aria-hidden="true" /> {{ t('detail.back') }}
+          </RouterLink>
+        </template>
+        <template #actions>
+          <UiButton :icon="FolderOpen" :disabled="!!project.missingSince" @click="open('folder')">{{ t('detail.openFolder') }}</UiButton>
+          <UiButton :icon="Code" :disabled="!!project.missingSince" @click="open('vscode')">{{ t('detail.openVscode') }}</UiButton>
+        </template>
+      </PageHeader>
+      <div class="-mt-4 mb-6">
+        <p v-if="project.client || project.category" class="flex flex-wrap items-center gap-x-3 text-sm text-muted">
+          <RouterLink v-if="project.client" :to="{ name: 'client', params: { id: project.client.id } }" class="hover:text-ink">
+            {{ project.client.name }}
+          </RouterLink>
+          <CategoryDot :category="project.category" show-name />
+        </p>
+        <p class="mt-1 font-mono text-xs break-all text-muted">{{ project.path }}</p>
       </div>
 
-      <p v-if="project.missingSince" class="mt-4 border-l-2 border-danger pl-3 text-sm">{{ t('detail.missingBanner') }}</p>
-      <ul v-else-if="project.health.length" class="mt-4 flex flex-wrap gap-2 text-sm">
-        <li v-for="f in project.health" :key="f.kind" class="rounded border border-aging px-2 py-0.5 text-aging">
-          {{ t(`health.${f.kind}`) }}<template v-if="f.count"> ({{ f.count }})</template>
+      <p v-if="project.missingSince" class="mb-6 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{{ t('detail.missingBanner') }}</p>
+      <ul v-else-if="project.health.length" class="mb-6 flex flex-wrap gap-2">
+        <li v-for="f in project.health" :key="f.kind">
+          <UiBadge tone="aging"><TriangleAlert class="size-3" aria-hidden="true" />{{ t(`health.${f.kind}`) }}<template v-if="f.count"> ({{ f.count }})</template></UiBadge>
         </li>
       </ul>
 
-      <ProjectTasks class="mt-8" :project-id="project.id" />
-      <ProjectTime class="mt-12" :project-id="project.id" />
-      <ProjectMoney class="mt-12" :project-id="project.id" />
+      <div class="space-y-4">
+        <UiCard class="p-5"><ProjectTasks :project-id="project.id" /></UiCard>
+        <UiCard class="p-5"><ProjectTime :project-id="project.id" /></UiCard>
+        <UiCard class="p-5"><ProjectMoney :project-id="project.id" /></UiCard>
+      </div>
 
-      <div class="mt-12 grid gap-10 border-t border-line pt-8 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <form class="space-y-5" @submit.prevent="save">
+      <div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <UiCard as="form" class="space-y-5 p-5" @submit.prevent="save">
           <label class="block">
             <span class="mb-1.5 block text-sm font-medium">{{ t('detail.name') }}</span>
             <input v-model="form.name" class="field" required maxlength="200" />
@@ -224,12 +240,12 @@ useAutoRefresh(() => load())
           </div>
           <fieldset>
             <legend class="mb-1.5 text-sm font-medium">{{ t('detail.status') }}</legend>
-            <div class="flex flex-wrap gap-2">
+            <div class="inline-flex flex-wrap rounded-lg border border-line bg-surface-2 p-0.5">
               <label
                 v-for="s in STATUSES"
                 :key="s"
-                class="cursor-pointer rounded-md border px-3 py-1.5 text-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-action"
-                :class="form.status === s ? 'border-ink bg-ink text-paper' : 'border-line bg-surface text-ink hover:border-ink'"
+                class="cursor-pointer rounded-md px-3 py-1.5 text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-action"
+                :class="form.status === s ? 'bg-surface text-ink shadow-card' : 'text-muted hover:text-ink'"
               >
                 <input v-model="form.status" type="radio" class="sr-only" :value="s" />
                 {{ t(`status.${s}`) }}
@@ -244,11 +260,11 @@ useAutoRefresh(() => load())
             <button type="submit" class="btn btn-primary" :disabled="!dirty || saving">{{ t('detail.save') }}</button>
             <span v-if="saved" class="text-sm text-fresh" role="status">{{ t('detail.saved') }}</span>
           </div>
-        </form>
+        </UiCard>
 
-        <aside>
-          <h2 class="mb-3 text-sm font-medium text-muted">{{ t('detail.facts') }}</h2>
-          <dl class="divide-y divide-line border-y border-line text-sm">
+        <UiCard as="aside" class="p-5">
+          <h2 class="label mb-3">{{ t('detail.facts') }}</h2>
+          <dl class="divide-y divide-line text-sm">
             <div class="grid grid-cols-[8rem_1fr] gap-3 py-2.5">
               <dt class="text-muted">{{ t('detail.lastActivity') }}</dt>
               <dd><FreshnessStrip :at="project.lastActivityAt" /></dd>
@@ -259,8 +275,8 @@ useAutoRefresh(() => load())
             </div>
             <div v-if="Object.keys(project.versions).length" class="grid grid-cols-[8rem_1fr] gap-3 py-2.5">
               <dt class="text-muted">{{ t('detail.versions') }}</dt>
-              <dd class="tabular-nums">
-                <span v-for="(v, k) in project.versions" :key="k" class="mr-3 inline-block">{{ k }} {{ v }}</span>
+              <dd class="flex flex-wrap gap-1">
+                <UiBadge v-for="(v, k) in project.versions" :key="k">{{ k }} {{ v }}</UiBadge>
               </dd>
             </div>
             <template v-if="project.git">
@@ -268,7 +284,7 @@ useAutoRefresh(() => load())
                 <dt class="text-muted">{{ t('detail.branch') }}</dt>
                 <dd>
                   {{ project.git.branch ?? '-' }}
-                  <span v-if="project.git.dirty" class="ml-1 text-aging">● {{ t('list.uncommitted') }}</span>
+                  <UiBadge v-if="project.git.dirty" tone="aging" class="ml-1"><CircleDot class="size-3" aria-hidden="true" />{{ t('list.uncommitted') }}</UiBadge>
                 </dd>
               </div>
               <div class="grid grid-cols-[8rem_1fr] gap-3 py-2.5">
@@ -289,7 +305,7 @@ useAutoRefresh(() => load())
               <dd>{{ project.source === 'scan' ? t('detail.sourceScan') : t('detail.sourceManual') }}</dd>
             </div>
           </dl>
-        </aside>
+        </UiCard>
       </div>
     </template>
   </div>

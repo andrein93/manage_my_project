@@ -52,20 +52,20 @@ useAutoRefresh(load, 60_000)
     <p v-if="error" class="text-sm text-danger" role="alert">{{ error }}</p>
     <dl v-if="month && last30" class="grid grid-cols-3 gap-4">
       <div>
-        <dt class="text-sm text-muted">{{ t('time.thisMonth') }}</dt>
-        <dd class="text-xl font-semibold tabular-nums">{{ formatMinutes(month.totals.minutes) }}</dd>
+        <dt class="label">{{ t('time.thisMonth') }}</dt>
+        <dd class="mt-1 text-xl font-semibold tracking-tight tabular-nums">{{ formatMinutes(month.totals.minutes) }}</dd>
       </div>
       <div>
-        <dt class="text-sm text-muted">{{ t('time.last30') }}</dt>
-        <dd class="text-xl font-semibold tabular-nums">{{ formatMinutes(last30.totals.minutes) }}</dd>
+        <dt class="label">{{ t('time.last30') }}</dt>
+        <dd class="mt-1 text-xl font-semibold tracking-tight tabular-nums">{{ formatMinutes(last30.totals.minutes) }}</dd>
       </div>
       <div :title="t('time.aiCostHint')">
-        <dt class="text-sm text-muted">{{ t('time.aiCost') }} ({{ t('time.thisMonth').toLowerCase() }})</dt>
-        <dd class="text-xl font-semibold tabular-nums">{{ formatUsd(month.totals.costUsd) }}</dd>
+        <dt class="label">{{ t('time.aiCost') }} ({{ t('time.thisMonth').toLowerCase() }})</dt>
+        <dd class="mt-1 text-xl font-semibold tracking-tight tabular-nums">{{ formatUsd(month.totals.costUsd) }}</dd>
       </div>
     </dl>
-    <h3 class="mt-5 mb-1 text-sm font-medium text-muted">{{ t('time.recentBlocks') }}</h3>
-    <ul v-if="blocks.length" class="divide-y divide-line border-y border-line text-sm">
+    <h3 class="label mt-6 mb-2">{{ t('time.recentBlocks') }}</h3>
+    <ul v-if="blocks.length" class="divide-y divide-line text-sm">
       <li v-for="b in blocks" :key="b.start" class="flex items-center justify-between gap-3 py-2">
         <span>{{ when(b.start) }}</span>
         <span class="flex items-center gap-3">

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CircleDot, FolderGit2, Search, TriangleAlert } from 'lucide-vue-next'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
@@ -7,6 +8,13 @@ import CategoryDot from '../components/CategoryDot.vue'
 import FreshnessStrip from '../components/FreshnessStrip.vue'
 import StatusMark from '../components/StatusMark.vue'
 import { scanTick, useAutoRefresh, useErrors } from '../composables'
+import PageHeader from '../ui/PageHeader.vue'
+import UiBadge from '../ui/UiBadge.vue'
+import UiButton from '../ui/UiButton.vue'
+import UiCard from '../ui/UiCard.vue'
+import UiEmpty from '../ui/UiEmpty.vue'
+import UiSkeleton from '../ui/UiSkeleton.vue'
+import StaggerItem from '../ui/effects/StaggerItem.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -36,6 +44,10 @@ function setFilter(key: string, value: string) {
 }
 /** Most important health flag, skipping "uncommitted" which already has its own marker. */
 const mainFlag = (p: Project) => p.health.find((f) => f.kind !== 'uncommitted')?.kind ?? null
+function clearFilters() {
+  search.value = ''
+  router.replace({ query: {} })
+}
 const hasFilters = computed(() => ['q', 'status', 'stack', 'tag', 'inactive', 'client', 'category', 'attention', 'framework'].some((k) => q(k)))
 
 let latestRequest = 0
@@ -94,12 +106,12 @@ useAutoRefresh(load)
 
 <template>
   <section>
-    <div class="mb-5 flex flex-wrap items-end justify-between gap-3">
-      <h1 class="text-2xl font-semibold tracking-tight">{{ t('app.projects') }}</h1>
-      <p class="text-sm text-muted">{{ t('list.count', { n: sorted.length }, sorted.length) }}</p>
-    </div>
+    <PageHeader :title="t('app.projects')" :subtitle="t('list.count', { n: sorted.length }, sorted.length)" />
 
-    <input v-model="search" type="search" class="field mb-2" :placeholder="t('list.search')" :aria-label="t('list.search')" />
+    <div class="relative mb-2">
+      <Search class="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+      <input v-model="search" type="search" class="field pl-9" :placeholder="t('list.search')" :aria-label="t('list.search')" />
+    </div>
     <div class="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
       <select class="field" :value="filters.attention" :aria-label="t('a11y.attention')" @change="setFilter('attention', ($event.target as HTMLSelectElement).value)">
         <option value="">{{ t('list.anyHealth') }}</option>
@@ -142,43 +154,46 @@ useAutoRefresh(load)
       </select>
     </div>
 
-    <p v-if="error" class="mb-4 text-sm text-danger">{{ error }}</p>
+    <p v-if="error" class="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
 
-    <ul v-if="sorted.length" class="divide-y divide-line border-y border-line">
-      <li v-for="p in sorted" :key="p.id">
+    <UiCard v-if="!loaded && !error" class="divide-y divide-line">
+      <div v-for="n in 6" :key="n" class="p-4">
+        <UiSkeleton class="h-4 w-1/3" />
+        <UiSkeleton class="mt-2 h-3 w-1/2" />
+      </div>
+    </UiCard>
+
+    <UiCard v-if="sorted.length" spotlight as="ul" class="divide-y divide-line overflow-hidden">
+      <StaggerItem v-for="(p, i) in sorted" :key="p.id" :index="i" as="li">
         <RouterLink
           :to="{ name: 'project', params: { id: p.id } }"
-          class="grid gap-x-6 gap-y-2 px-1 py-3.5 hover:bg-surface sm:grid-cols-[minmax(0,1fr)_14rem_11rem_6rem] sm:items-center"
+          class="grid gap-x-6 gap-y-2 px-4 py-3.5 transition-colors hover:bg-surface-2/60 sm:grid-cols-[minmax(0,1fr)_14rem_11rem_7rem] sm:items-center"
         >
           <div class="min-w-0">
             <div class="flex flex-wrap items-center gap-x-2">
               <CategoryDot :category="p.category" reserve />
               <span class="font-medium" :class="{ 'text-muted line-through': p.missingSince }">{{ p.name }}</span>
               <span v-if="p.client" class="text-sm text-muted">{{ p.client.name }}</span>
-              <span v-if="mainFlag(p) && !p.missingSince" class="text-xs text-aging">⚠ {{ t(`health.${mainFlag(p)}`) }}</span>
-              <span v-if="p.missingSince" class="text-xs text-danger">{{ t('list.missing') }}</span>
-              <span v-if="p.git?.dirty" class="text-xs text-aging" :title="t('list.uncommitted')">● {{ t('list.uncommitted') }}</span>
+              <UiBadge v-if="mainFlag(p) && !p.missingSince" tone="aging"><TriangleAlert class="size-3" aria-hidden="true" />{{ t(`health.${mainFlag(p)}`) }}</UiBadge>
+              <UiBadge v-if="p.missingSince" tone="danger">{{ t('list.missing') }}</UiBadge>
+              <UiBadge v-if="p.git?.dirty" tone="aging" :title="t('list.uncommitted')"><CircleDot class="size-3" aria-hidden="true" />{{ t('list.uncommitted') }}</UiBadge>
             </div>
             <p v-if="p.description" class="truncate text-sm text-muted">{{ p.description }}</p>
             <p v-else class="truncate font-mono text-xs text-muted">{{ p.path }}</p>
           </div>
           <div class="flex flex-wrap gap-1">
-            <span v-for="s in p.stack" :key="s" class="rounded border border-line px-1.5 text-xs text-muted">{{ s }}</span>
-            <span v-for="tag in p.tags" :key="tag" class="rounded bg-line/60 px-1.5 text-xs">#{{ tag }}</span>
+            <UiBadge v-for="s in p.stack" :key="s">{{ s }}</UiBadge>
+            <UiBadge v-for="tag in p.tags" :key="tag" tone="accent">#{{ tag }}</UiBadge>
           </div>
           <FreshnessStrip :at="p.lastActivityAt" />
-          <StatusMark :status="p.status" />
+          <StatusMark :status="p.status" class="justify-self-start" />
         </RouterLink>
-      </li>
-    </ul>
+      </StaggerItem>
+    </UiCard>
 
-    <div v-else-if="loaded && !error" class="border-y border-line py-16 text-center">
-      <p class="font-medium">{{ t('list.emptyTitle') }}</p>
-      <p class="mt-1 text-sm text-muted">{{ t('list.emptyHint') }}</p>
-      <div class="mt-4 flex justify-center gap-2">
-        <button v-if="hasFilters" class="btn" @click="search = ''; router.replace({ query: {} })">{{ t('list.clear') }}</button>
-        <RouterLink to="/settings" class="btn">{{ t('app.settings') }}</RouterLink>
-      </div>
-    </div>
+    <UiEmpty v-else-if="loaded && !error" :icon="FolderGit2" :title="t('list.emptyTitle')" :hint="t('list.emptyHint')">
+      <UiButton v-if="hasFilters" @click="clearFilters">{{ t('list.clear') }}</UiButton>
+      <UiButton to="/settings">{{ t('app.settings') }}</UiButton>
+    </UiEmpty>
   </section>
 </template>
