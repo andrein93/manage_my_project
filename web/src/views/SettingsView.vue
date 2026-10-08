@@ -7,6 +7,7 @@ import CategoriesSettings from '../components/CategoriesSettings.vue'
 import CommandReference from '../components/CommandReference.vue'
 import FinanceSettings from '../components/FinanceSettings.vue'
 import LanguageSettings from '../components/LanguageSettings.vue'
+import ThemeSettings from '../components/ThemeSettings.vue'
 import TimeSettings from '../components/TimeSettings.vue'
 import { scanTick, useErrors } from '../composables'
 
@@ -95,6 +96,7 @@ onMounted(load)
     <h1 class="text-2xl font-semibold tracking-tight">{{ t('app.settings') }}</h1>
     <p v-if="error" class="text-sm text-danger" role="alert">{{ error }}</p>
 
+    <ThemeSettings />
     <LanguageSettings />
 
     <section>

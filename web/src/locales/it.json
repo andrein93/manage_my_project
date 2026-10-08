@@ -170,7 +170,12 @@
     "saveIgnore": "Salva elenco",
     "language": "Lingua",
     "languageHint": "La lingua di questa dashboard. Le risposte del terminale e dell'AI restano in inglese.",
-    "languageAuto": "Automatica (lingua del browser)"
+    "languageAuto": "Automatica (lingua del browser)",
+    "appearance": "Aspetto",
+    "appearanceHint": "Salvato in questo browser.",
+    "themeSystem": "Sistema",
+    "themeLight": "Chiaro",
+    "themeDark": "Scuro"
   },
   "error": {
     "generic": "Qualcosa è andato storto: {message}",
