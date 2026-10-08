@@ -45,7 +45,7 @@ Create:
 - `web/src/components/AppSidebar.vue`, `CommandPalette.vue`, `ThemeSettings.vue`
 - `tests/web-theme.test.ts`, `tests/web-motion.test.ts`, `tests/web-toasts.test.ts`, `tests/web-palette.test.ts`
 
-Modify: `package.json`, `web/index.html`, `web/src/style.css`, `web/src/main.ts` (none needed unless noted), `web/src/App.vue`, every file in `web/src/views/` and `web/src/components/`, `web/src/locales/en.json`, `web/src/locales/it.json`.
+Modify: `package.json`, `web/index.html`, `web/src/style.css`, `web/src/App.vue`, every file in `web/src/views/` and `web/src/components/`, `web/src/locales/en.json`, `web/src/locales/it.json`.
 
 `UiInput`/`UiSelect` from the spec are **not** created: the restyled `.field` class on native elements already gives the look and keeps `v-model`/`:value` untouched (YAGNI). `StaggerList` from the spec is implemented as `StaggerItem` (per-item wrapper), which works with existing `v-for` markup.
 
@@ -794,7 +794,7 @@ Expected: PASS (4 tests).
 
 ```vue
 <script setup lang="ts">
-import type { Component } from 'vue'
+import { computed, type Component } from 'vue'
 import type { RouteLocationRaw } from 'vue-router'
 
 const props = withDefaults(
@@ -808,10 +808,10 @@ const props = withDefaults(
   { variant: 'secondary', size: 'md', type: 'button' },
 )
 
-const classes = [
+const classes = computed(() => [
   'btn',
   { 'btn-primary': props.variant === 'primary', 'btn-ghost': props.variant === 'ghost', 'btn-danger': props.variant === 'danger', 'btn-sm': props.size === 'sm' },
-]
+])
 </script>
 
 <template>
@@ -1102,7 +1102,8 @@ describe('searchPalette', () => {
   })
 
   it('matches keywords', () => {
-    expect(searchPalette(items, 'spa')[0].items[0].label).toBe('Acme')
+    const clients = searchPalette(items, 'spa').find((g) => g.group === 'clients')
+    expect(clients?.items[0].label).toBe('Acme')
   })
 
   it('caps each group', () => {
@@ -1323,7 +1324,7 @@ const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigat
 ```vue
 <script setup lang="ts">
 import { AnimatePresence, Motion, MotionConfig } from 'motion-v'
-import { ChartPie, CheckSquare, Clock, FolderGit2, LayoutDashboard, Menu, Settings, Users, Wallet } from 'lucide-vue-next'
+import { CheckSquare, Clock, FolderGit2, LayoutDashboard, Menu, Settings, Users, Wallet } from 'lucide-vue-next'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
@@ -1385,9 +1386,6 @@ function onKeydown(e: KeyboardEvent) {
 }
 onMounted(() => window.addEventListener('keydown', onKeydown))
 onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
-
-// Keep `ChartPie` imported only if used; remove it if unused after Task 8.
-void ChartPie
 </script>
 
 <template>
@@ -1456,8 +1454,6 @@ void ChartPie
   </MotionConfig>
 </template>
 ```
-
-Remove the `ChartPie` import and the `void ChartPie` line before committing (it is shown only to warn against importing unused icons; do not keep it).
 
 - [ ] **Step 3: Verify in the browser**
 
@@ -1552,7 +1548,6 @@ const query = ref('')
 const active = ref(0)
 const input = ref<HTMLInputElement | null>(null)
 const remote = ref<PaletteItem[]>([])
-const actions = new Map<string, () => void>()
 let loadedTick = -1
 let returnFocus: HTMLElement | null = null
 
@@ -1635,7 +1630,6 @@ watch(active, async (i) => {
   document.getElementById(`palette-item-${i}`)?.scrollIntoView({ block: 'nearest' })
 })
 
-void actions
 </script>
 
 <template>
@@ -1710,8 +1704,6 @@ void actions
   </AnimatePresence>
 </template>
 ```
-
-Then delete the unused `actions` map and the `void actions` line (dispatch is done by `run`), so the script has no dead code.
 
 - [ ] **Step 3: Mount it in `web/src/App.vue`**
 
@@ -2028,7 +2020,7 @@ With `npm start`: every page in dark, light, system; 390 px width; OS reduced mo
 
 - [ ] **Step 5: Bump version and commit**
 
-Bump the minor version in `package.json` (and `src/version.ts` if it mirrors it), then:
+Bump `version` in `package.json` from `0.5.0` to `0.6.0` (`src/version.ts` reads it), then:
 
 ```bash
 git add -A
