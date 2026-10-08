@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { api } from './api'
 import AppSidebar, { type NavLink } from './components/AppSidebar.vue'
+import CommandPalette from './components/CommandPalette.vue'
 import { scanTick, useErrors } from './composables'
 import { isPaletteShortcut } from './palette'
 import { readPref, writePref } from './prefs'
@@ -132,5 +133,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
       </div>
     </div>
     <UiToastStack />
+    <CommandPalette :open="paletteOpen" :links="links" @close="paletteOpen = false" @rescan="rescan" />
   </MotionConfig>
 </template>

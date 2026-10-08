@@ -392,6 +392,21 @@
     "collapse": "Comprimi barra laterale",
     "expand": "Espandi barra laterale",
     "menu": "Menu",
-    "closeMenu": "Chiudi menu"
+    "closeMenu": "Chiudi menu",
+    "palette": {
+      "placeholder": "Cerca progetti, attività, clienti…",
+      "empty": "Nessun risultato per “{query}”",
+      "pages": "Pagine",
+      "projects": "Progetti",
+      "tasks": "Attività",
+      "clients": "Clienti",
+      "actions": "Azioni",
+      "themeSystem": "Tema: sistema",
+      "themeLight": "Tema: chiaro",
+      "themeDark": "Tema: scuro",
+      "navigate": "per muoverti",
+      "select": "per aprire",
+      "close": "per chiudere"
+    }
   }
 }
