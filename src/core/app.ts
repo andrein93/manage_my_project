@@ -1,10 +1,13 @@
 import { dirname, join } from 'node:path'
 import { loadConfig, type Config } from '../config.js'
+import { CategoryRepository } from './categories.js'
+import { ClientRepository } from './clients.js'
 import { openDatabase, type DB } from './db.js'
 import { normalizePath } from './paths.js'
 import { ProjectRepository } from './projects.js'
 import { detect, scan } from './scanner.js'
 import { SettingsRepository } from './settings.js'
+import { TaskRepository } from './tasks.js'
 import { UserError, type Project, type ScanResult } from './types.js'
 import { assertDirectory, WorkspaceRepository } from './workspaces.js'
 
@@ -14,6 +17,9 @@ export interface App {
   projects: ProjectRepository
   workspaces: WorkspaceRepository
   settings: SettingsRepository
+  clients: ClientRepository
+  categories: CategoryRepository
+  tasks: TaskRepository
   scan(): Promise<ScanResult>
   /** Registers a single folder as a manual project (or returns the existing one). */
   addProject(path: string): Promise<Project>
@@ -24,6 +30,8 @@ export interface CreateAppOptions {
   config?: Config
   /** Override the database file (e.g. ':memory:' in tests). */
   dbFile?: string
+  /** Override "today" (YYYY-MM-DD) for due-date logic, e.g. in tests. */
+  today?: () => string
 }
 
 /** Wires configuration, database and services. Every entry point (CLI, server, MCP) uses this. */
@@ -33,6 +41,9 @@ export function createApp(options: CreateAppOptions = {}): App {
   const projects = new ProjectRepository(db)
   const workspaces = new WorkspaceRepository(db)
   const settings = new SettingsRepository(db)
+  const clients = new ClientRepository(db)
+  const categories = new CategoryRepository(db)
+  const tasks = new TaskRepository(db, options.today)
 
   // First run only (counting removed rows too, so a deliberately removed workspace stays removed):
   // the folder that contains mmp becomes the default workspace.
@@ -58,6 +69,9 @@ export function createApp(options: CreateAppOptions = {}): App {
     projects,
     workspaces,
     settings,
+    clients,
+    categories,
+    tasks,
     scan() {
       // One scan at a time per process. Callers arriving mid-scan share a single follow-up
       // scan, so they always see changes made before their call (e.g. a new workspace).

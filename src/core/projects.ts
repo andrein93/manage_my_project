@@ -31,6 +31,11 @@ interface ProjectRow {
   updated_at: string
   deleted_at: string | null
   tags: string | null
+  client_id: string | null
+  client_name: string | null
+  category_id: string | null
+  category_name: string | null
+  category_color: string | null
 }
 
 export interface DetectedFields {
@@ -52,8 +57,11 @@ const SELECT = `
       SELECT t.name FROM project_tags pt JOIN tags t ON t.id = pt.tag_id
       WHERE pt.project_id = p.id ORDER BY t.name
     ) t
-  ) AS tags
-  FROM projects p`
+  ) AS tags,
+  c.name AS client_name, g.name AS category_name, g.color AS category_color
+  FROM projects p
+  LEFT JOIN clients c ON c.id = p.client_id AND c.deleted_at IS NULL
+  LEFT JOIN categories g ON g.id = p.category_id AND g.deleted_at IS NULL`
 
 const DAY_MS = 86_400_000
 
@@ -78,7 +86,10 @@ export class ProjectRepository {
       if (filters.stack && !p.stack.includes(filters.stack.toLowerCase())) return false
       if (filters.tag && !p.tags.some((t) => t.toLowerCase() === filters.tag!.toLowerCase())) return false
       if (cutoff != null && p.lastActivityAt && Date.parse(p.lastActivityAt) > cutoff) return false
-      if (query && ![p.name, p.description, p.path, ...p.tags].some((v) => v.toLowerCase().includes(query))) {
+      if (filters.client && (p.client?.id ?? 'none') !== filters.client) return false
+      if (filters.category && (p.category?.id ?? 'none') !== filters.category) return false
+      const haystack = [p.name, p.description, p.path, ...p.tags, p.client?.name ?? '', p.category?.name ?? '']
+      if (query && !haystack.some((v) => v.toLowerCase().includes(query))) {
         return false
       }
       return true
@@ -195,10 +206,22 @@ export class ProjectRepository {
     if (!PROJECT_STATUSES.includes(status)) {
       throw new UserError(`Invalid status "${status}". Use one of: ${PROJECT_STATUSES.join(', ')}`)
     }
+    const clientId = patch.clientId === undefined ? (project.client?.id ?? null) : patch.clientId
+    const categoryId = patch.categoryId === undefined ? (project.category?.id ?? null) : patch.categoryId
+    if (clientId && !this.exists('clients', clientId)) throw new UserError(`Client not found: ${clientId}`, 'not_found')
+    if (categoryId && !this.exists('categories', categoryId)) {
+      throw new UserError(`Category not found: ${categoryId}`, 'not_found')
+    }
     this.db
-      .prepare('UPDATE projects SET name = ?, description = ?, status = ?, updated_at = ? WHERE id = ?')
-      .run(name, patch.description ?? project.description, status, now(), id)
+      .prepare(
+        'UPDATE projects SET name = ?, description = ?, status = ?, client_id = ?, category_id = ?, updated_at = ? WHERE id = ?',
+      )
+      .run(name, patch.description ?? project.description, status, clientId, categoryId, now(), id)
     return this.get(id)!
+  }
+
+  private exists(table: 'clients' | 'categories', id: string): boolean {
+    return !!this.db.prepare(`SELECT 1 FROM ${table} WHERE id = ? AND deleted_at IS NULL`).get(id)
   }
 
   /** Adds and removes tags; tag names are trimmed and lower-cased. */
@@ -264,6 +287,11 @@ function toProject(row: ProjectRow): Project {
     stack: JSON.parse(row.stack),
     git: row.git ? JSON.parse(row.git) : null,
     tags: row.tags ? JSON.parse(row.tags) : [],
+    client: row.client_id && row.client_name ? { id: row.client_id, name: row.client_name } : null,
+    category:
+      row.category_id && row.category_name
+        ? { id: row.category_id, name: row.category_name, color: row.category_color! }
+        : null,
     lastActivityAt: row.last_activity_at,
     missingSince: row.missing_since,
     createdAt: row.created_at,

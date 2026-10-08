@@ -14,6 +14,9 @@ export interface Fixture {
   cleanup(): void
 }
 
+/** Fixed "today" for due-date tests. */
+export const TODAY = '2026-10-08'
+
 /**
  * A temp "projects folder" with mmp installed at `<root>/mmp`, so the default
  * workspace is `<root>` exactly like a real clone.
@@ -32,7 +35,7 @@ export function createFixture(files: Record<string, string> = {}): Fixture {
   }
   write(files)
   const config = loadConfig({ env: { MMP_DATA_DIR: join(root, '.data') }, installDir, envFile: join(root, 'none') })
-  const app = createApp({ config, dbFile: ':memory:' })
+  const app = createApp({ config, dbFile: ':memory:', today: () => TODAY })
   return {
     root,
     installDir,
