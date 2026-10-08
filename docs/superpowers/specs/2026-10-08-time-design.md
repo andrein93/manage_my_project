@@ -42,7 +42,7 @@ project, client, category and day; manual entries cover calls/meetings; the AI c
   and attributed to the session's project.
 - Manual entries: project, date, minutes (1–1440), note. They add to automatic blocks.
 
-## Data model (migration 4)
+## Data model (migration 3)
 
 - `activity(cwd_key, cwd, minute TEXT 'YYYY-MM-DDTHH:MM' UTC, source ['claude'|'git'],
   session_id NULL, PRIMARY KEY (cwd_key, minute, source))` + index on `minute`.
