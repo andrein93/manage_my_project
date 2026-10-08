@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { api, type Workspace } from '../api'
+import CategoriesSettings from '../components/CategoriesSettings.vue'
 import { scanTick, useErrors } from '../composables'
 
 const { t } = useI18n()
@@ -122,6 +123,8 @@ onMounted(load)
         <button class="btn btn-primary shrink-0" :disabled="busy">{{ t('settings.add') }}</button>
       </form>
     </section>
+
+    <CategoriesSettings />
 
     <section>
       <h2 class="text-lg font-semibold">{{ t('settings.ignore') }}</h2>

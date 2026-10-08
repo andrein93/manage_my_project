@@ -6,15 +6,16 @@ Clone mmp into the folder that holds all your projects. It maps every sibling fo
 project, detects its stack, git state and last activity, and gives you three ways to work
 with them:
 
-- a **web dashboard** to browse, filter, tag and annotate projects;
+- a **web dashboard** to browse, filter, tag and annotate projects, group them by **client**
+  and **category**, and manage **tasks** as a list or a kanban board;
 - a **CLI** (`mmp list`, `mmp show`, …);
 - an **MCP server**, so your AI assistant (Claude Code, Cursor, Codex, …) can answer
   "which projects haven't I touched in three months?" or "add D:\clients to my workspaces".
 
 Everything stays on your machine, in a single SQLite file.
 
-> **Status:** v0.1 — the core registry. Tasks, automatic time tracking and profitability
-> tracking are on the [roadmap](#roadmap).
+> **Status:** v0.2 — project registry, clients, categories and tasks. Automatic time tracking
+> and profitability tracking are on the [roadmap](#roadmap).
 
 ## Requirements
 
@@ -50,14 +51,20 @@ Any other MCP client works the same way: run `node bin/mmp.js mcp` over stdio.
 
 | Tool | What it does |
 |---|---|
-| `list_projects` | Filter by status, stack, tag, inactivity, free text |
+| `list_projects` | Filter by status, stack, tag, client, category, inactivity, free text |
 | `get_project` | Full details of a project (by id, path or name) |
 | `get_current_project` | The project that contains a given path, e.g. the AI's working directory |
 | `scan_projects` | Rescan all workspaces |
 | `add_project` | Register a single folder |
 | `add_workspace` | Add a folder of projects and scan it |
-| `update_project` | Change name, description or status |
+| `update_project` | Change name, description, status, client or category |
 | `tag_project` | Add/remove tags |
+| `list_clients` / `create_client` / `update_client` | Manage clients |
+| `list_categories` | Categories defined in Settings |
+| `list_tasks` | Open tasks by project, client, category, priority or due date |
+| `create_tasks` | Add one or many tasks to a project ("turn the README roadmap into tasks") |
+| `update_task` | Edit or complete a task |
+| `delete_task` | Delete a task |
 
 ## CLI
 
@@ -69,11 +76,33 @@ mmp show <ref> [--json]             ref = id, path or name
 mmp add <path>                      register a single folder
 mmp workspace list|add|remove       manage scanned folders
 mmp set <ref> [--name] [--description] [--status active|paused|archived|ignored]
+             [--client <name|none>] [--category <name|none>]
 mmp tag <ref> [--add t...] [--remove t...]
+
+mmp client list | add <name> [--email --notes] | show <ref> | edit <ref> | remove <ref>
+mmp category list | add <name> [--color #rrggbb] | edit <ref> | remove <ref>
+
+mmp task list [--project] [--client] [--category] [--status s...] [--priority p...]
+              [--due overdue|today|week] [--all] [--json]
+mmp task add "<title>" --project <ref> [--priority low|normal|high|urgent] [--due YYYY-MM-DD]
+mmp task show|done|remove <id>
+mmp task edit <id> [--title] [--status todo|in_progress|done] [--priority] [--due <date|none>]
 mmp mcp                             MCP server on stdio (started by your AI client)
 ```
 
 `list` hides archived and ignored projects unless you pass `--all` or `--status`.
+`mmp list --client none` shows projects without a client. Task ids can be shortened to their
+first 6–8 characters, like git commits.
+
+## Clients, categories and tasks
+
+- A project has at most one **client** and one **category**. Clients have their own page
+  (email, notes, projects, open tasks). Categories are yours to rename, recolor and reorder in
+  Settings; mmp starts you with *Client work*, *Side project*, *Product / SaaS* and *Internal*.
+- **Tasks** belong to a project and have a status (to do, in progress, done), a priority and an
+  optional due date. Each project page has a list and a kanban board; the **Tasks** page shows
+  every open task grouped by due date (overdue, today, next 7 days, later, no date).
+- Removing a client or a category never removes projects; they just lose the label.
 
 ## How scanning works
 
@@ -146,7 +175,7 @@ keys and register it in `web/src/i18n.ts`.
 ## Roadmap
 
 1. ~~Core: scanner, registry, CLI, dashboard, MCP~~ (v0.1)
-2. Tasks per project, manageable by your AI
+2. ~~Clients, categories and tasks, manageable by your AI~~ (v0.2)
 3. Automatic time tracking (Claude Code hooks, git activity)
 4. Profitability: income, costs (time, AI tokens, hosting), effective hourly rate
 5. Project health, renewals (domains, SSL, hosting), weekly reports

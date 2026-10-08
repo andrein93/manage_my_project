@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import { api } from './api'
 import { scanTick, useErrors } from './composables'
 
 const { t } = useI18n()
+const route = useRoute()
+const links = computed(() => [
+  { to: '/', label: t('app.projects'), active: (p: string) => p === '/' || p.startsWith('/projects') },
+  { to: '/tasks', label: t('app.tasks'), active: (p: string) => p.startsWith('/tasks') },
+  { to: '/clients', label: t('app.clients'), active: (p: string) => p.startsWith('/clients') },
+  { to: '/settings', label: t('app.settings'), active: (p: string) => p.startsWith('/settings') },
+])
 const scanning = ref(false)
 const notice = ref<string | null>(null)
 const { error, report, clear } = useErrors()
@@ -28,18 +36,18 @@ async function rescan() {
 <template>
   <div class="min-h-screen">
     <header class="border-b border-line">
-      <div class="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3 sm:px-6">
+      <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
         <RouterLink to="/" class="flex items-center gap-2 text-lg font-semibold tracking-tight">
           <img src="/favicon.svg" alt="" class="h-6 w-6" />
           mmp
         </RouterLink>
-        <nav class="flex gap-1 text-sm">
+        <nav class="order-last flex w-full gap-1 overflow-x-auto text-sm sm:order-none sm:w-auto">
           <RouterLink
-            v-for="link in [{ to: '/', label: t('app.projects') }, { to: '/settings', label: t('app.settings') }]"
+            v-for="link in links"
             :key="link.to"
             :to="link.to"
             class="rounded-md px-3 py-1.5 text-muted hover:text-ink"
-            exact-active-class="!text-ink bg-surface"
+            :class="{ '!text-ink bg-surface': link.active(route.path) }"
           >
             {{ link.label }}
           </RouterLink>

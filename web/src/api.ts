@@ -1,6 +1,38 @@
-import type { Project, ProjectStatus, ScanResult, Workspace } from '../../src/core/types'
+import type {
+  Category,
+  CategoryInput,
+  CategoryRef,
+  Client,
+  ClientInput,
+  DueGroup,
+  NamedRef,
+  Project,
+  ProjectStatus,
+  ScanResult,
+  Task,
+  TaskInput,
+  TaskPriority,
+  TaskStatus,
+  Workspace,
+} from '../../src/core/types'
 
-export type { Project, ProjectStatus, ScanResult, Workspace }
+export type {
+  Category,
+  CategoryInput,
+  CategoryRef,
+  Client,
+  ClientInput,
+  DueGroup,
+  NamedRef,
+  Project,
+  ProjectStatus,
+  ScanResult,
+  Task,
+  TaskInput,
+  TaskPriority,
+  TaskStatus,
+  Workspace,
+}
 
 export interface Meta {
   version: string
@@ -8,11 +40,22 @@ export interface Meta {
   statuses: ProjectStatus[]
   stacks: string[]
   tags: string[]
+  clients: NamedRef[]
+  categories: CategoryRef[]
   counts: Record<ProjectStatus, number>
 }
 
 export interface Settings {
   ignoreNames: string[]
+}
+
+export interface ProjectPatch {
+  name?: string
+  description?: string
+  status?: ProjectStatus
+  tags?: string[]
+  clientId?: string | null
+  categoryId?: string | null
 }
 
 export class ApiError extends Error {
@@ -41,11 +84,13 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
   return data as T
 }
 
+const query = (params: Record<string, string | undefined>) =>
+  new URLSearchParams(Object.entries(params).filter((e): e is [string, string] => !!e[1])).toString()
+
 export const api = {
-  projects: (params: Record<string, string>) => request<Project[]>('GET', `/projects?${new URLSearchParams(params)}`),
+  projects: (params: Record<string, string | undefined>) => request<Project[]>('GET', `/projects?${query(params)}`),
   project: (id: string) => request<Project>('GET', `/projects/${id}`),
-  updateProject: (id: string, patch: Partial<Pick<Project, 'name' | 'description' | 'status' | 'tags'>>) =>
-    request<Project>('PATCH', `/projects/${id}`, patch),
+  updateProject: (id: string, patch: ProjectPatch) => request<Project>('PATCH', `/projects/${id}`, patch),
   open: (id: string, target: 'folder' | 'vscode') => request<void>('POST', `/projects/${id}/open`, { target }),
   addProject: (path: string) => request<Project>('POST', '/projects', { path }),
   scan: () => request<ScanResult>('POST', '/scan', {}),
@@ -55,4 +100,21 @@ export const api = {
   settings: () => request<Settings>('GET', '/settings'),
   updateSettings: (patch: Partial<Settings>) => request<Settings>('PUT', '/settings', patch),
   meta: () => request<Meta>('GET', '/meta'),
+
+  clients: () => request<Client[]>('GET', '/clients'),
+  client: (id: string) => request<Client & { projects: Project[] }>('GET', `/clients/${id}`),
+  createClient: (input: ClientInput) => request<Client>('POST', '/clients', input),
+  updateClient: (id: string, input: ClientInput) => request<Client>('PATCH', `/clients/${id}`, input),
+  removeClient: (id: string) => request<void>('DELETE', `/clients/${id}`),
+
+  categories: () => request<Category[]>('GET', '/categories'),
+  createCategory: (input: CategoryInput) => request<Category>('POST', '/categories', input),
+  updateCategory: (id: string, input: CategoryInput) => request<Category>('PATCH', `/categories/${id}`, input),
+  removeCategory: (id: string) => request<void>('DELETE', `/categories/${id}`),
+
+  tasks: (params: Record<string, string | undefined>) => request<Task[]>('GET', `/tasks?${query(params)}`),
+  createTask: (projectId: string, input: TaskInput & { title: string }) =>
+    request<Task>('POST', '/tasks', { projectId, ...input }),
+  updateTask: (id: string, input: TaskInput) => request<Task>('PATCH', `/tasks/${id}`, input),
+  removeTask: (id: string) => request<void>('DELETE', `/tasks/${id}`),
 }
