@@ -9,6 +9,17 @@ export interface GitInfo {
   lastCommitAt: string | null
   remote: string | null
   dirty: boolean
+  /** Commits on HEAD not on any remote ref; null when unknown or without a remote. */
+  unpushed?: number | null
+}
+
+export const HEALTH_KINDS = ['missing', 'no_git', 'no_remote', 'unpushed', 'uncommitted', 'dormant'] as const
+export type HealthKind = (typeof HEALTH_KINDS)[number]
+
+export interface HealthFlag {
+  kind: HealthKind
+  /** e.g. number of unpushed commits */
+  count?: number
 }
 
 export interface NamedRef {
@@ -34,6 +45,10 @@ export interface Project {
   tags: string[]
   client: NamedRef | null
   category: CategoryRef | null
+  /** Framework/runtime versions detected from lockfiles, e.g. { laravel: "10.48.2" }. */
+  versions: Record<string, string>
+  /** Attention flags (active/paused projects only). */
+  health: HealthFlag[]
   lastActivityAt: string | null
   missingSince: string | null
   createdAt: string
@@ -58,6 +73,10 @@ export interface ProjectFilters {
   client?: string
   /** Category id, or 'none' for projects without a category. */
   category?: string
+  /** Only projects with at least one health flag. */
+  attention?: boolean
+  /** "framework@major", e.g. "laravel@9". */
+  version?: string
   /** Include archived and ignored projects when no explicit status is given. */
   all?: boolean
 }

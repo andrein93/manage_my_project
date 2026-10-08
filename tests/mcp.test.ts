@@ -46,14 +46,17 @@ describe('MCP server', () => {
       'list_tasks',
       'log_time',
       'owed_report',
+      'project_health',
       'record_payment',
       'scan_projects',
       'sync_time',
       'tag_project',
       'time_report',
+      'upcoming_charges',
       'update_client',
       'update_project',
       'update_task',
+      'weekly_digest',
     ])
   })
 

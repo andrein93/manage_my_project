@@ -1,6 +1,8 @@
 import { basename, isAbsolute } from 'node:path'
 import { localUserId, transaction, type DB } from './db.js'
 import { newId, now } from './ids.js'
+import { majorOf } from './detect/versions.js'
+import { healthFlags } from './health.js'
 import { isWithin, normalizePath, pathKey } from './paths.js'
 import {
   HIDDEN_STATUSES,
@@ -36,11 +38,13 @@ interface ProjectRow {
   category_id: string | null
   category_name: string | null
   category_color: string | null
+  versions: string
 }
 
 export interface DetectedFields {
   stack: string[]
   git: GitInfo | null
+  versions?: Record<string, string>
   lastActivityAt: string | null
 }
 
@@ -88,6 +92,12 @@ export class ProjectRepository {
       if (cutoff != null && p.lastActivityAt && Date.parse(p.lastActivityAt) > cutoff) return false
       if (filters.client && (p.client?.id ?? 'none') !== filters.client) return false
       if (filters.category && (p.category?.id ?? 'none') !== filters.category) return false
+      if (filters.attention && p.health.length === 0) return false
+      if (filters.version) {
+        const [framework, major] = filters.version.toLowerCase().split('@')
+        const version = p.versions[framework]
+        if (!version || (major && majorOf(version) !== major)) return false
+      }
       const haystack = [p.name, p.description, p.path, ...p.tags, p.client?.name ?? '', p.category?.name ?? '']
       if (query && !haystack.some((v) => v.toLowerCase().includes(query))) {
         return false
@@ -147,9 +157,9 @@ export class ProjectRepository {
     const path = normalizePath(input.path)
     const { changes } = this.db
       .prepare(
-        `INSERT INTO projects (id, owner_id, workspace_id, source, name, path, path_key, stack, git,
+        `INSERT INTO projects (id, owner_id, workspace_id, source, name, path, path_key, stack, git, versions,
           last_activity_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(path_key) DO NOTHING`,
       )
       .run(
@@ -162,6 +172,7 @@ export class ProjectRepository {
         pathKey(path),
         JSON.stringify(input.stack),
         input.git ? JSON.stringify(input.git) : null,
+        JSON.stringify(input.versions ?? {}),
         input.lastActivityAt,
         ts,
         ts,
@@ -176,10 +187,17 @@ export class ProjectRepository {
   updateDetected(id: string, fields: DetectedFields): void {
     this.db
       .prepare(
-        `UPDATE projects SET stack = ?, git = ?, last_activity_at = ?, missing_since = NULL, updated_at = ?
+        `UPDATE projects SET stack = ?, git = ?, versions = ?, last_activity_at = ?, missing_since = NULL, updated_at = ?
          WHERE id = ? AND deleted_at IS NULL`,
       )
-      .run(JSON.stringify(fields.stack), fields.git ? JSON.stringify(fields.git) : null, fields.lastActivityAt, now(), id)
+      .run(
+        JSON.stringify(fields.stack),
+        fields.git ? JSON.stringify(fields.git) : null,
+        JSON.stringify(fields.versions ?? {}),
+        fields.lastActivityAt,
+        now(),
+        id,
+      )
   }
 
   /** Brings back a soft-deleted project that was rediscovered or re-added, re-homing it. */
@@ -279,6 +297,7 @@ function normalizeTags(tags: string[]): string[] {
 }
 
 function toProject(row: ProjectRow): Project {
+  const git: GitInfo | null = row.git ? JSON.parse(row.git) : null
   return {
     id: row.id,
     ownerId: row.owner_id,
@@ -289,8 +308,10 @@ function toProject(row: ProjectRow): Project {
     status: row.status,
     path: row.path,
     stack: JSON.parse(row.stack),
-    git: row.git ? JSON.parse(row.git) : null,
+    git,
     tags: row.tags ? JSON.parse(row.tags) : [],
+    versions: row.versions ? JSON.parse(row.versions) : {},
+    health: healthFlags({ status: row.status, git, missingSince: row.missing_since, lastActivityAt: row.last_activity_at }),
     client: row.client_id && row.client_name ? { id: row.client_id, name: row.client_name } : null,
     category:
       row.category_id && row.category_name

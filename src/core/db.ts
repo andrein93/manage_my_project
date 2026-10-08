@@ -213,6 +213,9 @@ export const MIGRATIONS: string[] = [
     deleted_at TEXT
   );
   `,
+  `
+  ALTER TABLE projects ADD COLUMN versions TEXT NOT NULL DEFAULT '{}';
+  `,
 ]
 
 /** Starter categories, created once when the categories table has never been used. */

@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { lastActivity } from './detect/activity.js'
 import { readGit } from './detect/git.js'
 import { detectStack } from './detect/stack.js'
+import { detectVersions } from './detect/versions.js'
 import { pathKey } from './paths.js'
 import type { DetectedFields, ProjectRepository } from './projects.js'
 import type { SettingsRepository } from './settings.js'
@@ -32,8 +33,8 @@ interface Job {
 }
 
 export async function detect(dir: string): Promise<DetectedFields> {
-  const [stack, git] = await Promise.all([detectStack(dir), readGit(dir)])
-  return { stack, git, lastActivityAt: await lastActivity(dir, git?.lastCommitAt ?? null) }
+  const [stack, git, versions] = await Promise.all([detectStack(dir), readGit(dir), detectVersions(dir)])
+  return { stack, git, versions, lastActivityAt: await lastActivity(dir, git?.lastCommitAt ?? null) }
 }
 
 /** Discovers project folders in every workspace and reconciles them with the registry. */

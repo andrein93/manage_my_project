@@ -11,18 +11,26 @@ const TIMEOUT_MS = 5000
 export async function readGit(dir: string): Promise<GitInfo | null> {
   if (!existsSync(join(dir, '.git'))) return null
   try {
-    const [branch, lastCommitAt, remote, status] = await Promise.all([
+    const [branch, lastCommitAt, remotes, status, unpushed] = await Promise.all([
       git(dir, ['rev-parse', '--abbrev-ref', 'HEAD']),
       git(dir, ['log', '-1', '--format=%cI']),
-      git(dir, ['remote', 'get-url', 'origin']),
+      git(dir, ['config', '--get-regexp', '^remote\\..*\\.url$']),
       git(dir, ['status', '--porcelain']),
+      git(dir, ['rev-list', '--count', 'HEAD', '--not', '--remotes']),
     ])
     if (status === null) return null
+    // "remote.<name>.url <url>" lines: prefer origin, else the first remote.
+    const urls = (remotes ?? '')
+      .split('\n')
+      .map((l) => /^remote\.(.+)\.url\s+(.+)$/.exec(l.trim()))
+      .filter((m): m is RegExpExecArray => !!m)
+    const remote = (urls.find((m) => m[1] === 'origin') ?? urls[0])?.[2] ?? null
     return {
       branch: branch || null,
       lastCommitAt: lastCommitAt ? new Date(lastCommitAt).toISOString() : null,
-      remote: remote || null,
+      remote,
       dirty: status.length > 0,
+      unpushed: remote && unpushed !== null && /^\d+$/.test(unpushed) ? Number(unpushed) : null,
     }
   } catch {
     return null

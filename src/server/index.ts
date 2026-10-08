@@ -8,6 +8,7 @@ import { UserError } from '../core/types.js'
 import { systemOpener, type Opener } from './open.js'
 import { registerOrganizeRoutes } from './organize-routes.js'
 import { registerRoutes } from './routes.js'
+import { registerExtrasRoutes } from './extras-routes.js'
 import { registerFinanceRoutes } from './finance-routes.js'
 import { helpDocs } from './help.js'
 import { registerTimeRoutes } from './time-routes.js'
@@ -61,6 +62,7 @@ export async function buildServer(app: App, options: ServerOptions = {}): Promis
       registerOrganizeRoutes(api, app)
       registerTimeRoutes(api, app)
       registerFinanceRoutes(api, app)
+      registerExtrasRoutes(api, app)
       api.get('/help', async () => helpDocs(app))
     },
     { prefix: '/api' },

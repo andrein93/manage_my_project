@@ -32,6 +32,9 @@ export function formatProject(p: Project): string {
     ['Activity', relativeTime(p.lastActivityAt)],
   ]
   if (p.description) rows.splice(1, 0, ['About', p.description])
+  const versions = Object.entries(p.versions)
+  if (versions.length) rows.push(['Versions', versions.map(([k, v]) => `${k} ${v}`).join(', ')])
+  if (p.health.length) rows.push(['Attention', p.health.map((f) => (f.kind === 'unpushed' ? `${f.count} unpushed` : f.kind.replace('_', ' '))).join(', ')])
   if (p.git) {
     rows.push(['Git', `${p.git.branch ?? '?'}${p.git.dirty ? ' (uncommitted changes)' : ''}`])
     if (p.git.remote) rows.push(['Remote', p.git.remote])

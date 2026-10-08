@@ -6,6 +6,7 @@ import { PROJECT_STATUSES, type ProjectStatus } from '../core/types.js'
 import { VERSION } from '../version.js'
 import { resolveCategoryFilter, resolveCategoryPatch, resolveClientFilter, resolveClientPatch } from '../core/filters.js'
 import { registerOrganizeTools } from './organize-tools.js'
+import { registerExtrasTools } from './extras-tools.js'
 import { registerFinanceTools } from './finance-tools.js'
 import { registerTimeTools } from './time-tools.js'
 import { tool } from './tool.js'
@@ -38,6 +39,8 @@ export function createMcpServer(app: App): McpServer {
         query: z.string().optional().describe('Search name, description, path, tags, client and category'),
         client: z.string().optional().describe('Client name/id, or "none" for projects without a client'),
         category: z.string().optional().describe('Category name/id, or "none"'),
+        attention: z.boolean().optional().describe('Only projects that need attention (see project_health)'),
+        version: z.string().optional().describe('Framework and major version, e.g. "laravel@9" or "vue@2"'),
         all: z.boolean().optional(),
       },
     },
@@ -50,9 +53,13 @@ export function createMcpServer(app: App): McpServer {
         query?: string
         client?: string
         category?: string
+        attention?: boolean
+        version?: string
         all?: boolean
       }) =>
         app.projects.list({
+          attention: a.attention,
+          version: a.version,
           status: a.status,
           stack: a.stack,
           tag: a.tag,
@@ -163,6 +170,7 @@ export function createMcpServer(app: App): McpServer {
   registerOrganizeTools(server, app)
   registerTimeTools(server, app)
   registerFinanceTools(server, app)
+  registerExtrasTools(server, app)
   return server
 }
 

@@ -5,6 +5,7 @@ import { resolveCategoryFilter, resolveCategoryPatch, resolveClientFilter, resol
 import { VERSION } from '../version.js'
 import { formatProject, formatTable, relativeTime } from './format.js'
 import { registerOrganizeCommands } from './organize.js'
+import { registerExtrasCommands } from './extras.js'
 import { registerFinanceCommands } from './finance.js'
 import { registerTimeCommands } from './time.js'
 
@@ -17,6 +18,8 @@ interface ListOptions {
   query?: string
   client?: string
   category?: string
+  attention?: boolean
+  framework?: string
   all?: boolean
   json?: boolean
 }
@@ -81,6 +84,8 @@ export function buildCli(getApp: () => App, out: (line: string) => void = consol
     .option('-q, --query <text>', 'search name, description, path, tags, client and category')
     .option('--client <ref>', 'filter by client (name or id), or "none"')
     .option('--category <ref>', 'filter by category (name or id), or "none"')
+    .option('--attention', 'only projects that need attention (see mmp health)')
+    .option('--framework <framework@major>', 'e.g. laravel@9 or vue@2')
     .option('-a, --all', 'include archived and ignored projects')
     .option('--json', 'print JSON')
     .action((opts: ListOptions) => {
@@ -93,6 +98,8 @@ export function buildCli(getApp: () => App, out: (line: string) => void = consol
         query: opts.query,
         client: resolveClientFilter(app, opts.client),
         category: resolveCategoryFilter(app, opts.category),
+        attention: opts.attention,
+        version: opts.framework,
         all: opts.all,
       }
       const projects = app.projects.list(filters)
@@ -191,6 +198,7 @@ export function buildCli(getApp: () => App, out: (line: string) => void = consol
   registerOrganizeCommands(program, getApp, out)
   registerTimeCommands(program, getApp, out)
   registerFinanceCommands(program, getApp, out)
+  registerExtrasCommands(program, getApp, out)
 
   program
     .command('mcp')

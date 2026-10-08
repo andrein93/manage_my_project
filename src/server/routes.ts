@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { z } from 'zod'
 import type { App } from '../core/app.js'
 import { PROJECT_STATUSES, UserError } from '../core/types.js'
+import { majorOf } from '../core/detect/versions.js'
 import { VERSION } from '../version.js'
 import { vscodeUrl, type Opener } from './open.js'
 
@@ -19,6 +20,11 @@ const listQuery = z.object({
   q: z.string().optional(),
   client: z.string().optional(),
   category: z.string().optional(),
+  attention: z
+    .enum(['true', 'false', '1', '0'])
+    .optional()
+    .transform((v) => v === 'true' || v === '1'),
+  version: z.string().optional(),
   all: z
     .enum(['true', 'false', '1', '0'])
     .optional()
@@ -68,6 +74,8 @@ export function registerRoutes(api: FastifyInstance, app: App, opener: Opener): 
       query: q.q,
       client: q.client,
       category: q.category,
+      attention: q.attention,
+      version: q.version,
       all: q.all,
     })
   })
@@ -129,6 +137,11 @@ export function registerRoutes(api: FastifyInstance, app: App, opener: Opener): 
       stacks: [...new Set(all.flatMap((p) => p.stack))].sort(),
       tags: app.projects.allTags(),
       clients: app.clients.list().map(({ id, name }) => ({ id, name })),
+      // "framework@major" values present across projects, for the version filter.
+      versions: [...new Set(all.flatMap((p) => Object.entries(p.versions).map(([k, v]) => `${k}@${majorOf(v) ?? v}`)))].sort(
+        (a, b) => a.localeCompare(b, undefined, { numeric: true }),
+      ),
+      attention: all.filter((p) => p.health.length > 0).length,
       categories: app.categories.list().map(({ id, name, color }) => ({ id, name, color })),
       counts: Object.fromEntries(PROJECT_STATUSES.map((s) => [s, all.filter((p) => p.status === s).length])),
     }
