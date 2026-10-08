@@ -14,6 +14,7 @@
   --action: #5b5bf0;
   --action-ink: #ffffff;
   --glow: rgb(91 91 240 / 0.14);
+  --spotlight: rgb(91 91 240 / 0.05);
   --fresh: #1f9d6b;
   --aging: #b8901a;
   --dormant: #8a8d98;
@@ -37,6 +38,7 @@
   --action: #7c7cff;
   --action-ink: #0a0b0f;
   --glow: rgb(124 124 255 / 0.18);
+  --spotlight: rgb(124 124 255 / 0.06);
   --fresh: #3ccf92;
   --aging: #e0b53c;
   --dormant: #6b6f7b;
@@ -44,7 +46,7 @@
   --chart: #7c7cff;
   --card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 2px rgb(0 0 0 / 0.4);
   --pop-shadow: 0 24px 64px -16px rgb(0 0 0 / 0.7);
-  --aurora-opacity: 0.55;
+  --aurora-opacity: 0.25;
   color-scheme: dark;
 }
 
@@ -60,6 +62,7 @@
     --action: #7c7cff;
     --action-ink: #0a0b0f;
     --glow: rgb(124 124 255 / 0.18);
+    --spotlight: rgb(124 124 255 / 0.06);
     --fresh: #3ccf92;
     --aging: #e0b53c;
     --dormant: #6b6f7b;
@@ -67,7 +70,7 @@
     --chart: #7c7cff;
     --card-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 2px rgb(0 0 0 / 0.4);
     --pop-shadow: 0 24px 64px -16px rgb(0 0 0 / 0.7);
-    --aurora-opacity: 0.55;
+    --aurora-opacity: 0.25;
     color-scheme: dark;
   }
 }
@@ -162,7 +165,7 @@ body {
   pointer-events: none;
   opacity: 0;
   transition: opacity 200ms;
-  background: radial-gradient(360px circle at var(--x, 50%) var(--y, 50%), var(--glow), transparent 45%);
+  background: radial-gradient(260px circle at var(--x, 50%) var(--y, 50%), var(--spotlight), transparent 70%);
 }
 .spotlight:hover::after {
   opacity: 1;
@@ -183,11 +186,12 @@ body {
 .border-beam::after {
   content: '';
   position: absolute;
-  width: 96px;
+  width: 64px;
   aspect-ratio: 1;
   background: linear-gradient(to left, var(--action), transparent);
+  opacity: 0.45;
   offset-path: rect(0 auto auto 0 round 12px);
-  animation: border-beam 9s linear infinite;
+  animation: border-beam 14s linear infinite;
 }
 
 /* Dot grid with a radial fade, plus an aurora glow whose strength comes from --aurora-opacity. */
