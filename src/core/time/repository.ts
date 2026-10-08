@@ -367,6 +367,7 @@ export class TimeRepository {
   /** Maps a cwd key to the deepest registered (non-deleted) project containing it. */
   private attributor(projects: Project[]): (cwdKey: string) => Project | null {
     const byDepth = projects
+      .filter((p) => p.local)
       .map((p) => ({ project: p, key: pathKey(p.path) }))
       .sort((a, b) => b.key.length - a.key.length)
     const cache = new Map<string, Project | null>()

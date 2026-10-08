@@ -52,6 +52,13 @@ export class WorkspaceRepository {
     if (!row) throw new UserError(`Workspace not found: ${ref}`, 'not_found')
     const ts = now()
     this.db.prepare('UPDATE workspaces SET deleted_at = ?, updated_at = ? WHERE id = ?').run(ts, ts, row.id)
+    // Shared projects stay team projects, just without a folder here (no change is synced).
+    this.db
+      .prepare(
+        `UPDATE projects SET local = 0, path = '', path_key = 'remote:' || id, workspace_id = NULL
+         WHERE workspace_id = ? AND source = 'scan' AND shared = 1 AND deleted_at IS NULL`,
+      )
+      .run(row.id)
     this.db
       .prepare(
         "UPDATE projects SET deleted_at = ?, updated_at = ? WHERE workspace_id = ? AND source = 'scan' AND deleted_at IS NULL",

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { api, type CategoryRef, type NamedRef, type Project, type ProjectStatus } from '../api'
 import CategoryDot from '../components/CategoryDot.vue'
 import FreshnessStrip from '../components/FreshnessStrip.vue'
@@ -13,6 +14,7 @@ import { scanTick, useAutoRefresh, useErrors } from '../composables'
 
 const props = defineProps<{ id: string }>()
 const { t } = useI18n()
+const router = useRouter()
 const { error, report } = useErrors()
 
 const STATUSES: ProjectStatus[] = ['active', 'paused', 'archived', 'ignored']
@@ -123,7 +125,10 @@ api
 async function toggleShared(shared: boolean) {
   if (!project.value) return
   try {
-    project.value = await api.updateProject(project.value.id, { shared })
+    const updated = await api.updateProject(project.value.id, { shared })
+    project.value = updated
+    // Sharing may merge this folder into the team's project, which has another id.
+    if (updated.id !== props.id) router.replace({ name: 'project', params: { id: updated.id } })
   } catch (e) {
     report(e)
   }

@@ -221,7 +221,13 @@ a tiny Laravel app in [`sync-server/`](sync-server/README.md).
   shows as "not on this computer" and attaches automatically when the folder appears.
 - Conflicts: the most recent edit wins. Syncing runs every 2 minutes while the dashboard is open.
 - Time and Finance reports stay personal; each project page shows hours per member.
+- A teammate's project that is the same repository as one of yours stays separate until you
+  share yours: sharing merges your folder, tasks and money into the team project.
+- For shared projects, Finance counts the whole team's hours (hourly earnings and €/hour).
 - Folder paths, scans, raw activity, AI plans and settings never leave your computer.
+- Use HTTPS for the server (plain http is accepted only for local hosts). Your token is stored
+  in `sync.json` in the mmp data folder; on Windows it is protected by your user profile's
+  permissions.
 
 ## Languages
 

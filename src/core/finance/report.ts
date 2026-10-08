@@ -1,5 +1,5 @@
 import { addDays, localToday } from '../dates.js'
-import type { DB } from '../db.js'
+import { localUserId, type DB } from '../db.js'
 import type { ProjectRepository } from '../projects.js'
 import type { SettingsRepository } from '../settings.js'
 import { localDateOf, minuteToMs, type DateRange } from '../time/periods.js'
@@ -130,6 +130,7 @@ export class FinanceService {
     // Whole months around the range: shared costs and subscriptions are split by monthly usage.
     const ext = { from: monthOf(range.from).from, to: monthOf(range.to).to }
     const daily = this.time.daily(ext)
+    this.addTeamMinutes(daily, ext)
     const perProject = new Map<string, Acc>()
     const acc = (id: string) => {
       let a = perProject.get(id)
@@ -217,6 +218,28 @@ export class FinanceService {
       }
     }
     return { perProject, overhead }
+  }
+
+  /**
+   * Shared projects are worked on by several people: add the daily minutes teammates (and this
+   * user's other computers) synced, so hourly earnings and €/hour reflect the whole team.
+   */
+  private addTeamMinutes(daily: Map<string, { minutes: Map<string, number>; costUsd: Map<string, number> }>, range: DateRange): void {
+    const me = localUserId(this.db)
+    const device = (this.db.prepare("SELECT value FROM sync_state WHERE key = 'deviceId'").get() as { value: string } | undefined)?.value ?? ''
+    const rows = this.db
+      .prepare(
+        `SELECT d.project_id, d.date, SUM(d.minutes) AS minutes FROM time_daily d
+         JOIN projects p ON p.id = d.project_id AND p.shared = 1 AND p.deleted_at IS NULL
+         WHERE d.deleted_at IS NULL AND d.date BETWEEN ? AND ? AND NOT (d.user_id = ? AND d.device_id = ?)
+         GROUP BY d.project_id, d.date`,
+      )
+      .all(range.from, range.to, me, device) as { project_id: string; date: string; minutes: number }[]
+    for (const r of rows) {
+      let entry = daily.get(r.project_id)
+      if (!entry) daily.set(r.project_id, (entry = { minutes: new Map(), costUsd: new Map() }))
+      entry.minutes.set(r.date, (entry.minutes.get(r.date) ?? 0) + Number(r.minutes))
+    }
   }
 
   private scalar(sql: string): string | null {

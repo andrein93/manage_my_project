@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { addDays, localToday } from '../dates.js'
@@ -30,7 +30,7 @@ const COLUMNS: Record<Exclude<SyncTable, 'projects'>, string[]> = {
   payments: ['owner_id', 'project_id', 'agreement_id', 'date', 'amount_cents', 'note', 'created_at'],
   expenses: ['owner_id', 'project_id', 'amount_cents', 'interval', 'start_date', 'end_date', 'note', 'created_at'],
   time_entries: ['owner_id', 'project_id', 'date', 'minutes', 'note', 'created_at'],
-  time_daily: ['user_id', 'project_id', 'date', 'minutes', 'cost_usd'],
+  time_daily: ['user_id', 'device_id', 'project_id', 'date', 'minutes', 'cost_usd'],
 }
 const PROJECT_COLUMNS = ['owner_id', 'name', 'description', 'status', 'client_id', 'category_id', 'remote_key', 'created_at']
 
@@ -121,6 +121,12 @@ export class SyncService {
       this.db.exec('PRAGMA defer_foreign_keys = ON')
       rekeyUser(this.db, currentUserId(this.db), me.id, me.name)
       this.setState('userId', me.id)
+      // A different server has none of our data: everything must be sent again.
+      if (this.state('serverUrl') !== base) {
+        for (const table of SYNC_TABLES) this.db.prepare(`UPDATE ${table} SET sync_rev = NULL`).run()
+        this.db.prepare("DELETE FROM sync_state WHERE key IN ('cursor', 'pending')").run()
+        this.setState('serverUrl', base)
+      }
     })
     this.writeCredentials({ url: base, token: token.trim(), user: me })
     await this.pullMembers()
@@ -142,7 +148,7 @@ export class SyncService {
     )
   }
 
-  /** Hours per member for a project in an inclusive date range (from synced daily totals). */
+  /** Hours per member (all their devices) for a project in an inclusive date range. */
   teamTime(projectId: string, from: string, to: string): { userId: string; name: string; minutes: number }[] {
     return this.db
       .prepare(
@@ -203,23 +209,35 @@ export class SyncService {
     const range = { from: addDays(today, -(TIME_WINDOW_DAYS - 1)), to: today }
     const shared = new Set((this.db.prepare('SELECT id FROM projects WHERE shared = 1 AND deleted_at IS NULL').all() as { id: string }[]).map((r) => r.id))
     const daily = this.time.daily(range)
+    const device = this.deviceId()
     const select = this.db.prepare('SELECT minutes, cost_usd FROM time_daily WHERE id = ?')
     const upsert = this.db.prepare(
-      `INSERT INTO time_daily (id, user_id, project_id, date, minutes, cost_usd, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT(id) DO UPDATE SET minutes = excluded.minutes, cost_usd = excluded.cost_usd, updated_at = excluded.updated_at`,
+      `INSERT INTO time_daily (id, user_id, device_id, project_id, date, minutes, cost_usd, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT(user_id, device_id, project_id, date) DO UPDATE SET
+         minutes = excluded.minutes, cost_usd = excluded.cost_usd, updated_at = excluded.updated_at`,
     )
     transaction(this.db, () => {
+      const seen = new Set<string>()
       for (const [projectId, d] of daily) {
         if (!shared.has(projectId)) continue
         const days = new Set([...d.minutes.keys(), ...d.costUsd.keys()])
         for (const date of days) {
           const minutes = Math.round(d.minutes.get(date) ?? 0)
           const cost = Math.round((d.costUsd.get(date) ?? 0) * 100) / 100
-          const id = stableId(`${me}|${projectId}|${date}`)
+          // One row per device, so the same person on two computers never overwrites themselves.
+          const id = stableId(`${me}|${device}|${projectId}|${date}`)
+          seen.add(id)
           const existing = select.get(id) as { minutes: number; cost_usd: number } | undefined
           if (existing && existing.minutes === minutes && Math.abs(existing.cost_usd - cost) < 0.005) continue
-          upsert.run(id, me, projectId, date, minutes, cost, now())
+          upsert.run(id, me, device, projectId, date, minutes, cost, now())
         }
+      }
+      // Days whose time disappeared (e.g. a deleted manual entry) go back to zero.
+      const own = this.db
+        .prepare('SELECT id FROM time_daily WHERE user_id = ? AND device_id = ? AND date >= ? AND (minutes > 0 OR cost_usd > 0)')
+        .all(me, device, range.from) as { id: string }[]
+      for (const row of own) {
+        if (!seen.has(row.id)) this.db.prepare('UPDATE time_daily SET minutes = 0, cost_usd = 0, updated_at = ? WHERE id = ?').run(now(), row.id)
       }
     })
   }
@@ -267,21 +285,33 @@ export class SyncService {
       if (!page.more) break
     }
     let applied = 0
-    let skipped = 0
+    const retry: Change[] = JSON.parse(this.state('pending') ?? '[]')
+    const pulled = changes.length
+    changes.unshift(...retry)
     // Apply everything together, parents first, so references inside one sync always resolve.
     const order = (t: string) => SYNC_TABLES.indexOf(t as SyncTable)
     changes.sort((a, b) => order(a.table) - order(b.table) || (a.seq ?? 0) - (b.seq ?? 0))
+    const pending: Change[] = []
     transaction(this.db, () => {
       this.db.exec('PRAGMA defer_foreign_keys = ON')
       for (const change of changes) {
         if (!SYNC_TABLES.includes(change.table)) continue
-        const result = change.table === 'projects' ? this.applyProject(change) : this.applyRow(change)
-        if (result === 'applied') applied++
-        else if (result === 'skipped') skipped++
+        // One bad record (e.g. a value from a newer mmp version) must not block everyone else.
+        this.db.exec('SAVEPOINT row')
+        try {
+          const result = change.table === 'projects' ? this.applyProject(change) : this.applyRow(change)
+          if (result === 'applied') applied++
+          else if (result === 'skipped') pending.push(change) // parent not here yet: retry next time
+          this.db.exec('RELEASE row')
+        } catch {
+          this.db.exec('ROLLBACK TO row')
+          this.db.exec('RELEASE row')
+        }
       }
       this.setState('cursor', String(cursor))
+      this.setState('pending', JSON.stringify(pending.slice(-5000)))
     })
-    return { pulled: changes.length, applied, skipped }
+    return { pulled, applied, skipped: pending.length }
   }
 
   // ---------- mapping ----------
@@ -311,10 +341,13 @@ export class SyncService {
     const table = change.table as Exclude<SyncTable, 'projects'>
     const data = { ...change.data }
     if ((table === 'clients' || table === 'categories') && !change.deleted_at && typeof data.name === 'string') {
-      data.name = this.reconcileName(table, change.id, data.name)
+      const merged = this.reconcileName(table, change.id, data.name)
+      data.name = merged.name
+      // A merged local twin keeps details the team record does not have yet.
+      for (const [k, v] of Object.entries(merged.keep)) if (data[k] === null || data[k] === undefined || data[k] === '') data[k] = v
     }
     if (!this.isNewer(table, change.id, change.updated_at)) return 'unchanged'
-    if (typeof data.project_id === 'string' && !this.exists('projects', data.project_id)) return 'skipped'
+    if (typeof data.project_id === 'string' && !this.exists('projects', data.project_id, true)) return 'skipped'
     if (table === 'expenses' && data.project_id === null) return 'skipped' // shared costs stay personal
     this.ensureUser(data.owner_id ?? data.user_id)
     for (const [column, target] of SOFT_REFS[table] ?? []) {
@@ -339,22 +372,23 @@ export class SyncService {
    * Names of clients and categories are unique. A local twin that was never synced is merged
    * into the team's record (it takes the team id); otherwise the incoming name gets a suffix.
    */
-  private reconcileName(table: 'clients' | 'categories', id: string, name: string): string {
+  private reconcileName(table: 'clients' | 'categories', id: string, name: string): { name: string; keep: Record<string, unknown> } {
     const twin = this.db
-      .prepare(`SELECT id, sync_rev FROM ${table} WHERE name = ? COLLATE NOCASE AND deleted_at IS NULL AND id <> ?`)
-      .get(name, id) as { id: string; sync_rev: string | null } | undefined
-    if (!twin) return name
+      .prepare(`SELECT * FROM ${table} WHERE name = ? COLLATE NOCASE AND deleted_at IS NULL AND id <> ?`)
+      .get(name, id) as Record<string, unknown> | undefined
+    if (!twin) return { name, keep: {} }
     if (twin.sync_rev === null && !this.exists(table, id, true)) {
       const column = table === 'clients' ? 'client_id' : 'category_id'
-      this.db.prepare(`UPDATE ${table} SET id = ? WHERE id = ?`).run(id, twin.id)
-      this.db.prepare(`UPDATE projects SET ${column} = ? WHERE ${column} = ?`).run(id, twin.id)
+      this.db.prepare(`UPDATE ${table} SET id = ? WHERE id = ?`).run(id, twin.id as string)
+      this.db.prepare(`UPDATE projects SET ${column} = ? WHERE ${column} = ?`).run(id, twin.id as string)
       this.db.prepare(`UPDATE ${table} SET updated_at = '' WHERE id = ?`).run(id) // the team version wins
-      return name
+      const keep = table === 'clients' ? { email: twin.email, notes: twin.notes } : { color: twin.color }
+      return { name, keep }
     }
     for (let n = 2; ; n++) {
       const candidate = `${name} (${n})`
       if (!this.db.prepare(`SELECT 1 FROM ${table} WHERE name = ? COLLATE NOCASE AND deleted_at IS NULL AND id <> ?`).get(candidate, id)) {
-        return candidate
+        return { name: candidate, keep: {} }
       }
     }
   }
@@ -366,10 +400,13 @@ export class SyncService {
     }
     this.ensureUser(data.owner_id)
     let exists = this.exists('projects', change.id, true)
-    if (!exists && typeof data.remote_key === 'string') {
-      // The same repository registered independently on this machine: adopt the team's id.
+    if (!exists && !change.deleted_at && typeof data.remote_key === 'string') {
+      // The same repository, already shared from this machine but never synced: adopt the team's
+      // id. Private projects are never adopted here; sharing one later merges it (mergeIntoTeam).
       const twin = this.db
-        .prepare('SELECT id FROM projects WHERE remote_key = ? AND local = 1 AND sync_rev IS NULL AND deleted_at IS NULL AND id <> ?')
+        .prepare(
+          'SELECT id FROM projects WHERE remote_key = ? AND local = 1 AND shared = 1 AND sync_rev IS NULL AND deleted_at IS NULL AND id <> ?',
+        )
         .get(data.remote_key, change.id) as { id: string } | undefined
       if (twin) {
         rekeyProject(this.db, twin.id, change.id)
@@ -383,7 +420,7 @@ export class SyncService {
       this.db
         .prepare(
           `UPDATE projects SET owner_id = ?, name = ?, description = ?, status = ?, client_id = ?, category_id = ?,
-             remote_key = COALESCE(?, remote_key), shared = 1, updated_at = ?, deleted_at = ?, sync_rev = ?
+             remote_key = COALESCE(?, remote_key), updated_at = ?, deleted_at = ?, sync_rev = ?
            WHERE id = ?`,
         )
         .run(
@@ -511,6 +548,16 @@ export class SyncService {
     writeFileSync(this.credentialsFile(), JSON.stringify(creds, null, 2), { mode: 0o600 })
   }
 
+  /** Random id of this installation, so one person's computers keep separate daily totals. */
+  private deviceId(): string {
+    let id = this.state('deviceId')
+    if (!id) {
+      id = randomUUID()
+      this.setState('deviceId', id)
+    }
+    return id
+  }
+
   private state(key: string): string | null {
     return (this.db.prepare('SELECT value FROM sync_state WHERE key = ?').get(key) as { value: string } | undefined)?.value ?? null
   }
@@ -528,7 +575,10 @@ function cleanUrl(url: string): string {
   } catch {
     throw new UserError(`Invalid server URL "${url}"`)
   }
-  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') throw new UserError('The server URL must start with https:// or http://')
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') throw new UserError('The server URL must start with https://')
+  // The token travels in every request: plain http only for local development hosts.
+  const localHost = /^(localhost|127\.0\.0\.1|\[::1\])$|\.(test|local|localhost)$/i.test(parsed.hostname)
+  if (parsed.protocol === 'http:' && !localHost) throw new UserError('Use https:// for the team server (http is allowed only for local hosts)')
   return trimmed
 }
 
@@ -571,6 +621,7 @@ function rekeyUser(db: DB, from: string, to: string, name: string): void {
     return
   }
   const ts = now()
+  db.prepare('DELETE FROM time_daily WHERE user_id = ? AND sync_rev IS NULL').run(from)
   db.prepare(
     `INSERT INTO users (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at`,
@@ -583,6 +634,7 @@ const PROJECT_REFS = ['tasks', 'project_tags', 'time_entries', 'agreements', 'pa
 
 /** Gives a local project the team's id (call inside a transaction with deferred FKs). */
 function rekeyProject(db: DB, from: string, to: string): void {
+  db.prepare('DELETE FROM time_daily WHERE project_id = ? AND sync_rev IS NULL').run(from)
   db.prepare('UPDATE projects SET id = ?, path_key = path_key WHERE id = ?').run(to, from)
   for (const table of PROJECT_REFS) db.prepare(`UPDATE ${table} SET project_id = ? WHERE project_id = ?`).run(to, from)
 }

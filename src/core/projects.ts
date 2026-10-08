@@ -3,6 +3,7 @@ import { localUserId, transaction, type DB } from './db.js'
 import { newId, now } from './ids.js'
 import { majorOf } from './detect/versions.js'
 import { healthFlags } from './health.js'
+import { mergeIntoTeamProject } from './sync/merge.js'
 import { remoteKey } from './sync/remote-key.js'
 import { isWithin, normalizePath, pathKey } from './paths.js'
 import {
@@ -237,11 +238,9 @@ export class ProjectRepository {
     this.updateDetected(id, fields)
   }
 
+  /** Local information only: does not touch updated_at, so it never syncs or beats a teammate's edit. */
   markMissing(id: string): void {
-    const ts = now()
-    this.db
-      .prepare('UPDATE projects SET missing_since = ?, updated_at = ? WHERE id = ? AND missing_since IS NULL')
-      .run(ts, ts, id)
+    this.db.prepare('UPDATE projects SET missing_since = ? WHERE id = ? AND missing_since IS NULL').run(now(), id)
   }
 
   update(id: string, patch: ProjectPatch): Project {
@@ -269,6 +268,19 @@ export class ProjectRepository {
         'UPDATE projects SET name = ?, description = ?, status = ?, client_id = ?, category_id = ?, shared = ?, updated_at = ? WHERE id = ?',
       )
       .run(name, patch.description ?? project.description, status, clientId, categoryId, shared ? 1 : 0, now(), id)
+    if (shared && !project.shared && project.local) {
+      // Sharing is the user's consent to join the team's copy of the same repository, if any.
+      const row = this.db.prepare('SELECT remote_key FROM projects WHERE id = ?').get(id) as { remote_key: string | null }
+      const team = row.remote_key
+        ? (this.db
+            .prepare('SELECT id FROM projects WHERE local = 0 AND remote_key = ? AND deleted_at IS NULL AND id <> ?')
+            .get(row.remote_key, id) as { id: string } | undefined)
+        : undefined
+      if (team) {
+        this.db.exec('PRAGMA defer_foreign_keys = ON')
+        return this.get(mergeIntoTeamProject(this.db, id, team.id))!
+      }
+    }
     return this.get(id)!
   }
 

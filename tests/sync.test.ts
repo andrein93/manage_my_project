@@ -40,6 +40,108 @@ describe('remoteKey', () => {
   ])('%s → %s', (url, key) => expect(remoteKey(url)).toBe(key))
 })
 
+describe('team sync: review regressions', () => {
+  beforeEach(async () => {
+    await a.app.sync.login(server.url, tokenA)
+    await b.app.sync.login(server.url, tokenB)
+  })
+
+  it('does not re-share a project the user stopped sharing when a teammate edits it', async () => {
+    const shop = project(a, 'shop')
+    a.app.projects.update(shop.id, { shared: true })
+    await a.app.sync.run()
+    await b.app.sync.run()
+    a.app.projects.update(shop.id, { shared: false })
+    await new Promise((r) => setTimeout(r, 5)) // Bruno's edit is the later one
+    b.app.projects.update(shop.id, { description: 'edited by Bruno' })
+    await b.app.sync.run()
+    await a.app.sync.run()
+    expect(a.app.projects.get(shop.id)).toMatchObject({ shared: false, description: 'edited by Bruno' })
+  })
+
+  it('keeps shared projects for the team when a workspace is removed locally', async () => {
+    const shop = project(a, 'shop')
+    a.app.projects.update(shop.id, { shared: true })
+    await a.app.sync.run()
+    a.app.workspaces.remove(a.app.workspaces.list()[0].id)
+    expect(a.app.projects.get(shop.id)).toMatchObject({ local: false })
+    expect((await a.app.sync.run()).pushed).toBe(0)
+    await b.app.sync.run()
+    expect(b.app.projects.get(shop.id)).not.toBeNull()
+  })
+
+  it('zeroes a day whose time disappeared and keeps one row per device', async () => {
+    const shop = project(a, 'shop')
+    a.app.projects.update(shop.id, { shared: true })
+    const today = new Date().toISOString().slice(0, 10)
+    const entry = a.app.time.repo.addEntry({ projectId: shop.id, minutes: 60, date: today })
+    await a.app.sync.run()
+    a.app.time.repo.removeEntry(entry.id)
+    await a.app.sync.run()
+    await b.app.sync.run()
+    expect(b.app.sync.teamTime(shop.id, today, today)).toEqual([{ userId: localUserId(a.app.db), name: 'Anna', minutes: 0 }])
+  })
+
+  it('keeps going when one record cannot be applied, and retries records whose project is missing', async () => {
+    const shop = project(a, 'shop')
+    a.app.projects.update(shop.id, { shared: true })
+    a.app.tasks.create(shop.id, [{ title: 'Good task' }])
+    await a.app.sync.run()
+    // A record from a "newer client" with an unknown status, and an orphan task.
+    const bad = [...server.records.values()].find((r) => r.table === 'tasks')!
+    server.records.set('tasks:bad', { ...bad, id: '11111111-1111-4111-8111-111111111111', data: { ...(bad.data as object), status: 'blocked' }, seq: 999 })
+    server.records.set('tasks:orphan', { ...bad, id: '22222222-2222-4222-8222-222222222222', data: { ...(bad.data as object), project_id: '33333333-3333-4333-8333-333333333333' }, seq: 1000 })
+    const result = await b.app.sync.run()
+    expect(b.app.tasks.list({ projectId: shop.id }).map((t) => t.title)).toEqual(['Good task'])
+    expect(result.skipped).toBe(1) // the orphan waits for its project
+  })
+
+  it('never lets a deleted team project take over a local one', async () => {
+    const shop = project(a, 'shop')
+    a.app.db.prepare("UPDATE projects SET remote_key = 'acme/shop' WHERE id = ?").run(shop.id)
+    a.app.projects.update(shop.id, { shared: true })
+    await a.app.sync.run()
+    a.app.projects.update(shop.id, { status: 'archived' })
+    a.app.db.prepare('UPDATE projects SET deleted_at = ?, updated_at = ? WHERE id = ?').run(new Date().toISOString(), new Date().toISOString(), shop.id)
+    await a.app.sync.run()
+    b.write({ 'shop2/index.html': '' })
+    await b.app.scan()
+    const mine = project(b, 'shop2')
+    b.app.db.prepare("UPDATE projects SET remote_key = 'acme/shop', shared = 1 WHERE id = ?").run(mine.id)
+    await b.app.sync.run()
+    expect(b.app.projects.get(mine.id)).not.toBeNull()
+  })
+
+  it("counts teammates' hours in a shared project's hourly earnings", async () => {
+    const shop = project(a, 'shop')
+    a.app.projects.update(shop.id, { shared: true })
+    a.app.finance.repo.addAgreement({ projectId: shop.id, kind: 'hourly', amount: 60, startDate: '2026-01-01' })
+    await a.app.sync.run()
+    await b.app.sync.run()
+    const today = new Date().toISOString().slice(0, 10)
+    b.app.time.repo.addEntry({ projectId: shop.id, minutes: 120, date: today }) // Bruno works 2h
+    await b.app.sync.run()
+    await a.app.sync.run()
+    const report = a.app.finance.report({ range: { from: today, to: today } })
+    expect(report.rows.find((r) => r.label === 'shop')).toMatchObject({ minutes: 120, earnedCents: 12000 })
+  })
+
+  it('rejects plain http to remote hosts and re-sends everything to a new server', async () => {
+    await expect(a.app.sync.login('http://team.example.com', tokenA)).rejects.toThrow(/https/)
+    a.app.clients.create({ name: 'Acme' })
+    await a.app.sync.run()
+    const other = createFakeSyncServer('https://other.test')
+    const token = other.addUser('Anna', 'anna@team.test')
+    a.app.sync.logout()
+    const fx = a.app as unknown as { sync: { login: (u: string, t: string) => Promise<unknown> } }
+    // Point the client at the other server's fetch.
+    ;(a.app.sync as unknown as { fetchImpl: typeof fetch }).fetchImpl = other.fetch
+    await fx.sync.login(other.url, token)
+    await a.app.sync.run()
+    expect([...other.records.values()].some((r) => (r.data as { name?: string }).name === 'Acme')).toBe(true)
+  })
+})
+
 describe('team sync', () => {
   it('logs in, re-keys the local user and pulls members', async () => {
     const before = localUserId(a.app.db)
@@ -162,11 +264,20 @@ describe('team sync', () => {
     await a.app.sync.run()
     await b.app.sync.run()
 
-    // Bruno's project took the team id, kept its folder and its task.
-    const merged = b.app.projects.get(shop.id)!
-    expect(merged).toMatchObject({ local: true, name: 'shop', path: join(b.root, 'shop-clone') })
+    // Bruno's clone is private: it is not adopted (nor uploaded) until he shares it.
+    expect(b.app.projects.get(shop.id)).toMatchObject({ local: false })
+    expect(b.app.projects.get(local.id)).toMatchObject({ shared: false, local: true })
+    expect([...server.records.values()].some((r) => (r.data as { title?: string }).title === 'Bruno local task')).toBe(false)
+
+    // Sharing it is the consent: it merges into the team project, keeping folder and tasks.
+    const merged = b.app.projects.update(local.id, { shared: true })
+    expect(merged).toMatchObject({ id: shop.id, local: true, shared: true, name: 'shop', path: join(b.root, 'shop-clone') })
+    expect(b.app.projects.get(local.id)).toBeNull()
     expect(b.app.tasks.list({ projectId: shop.id }).map((t) => t.title)).toEqual(['Bruno local task'])
     expect(b.app.projects.list({ all: true }).filter((p) => p.name === 'shop' || p.name === 'shop-clone')).toHaveLength(1)
+    await b.app.sync.run()
+    await a.app.sync.run()
+    expect(a.app.tasks.list({ projectId: shop.id }).map((t) => t.title)).toEqual(['Bruno local task'])
   })
 
   it.runIf(hasGit)('attaches a team project when its folder appears later', async () => {

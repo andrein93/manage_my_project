@@ -36,6 +36,25 @@ MCP `update_project shared`). Projects pulled from the server are shared. Client
 and the member list always sync. Un-sharing stops future pushes; data already on the server
 stays there.
 
+### Decisions after review (2026-10-08)
+
+- A teammate's project for a repository I also have locally is **not** adopted automatically
+  unless my copy is already shared: it appears as "not on this computer". When I share my copy,
+  it **merges** into the team project (folder, tasks, money and time move to the team id).
+- Pulled changes never change my `shared` flag; removing a workspace turns my shared projects
+  into "not on this computer" locally and never deletes them for the team; "folder missing" is
+  local-only and does not touch `updated_at`.
+- `time_daily` rows are per **device** (one person on two computers does not overwrite
+  themselves); days whose time disappears are set back to zero.
+- Pull applies each record in its own savepoint (a bad record is skipped, not fatal); records
+  whose project is not present yet are kept and retried on the next sync.
+- Logging in to a different server re-sends everything; plain `http` is refused except for
+  local hosts (localhost, 127.0.0.1, *.test, *.local).
+- Finance: for shared projects, teammates' synced daily minutes count in hours, hourly earnings
+  and €/hour, so project profitability reflects the whole team.
+- Known limitation: a record that leaves the shared scope (e.g. a payment moved to a private
+  project, or a project un-shared) stops syncing; copies already on the server remain.
+
 ## Synced data
 
 | Table | Shared fields |

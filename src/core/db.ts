@@ -233,6 +233,7 @@ export const MIGRATIONS: string[] = [
   CREATE TABLE time_daily (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
+    device_id TEXT NOT NULL,
     project_id TEXT NOT NULL,
     date TEXT NOT NULL,
     minutes INTEGER NOT NULL,
@@ -240,7 +241,7 @@ export const MIGRATIONS: string[] = [
     updated_at TEXT NOT NULL,
     deleted_at TEXT,
     sync_rev TEXT,
-    UNIQUE (user_id, project_id, date)
+    UNIQUE (user_id, device_id, project_id, date)
   );
 
   CREATE TABLE sync_state (
