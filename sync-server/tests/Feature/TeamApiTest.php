@@ -65,4 +65,14 @@ class TeamApiTest extends TestCase
                 ['id' => $zoe->id, 'name' => 'Zoe'],
             ]);
     }
+
+    public function test_api_is_rate_limited_per_member(): void
+    {
+        Sanctum::actingAs(User::factory()->create());
+
+        $this->getJson('/api/v1/me')
+            ->assertOk()
+            ->assertHeader('X-RateLimit-Limit', '240')
+            ->assertHeader('X-RateLimit-Remaining', '239');
+    }
 }

@@ -4,7 +4,7 @@ use App\Http\Controllers\SyncController;
 use App\Http\Controllers\TeamController;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('v1')->middleware('auth:sanctum')->group(function () {
+Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:api'])->group(function () {
     Route::get('/me', [TeamController::class, 'me']);
     Route::get('/members', [TeamController::class, 'members']);
     Route::post('/sync/push', [SyncController::class, 'push']);
