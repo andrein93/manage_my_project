@@ -42,6 +42,10 @@ export class CategoryRepository {
   }
 
   create(input: CategoryInput): Category {
+    return transaction(this.db, () => this.createUnlocked(input))
+  }
+
+  private createUnlocked(input: CategoryInput): Category {
     const name = cleanName(input.name, 'category', 80)
     const existing = this.list()
     const color = input.color === undefined ? PALETTE[existing.length % PALETTE.length] : cleanColor(input.color)
@@ -69,6 +73,20 @@ export class CategoryRepository {
         .run(name, color, input.position ?? category.position, now(), id),
     )
     return this.get(id)!
+  }
+
+  /** Moves a category one step up or down, renumbering positions 1…n in one transaction. */
+  move(id: string, direction: 'up' | 'down'): Category[] {
+    this.require(id)
+    transaction(this.db, () => {
+      const ids = this.list().map((c) => c.id)
+      const from = ids.indexOf(id)
+      const to = direction === 'up' ? from - 1 : from + 1
+      if (to >= 0 && to < ids.length) [ids[from], ids[to]] = [ids[to], ids[from]]
+      const ts = now()
+      ids.forEach((cid, i) => this.db.prepare('UPDATE categories SET position = ?, updated_at = ? WHERE id = ?').run(i + 1, ts, cid))
+    })
+    return this.list()
   }
 
   /** Soft-deletes the category and detaches it from its projects. */

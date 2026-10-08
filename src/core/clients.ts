@@ -36,7 +36,7 @@ export class ClientRepository {
 
   /** id, id prefix or name. */
   resolve(ref: string): Client {
-    return resolveRef(this.list(), ref, 'client')
+    return resolveRef(this.list(), ref, 'client', '. Create it first (mmp client add, or create_client).')
   }
 
   create(input: ClientInput): Client {

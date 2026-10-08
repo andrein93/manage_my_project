@@ -16,6 +16,8 @@ const draft = ref('')
 const input = ref<HTMLInputElement | null>(null)
 const dateInput = ref<HTMLInputElement | null>(null)
 const confirmDelete = ref(false)
+/** Bumped after a failed save: re-creates the controls so they show the task's real values. */
+const renderKey = ref(0)
 
 async function save(patch: TaskInput) {
   try {
@@ -23,6 +25,7 @@ async function save(patch: TaskInput) {
     error.value = null
   } catch (e) {
     report(e)
+    renderKey.value++
   }
 }
 
@@ -58,7 +61,7 @@ const done = () => props.task.status === 'done'
 </script>
 
 <template>
-  <div class="group flex items-start gap-3 py-2.5">
+  <div :key="renderKey" class="group flex items-start gap-3 py-2.5">
     <input
       type="checkbox"
       class="mt-1 h-4 w-4 shrink-0 accent-[var(--action)]"

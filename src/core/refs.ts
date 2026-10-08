@@ -10,6 +10,7 @@ export function resolveRef<T extends { id: string; name?: string; title?: string
   items: T[],
   ref: string,
   label: string,
+  notFoundHint = '',
 ): T {
   const value = ref.trim()
   const lower = value.toLowerCase()
@@ -26,7 +27,7 @@ export function resolveRef<T extends { id: string; name?: string; title?: string
     const list = matches.map((i) => `  ${i.id.slice(0, 8)}  ${i.name ?? i.title ?? ''}`).join('\n')
     throw new UserError(`"${ref}" matches ${matches.length} ${label}s:\n${list}`, 'conflict')
   }
-  throw new UserError(`${capitalize(label)} not found: ${ref}`, 'not_found')
+  throw new UserError(`${capitalize(label)} not found: ${ref}${notFoundHint}`, 'not_found')
 }
 
 function capitalize(s: string): string {
@@ -37,6 +38,8 @@ function capitalize(s: string): string {
 export function cleanName(value: string | undefined, label: string, max = 200): string {
   const name = (value ?? '').trim()
   if (!name) throw new UserError(`${capitalize(label)} name cannot be empty`)
+  // "none" means "no client/category" in filters and patches.
+  if (name.toLowerCase() === 'none') throw new UserError(`"${name}" is reserved; choose another ${label} name`)
   if (name.length > max) throw new UserError(`${capitalize(label)} name is too long (max ${max})`)
   return name
 }

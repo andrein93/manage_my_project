@@ -126,6 +126,7 @@ watch(
   () => props.id,
   () => {
     project.value = null
+    newClientName.value = null
     load(true)
   },
 )

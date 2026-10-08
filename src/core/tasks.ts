@@ -137,6 +137,10 @@ export class TaskRepository {
   }
 
   update(id: string, input: TaskInput): Task {
+    return transaction(this.db, () => this.updateUnlocked(id, input))
+  }
+
+  private updateUnlocked(id: string, input: TaskInput): Task {
     const task = this.get(id)
     if (!task) throw new UserError(`Task not found: ${id}`, 'not_found')
     const fields = validate(input, false)
@@ -160,7 +164,23 @@ export class TaskRepository {
         now(),
         id,
       )
+    this.renumberIfCrowded(task.project.id, status)
     return this.get(id)!
+  }
+
+  /**
+   * Fractional positions (drag between two cards) eventually collide; when two neighbours get
+   * too close, rewrite the column as 1, 2, 3… keeping the current order.
+   */
+  private renumberIfCrowded(projectId: string, status: TaskStatus): void {
+    const rows = this.db
+      .prepare(
+        'SELECT id, position FROM tasks WHERE project_id = ? AND status = ? AND deleted_at IS NULL ORDER BY position, updated_at',
+      )
+      .all(projectId, status) as { id: string; position: number }[]
+    const crowded = rows.some((r, i) => i > 0 && r.position - rows[i - 1].position < 1e-6)
+    if (!crowded) return
+    rows.forEach((r, i) => this.db.prepare('UPDATE tasks SET position = ? WHERE id = ?').run(i + 1, r.id))
   }
 
   remove(id: string): Task {

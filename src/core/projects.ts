@@ -198,6 +198,10 @@ export class ProjectRepository {
   }
 
   update(id: string, patch: ProjectPatch): Project {
+    return transaction(this.db, () => this.updateUnlocked(id, patch))
+  }
+
+  private updateUnlocked(id: string, patch: ProjectPatch): Project {
     const project = this.get(id)
     if (!project) throw new UserError(`Project not found: ${id}`, 'not_found')
     const name = patch.name?.trim() ?? project.name

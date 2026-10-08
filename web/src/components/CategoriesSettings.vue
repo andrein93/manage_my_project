@@ -39,15 +39,9 @@ function recolor(c: Category, color: string) {
   run(() => api.updateCategory(c.id, { color }))
 }
 
-/** Swaps positions with the neighbour above or below. */
 function move(index: number, delta: -1 | 1) {
-  const a = categories.value[index]
-  const b = categories.value[index + delta]
-  if (!a || !b) return
-  run(async () => {
-    await api.updateCategory(a.id, { position: b.position })
-    await api.updateCategory(b.id, { position: a.position })
-  })
+  const category = categories.value[index]
+  if (category) run(() => api.moveCategory(category.id, delta < 0 ? 'up' : 'down'))
 }
 
 function remove(c: Category) {

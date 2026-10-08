@@ -110,6 +110,8 @@ export const api = {
   categories: () => request<Category[]>('GET', '/categories'),
   createCategory: (input: CategoryInput) => request<Category>('POST', '/categories', input),
   updateCategory: (id: string, input: CategoryInput) => request<Category>('PATCH', `/categories/${id}`, input),
+  moveCategory: (id: string, direction: 'up' | 'down') =>
+    request<Category[]>('POST', `/categories/${id}/move`, { direction }),
   removeCategory: (id: string) => request<void>('DELETE', `/categories/${id}`),
 
   tasks: (params: Record<string, string | undefined>) => request<Task[]>('GET', `/tasks?${query(params)}`),

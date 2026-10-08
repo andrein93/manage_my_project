@@ -70,6 +70,9 @@ export function registerOrganizeRoutes(api: FastifyInstance, app: App): void {
   api.patch('/categories/:id', async (request) =>
     app.categories.update(idParams.parse(request.params).id, categoryBody.parse(request.body)),
   )
+  api.post('/categories/:id/move', async (request) =>
+    app.categories.move(idParams.parse(request.params).id, z.object({ direction: z.enum(['up', 'down']) }).parse(request.body).direction),
+  )
   api.delete('/categories/:id', async (request, reply) => {
     app.categories.remove(idParams.parse(request.params).id)
     return reply.code(204).send()

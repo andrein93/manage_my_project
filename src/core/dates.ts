@@ -15,7 +15,8 @@ export function addDays(day: string, days: number): string {
 /** Validates a YYYY-MM-DD calendar date. */
 export function cleanDate(value: string): string {
   const day = value.trim()
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || new Date(`${day}T00:00:00Z`).toISOString().slice(0, 10) !== day) {
+  const parsed = new Date(`${day}T00:00:00Z`)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== day) {
     throw new UserError(`Invalid date "${value}". Use YYYY-MM-DD.`)
   }
   return day

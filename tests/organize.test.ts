@@ -173,3 +173,34 @@ describe('dates', () => {
     expect(dueGroup('2026-10-16', TODAY)).toBe('later')
   })
 })
+
+describe('review regressions (organize)', () => {
+  it('rejects out-of-range dates as user errors', () => {
+    expect(() => cleanDate('2026-13-01')).toThrow(/Invalid date/)
+    expect(() => cleanDate('2026-00-10')).toThrow(/Invalid date/)
+    expect(() => fx.app.tasks.create(project('shop').id, [{ title: 'x', dueDate: '2026-13-01' }])).toThrow(/Invalid date/)
+  })
+
+  it('reserves the name "none" and hints how to create a missing client', () => {
+    expect(() => fx.app.clients.create({ name: 'None' })).toThrow(/reserved/)
+    expect(() => fx.app.categories.create({ name: 'none' })).toThrow(/reserved/)
+    expect(() => fx.app.clients.resolve('Nobody')).toThrow(/Create it first/)
+  })
+
+  it('moves categories even when positions are tied', () => {
+    const a = fx.app.categories.create({ name: 'A', position: 10 })
+    fx.app.categories.create({ name: 'B', position: 10 })
+    const order = fx.app.categories.move(a.id, 'down').map((c) => c.name)
+    expect(order.indexOf('B')).toBeLessThan(order.indexOf('A'))
+    expect(new Set(fx.app.categories.list().map((c) => c.position)).size).toBe(fx.app.categories.list().length)
+  })
+
+  it('renumbers a column when fractional positions get too close', () => {
+    const [a, b, c] = fx.app.tasks.create(project('shop').id, [{ title: 'a' }, { title: 'b' }, { title: 'c' }])
+    fx.app.tasks.update(c.id, { position: a.position + 1e-9 })
+    const column = fx.app.tasks.list({ projectId: project('shop').id }).sort((x, y) => x.position - y.position)
+    expect(column.map((t) => t.title)).toEqual(['a', 'c', 'b'])
+    expect(column.map((t) => t.position)).toEqual([1, 2, 3])
+    expect(b.position).toBe(2)
+  })
+})
