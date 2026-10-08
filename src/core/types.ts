@@ -11,6 +11,8 @@ export interface GitInfo {
   dirty: boolean
   /** Commits on HEAD not on any remote ref; null when unknown or without a remote. */
   unpushed?: number | null
+  /** git could not be read this time (timeout, lock…); other fields are placeholders. */
+  error?: boolean
 }
 
 export const HEALTH_KINDS = ['missing', 'no_git', 'no_remote', 'unpushed', 'uncommitted', 'dormant'] as const

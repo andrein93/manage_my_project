@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { api, type Overview } from '../api'
+import { api, type Digest, type Overview } from '../api'
 import { useAutoRefresh, useErrors } from '../composables'
 import { formatMinutes, formatMoney, formatUsd } from '../time'
 
@@ -9,15 +9,17 @@ const { t } = useI18n()
 const { error, report } = useErrors()
 
 const data = ref<Overview | null>(null)
+const digestData = ref<Digest | null>(null)
 const copied = ref(false)
 
 let latest = 0
 async function load() {
   const request = ++latest
   try {
-    const o = await api.overview()
+    const [o, d] = await Promise.all([api.overview(), api.digest('this')])
     if (request !== latest) return
     data.value = o
+    digestData.value = d
     error.value = null
   } catch (e) {
     if (request === latest) report(e)
@@ -46,10 +48,12 @@ const allClear = computed(() => {
 
 const maxMinutes = computed(() => Math.max(1, ...(data.value?.week.topProjects.map((p) => p.minutes) ?? [1])))
 
-/** Weekly report as Markdown, in the interface language. */
-async function copyDigest() {
+/** Weekly report as Markdown, in the interface language (built from prefetched data so the
+ * clipboard write stays inside the click, as Safari and Firefox require). */
+function copyDigest() {
+  const d = digestData.value
+  if (!d) return
   try {
-    const d = await api.digest('this')
     const m = (c: number) => formatMoney(c, d.currency)
     const lines = [
       `# ${t('overview.digestTitle', { from: d.from, to: d.to })}`,
@@ -71,12 +75,31 @@ async function copyDigest() {
         ...d.upcoming.map((u) => `- ${u.date}: ${t(`overview.${u.direction}`)} ${m(u.amountCents)}, ${u.label || defaultLabel(u.direction)}${u.projectName ? ` (${u.projectName})` : ''}`),
       )
     }
-    await navigator.clipboard.writeText(lines.join('\n') + '\n')
+    writeClipboard(lines.join('\n') + '\n')
     copied.value = true
     setTimeout(() => (copied.value = false), 2500)
   } catch (e) {
     report(e)
   }
+}
+
+function writeClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).catch(() => legacyCopy(text))
+  } else legacyCopy(text)
+}
+
+/** Works without the async clipboard API (e.g. plain HTTP on a LAN address). */
+function legacyCopy(text: string) {
+  const area = document.createElement('textarea')
+  area.value = text
+  area.setAttribute('readonly', '')
+  area.style.position = 'fixed'
+  area.style.opacity = '0'
+  document.body.appendChild(area)
+  area.select()
+  document.execCommand('copy')
+  area.remove()
 }
 
 useAutoRefresh(load, 60_000)
@@ -86,7 +109,7 @@ useAutoRefresh(load, 60_000)
   <section>
     <div class="mb-6 flex flex-wrap items-end justify-between gap-3">
       <h1 class="text-2xl font-semibold tracking-tight">{{ t('app.overview') }}</h1>
-      <button class="btn" @click="copyDigest">{{ copied ? t('overview.copied') : t('overview.copyDigest') }}</button>
+      <button class="btn" :disabled="!digestData" @click="copyDigest">{{ copied ? t('overview.copied') : t('overview.copyDigest') }}</button>
     </div>
     <p v-if="error" class="mb-4 text-sm text-danger" role="alert">{{ error }}</p>
 

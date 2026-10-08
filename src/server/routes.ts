@@ -138,7 +138,16 @@ export function registerRoutes(api: FastifyInstance, app: App, opener: Opener): 
       tags: app.projects.allTags(),
       clients: app.clients.list().map(({ id, name }) => ({ id, name })),
       // "framework@major" values present across projects, for the version filter.
-      versions: [...new Set(all.flatMap((p) => Object.entries(p.versions).map(([k, v]) => `${k}@${majorOf(v) ?? v}`)))].sort(
+      versions: [
+        ...new Set(
+          all.flatMap((p) =>
+            Object.entries(p.versions)
+              .map(([k, v]) => [k, majorOf(v)] as const)
+              .filter(([, major]) => major !== null)
+              .map(([k, major]) => `${k}@${major}`),
+          ),
+        ),
+      ].sort(
         (a, b) => a.localeCompare(b, undefined, { numeric: true }),
       ),
       attention: all.filter((p) => p.health.length > 0).length,

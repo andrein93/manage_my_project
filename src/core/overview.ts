@@ -11,7 +11,7 @@ export type { Digest, Overview, UpcomingItem }
 
 /** Recurring costs to pay and recurring fees to invoice in the next `days` days (inclusive of today). */
 export function upcoming(app: App, days = 30, today = localToday()): UpcomingItem[] {
-  const until = addDays(today, days)
+  const until = addDays(today, days - 1)
   const items: UpcomingItem[] = []
   for (const e of app.finance.repo.expenses()) {
     const dates = e.interval ? occurrences(e.startDate, e.endDate, e.interval, until) : [e.startDate]
@@ -33,7 +33,8 @@ export function overview(app: App, today = localToday()): Overview {
   const week = resolvePeriod('week', today, weekStart)
   const month = resolvePeriod('month', today, weekStart)
   const time = app.time.repo.report(week, 'project')
-  const money = app.finance.report({ range: month })
+  // Money "so far": revenue dated later this month has not been earned yet.
+  const money = app.finance.report({ range: { from: month.from, to: today < month.to ? today : month.to } })
   const completedThisWeek = app.tasks
     .list({ status: ['done'], all: true })
     .filter((t) => t.completedAt && localDateOfIso(t.completedAt) >= week.from && localDateOfIso(t.completedAt) <= week.to)
@@ -75,7 +76,7 @@ export function digest(app: App, which: 'this' | 'last' = 'this', today = localT
   const { weekStart, currency } = app.settings.get()
   const range = resolvePeriod(which === 'this' ? 'week' : 'last-week', today, weekStart)
   const time = app.time.repo.report(range, 'project')
-  const money = app.finance.report({ range })
+  const money = app.finance.report({ range: { from: range.from, to: today < range.to ? today : range.to } })
   const health: Record<string, string[]> = {}
   for (const p of app.projects.list({ attention: true })) {
     for (const f of p.health) (health[f.kind] ??= []).push(p.name)

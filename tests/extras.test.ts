@@ -72,6 +72,43 @@ describe('health', () => {
   })
 })
 
+describe('review regressions (extras)', () => {
+  it('survives malformed lockfiles and reads big ones with a targeted scan', async () => {
+    fx.write({
+      'bad/composer.lock': JSON.stringify({ packages: { not: 'an array' } }),
+      'bad/composer.json': JSON.stringify({ require: { php: 8 } }),
+      'bad/package.json': '﻿' + JSON.stringify({ dependencies: { vue: '^3.5.0' } }),
+    })
+    expect(await detectVersions(join(fx.root, 'bad'))).toEqual({ vue: '3.5.0' })
+    const filler = 'x'.repeat(3 * 1024 * 1024)
+    fx.write({
+      'mono/package.json': JSON.stringify({ dependencies: { react: '^18.0.0' } }),
+      'mono/package-lock.json': `{"padding":"${filler}","packages":{"node_modules/react":{"version":"18.3.1","resolved":"x"}}}`,
+    })
+    expect((await detectVersions(join(fx.root, 'mono'))).react).toBe('18.3.1')
+  })
+
+  it.runIf(hasGit)('keeps known git data when a later read fails', async () => {
+    gitInit(join(fx.root, 'shop'))
+    await fx.app.scan()
+    const id = fx.app.projects.resolve('shop').id
+    fx.app.projects.updateDetected(id, { stack: [], versions: {}, lastActivityAt: null, git: { branch: null, lastCommitAt: null, remote: null, dirty: false, error: true } })
+    const shop = fx.app.projects.get(id)!
+    expect(shop.git).toMatchObject({ branch: 'main', remote: 'https://example.com/repo.git' })
+    expect(shop.health.map((h) => h.kind)).not.toContain('no_git')
+  })
+
+  it('counts upcoming days inclusively and earned money only up to today', async () => {
+    await fx.app.scan()
+    const shop = fx.app.projects.resolve('shop').id
+    fx.app.finance.repo.addExpense({ amount: 5, startDate: '2026-11-06', note: 'Day 30' }) // TODAY + 29
+    fx.app.finance.repo.addExpense({ amount: 5, startDate: '2026-11-07', note: 'Day 31' })
+    expect(upcoming(fx.app, 30, TODAY).map((u) => u.label)).toEqual(['Day 30'])
+    fx.app.finance.repo.addAgreement({ projectId: shop, kind: 'recurring', amount: 100, startDate: '2026-10-20' })
+    expect(overview(fx.app, TODAY).month.earnedCents).toBe(0) // Oct 20 has not happened yet
+  })
+})
+
 describe('overview and digest', () => {
   async function setup() {
     await fx.app.scan()

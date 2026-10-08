@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { baseCompile } from '@intlify/message-compiler'
 import { describe, expect, it } from 'vitest'
 
 const DIR = join(import.meta.dirname, '..', 'web', 'src', 'locales')
@@ -15,15 +16,36 @@ function flatten(obj: unknown, prefix = ''): Map<string, string> {
   return out
 }
 
+const englishValue = (key: string) => flatten(load('en.json')).get(key)
 const placeholders = (s: string) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort()
 const plurals = (s: string) => s.split(' | ').length
 
 const english = flatten(load('en.json'))
-const others = readdirSync(DIR).filter((f) => f.endsWith('.json') && f !== 'en.json')
+const files = readdirSync(DIR).filter((f) => f.endsWith('.json'))
+const others = files.filter((f) => f !== 'en.json')
+
+/** Messages vue-i18n cannot compile (bad placeholders, stray special characters…). */
+function compileErrors(messages: Map<string, string>): string[] {
+  const bad: string[] = []
+  for (const [key, value] of messages) {
+    if (key === '_meta.name') continue
+    baseCompile(value, { onError: () => bad.push(key) })
+  }
+  return bad
+}
 
 describe('locales', () => {
   it('ships at least Italian next to English', () => {
     expect(others).toContain('it.json')
+  })
+
+  it.each(files)('%s is named with a valid locale code', (file) => {
+    const code = file.replace(/\.json$/, '')
+    expect(Intl.getCanonicalLocales(code)).toHaveLength(1)
+  })
+
+  it('English compiles', () => {
+    expect(compileErrors(english)).toEqual([])
   })
 
   describe.each(others)('%s', (file) => {

@@ -2,10 +2,21 @@ import { createI18n } from 'vue-i18n'
 
 type Messages = Record<string, unknown> & { _meta: { name: string } }
 
-// Every locales/<code>.json is a language: adding a language is adding a file.
+function validLocale(code: string): boolean {
+  try {
+    return Intl.getCanonicalLocales(code).length === 1
+  } catch {
+    return false
+  }
+}
+
+// Every locales/<code>.json is a language: adding a language is adding a file. Files with an
+// invalid locale code or without _meta.name are skipped instead of breaking the dashboard.
 const modules = import.meta.glob<{ default: Messages }>('./locales/*.json', { eager: true })
 const messages: Record<string, Messages> = Object.fromEntries(
-  Object.entries(modules).map(([file, mod]) => [file.replace(/^.*\/(.+)\.json$/, '$1'), mod.default]),
+  Object.entries(modules)
+    .map(([file, mod]) => [file.replace(/^.*\/(.+)\.json$/, '$1'), mod.default] as const)
+    .filter(([code, m]) => validLocale(code) && typeof m?._meta?.name === 'string'),
 )
 
 export const LANGUAGES = Object.entries(messages)
@@ -23,26 +34,32 @@ export function preferredLanguage(): string {
   }
 }
 
-function resolve(preference: string): string {
-  if (preference !== 'auto' && messages[preference]) return preference
+/**
+ * `messages`: which translation to show. `format`: the locale for dates and numbers — the
+ * browser's own tag in automatic mode (en-GB keeps day/month order), else the chosen language.
+ */
+function resolve(preference: string): { messages: string; format: string | undefined } {
+  if (preference !== 'auto' && messages[preference]) return { messages: preference, format: preference }
   const candidates = typeof navigator === 'undefined' ? [] : (navigator.languages ?? [navigator.language])
   for (const tag of candidates) {
-    if (messages[tag]) return tag
+    if (messages[tag]) return { messages: tag, format: tag }
     const base = tag.split('-')[0]
-    if (messages[base]) return base
+    if (messages[base]) return { messages: base, format: validLocale(tag) ? tag : base }
   }
-  return 'en'
+  return { messages: 'en', format: undefined }
 }
+
+let current = resolve(preferredLanguage())
 
 export const i18n = createI18n<false>({
   legacy: false,
-  locale: resolve(preferredLanguage()),
+  locale: current.messages,
   fallbackLocale: 'en',
   // Loaded from JSON at build time; shapes are checked by tests/locales.test.ts.
   messages: messages as never,
 })
 
-if (typeof document !== 'undefined') document.documentElement.lang = i18n.global.locale.value
+if (typeof document !== 'undefined') document.documentElement.lang = current.format ?? current.messages
 
 export function setLanguage(preference: string): void {
   try {
@@ -51,11 +68,12 @@ export function setLanguage(preference: string): void {
   } catch {
     // Storage unavailable: the choice lasts for this page only.
   }
-  i18n.global.locale.value = resolve(preference)
-  document.documentElement.lang = i18n.global.locale.value
+  current = resolve(preference)
+  i18n.global.locale.value = current.messages
+  document.documentElement.lang = current.format ?? current.messages
 }
 
-/** Locale for dates and numbers: the interface language. */
-export function uiLocale(): string {
-  return i18n.global.locale.value
+/** Locale for dates and numbers (undefined = the browser default). */
+export function uiLocale(): string | undefined {
+  return current.format
 }

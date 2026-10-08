@@ -185,6 +185,13 @@ export class ProjectRepository {
    * soft-deleted rows, so a scan racing a workspace removal cannot resurrect them.
    */
   updateDetected(id: string, fields: DetectedFields): void {
+    // A failed git read keeps what we knew before instead of overwriting it with placeholders.
+    let git = fields.git
+    if (git?.error) {
+      const previous = this.db.prepare('SELECT git FROM projects WHERE id = ?').get(id) as { git: string | null } | undefined
+      const known = previous?.git ? (JSON.parse(previous.git) as GitInfo) : null
+      if (known && !known.error) git = known
+    }
     this.db
       .prepare(
         `UPDATE projects SET stack = ?, git = ?, versions = ?, last_activity_at = ?, missing_since = NULL, updated_at = ?
@@ -192,7 +199,7 @@ export class ProjectRepository {
       )
       .run(
         JSON.stringify(fields.stack),
-        fields.git ? JSON.stringify(fields.git) : null,
+        git ? JSON.stringify(git) : null,
         JSON.stringify(fields.versions ?? {}),
         fields.lastActivityAt,
         now(),
