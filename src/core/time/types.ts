@@ -44,7 +44,7 @@ export interface WorkBlock {
   start: string
   end: string
   minutes: number
-  sources: ('claude' | 'git')[]
+  sources: ('claude' | 'git' | 'editor')[]
   sessionIds: string[]
 }
 

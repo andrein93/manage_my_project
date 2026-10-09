@@ -1,3 +1,7 @@
+import { isAbsolute } from 'node:path'
+import { pathKey } from '../paths.js'
+import { UserError } from '../types.js'
+import { minuteKey } from './periods.js'
 import type { DB } from '../db.js'
 import type { ProjectRepository } from '../projects.js'
 import type { SettingsRepository } from '../settings.js'
@@ -22,6 +26,22 @@ export class TimeService {
     private readonly settings: SettingsRepository,
   ) {
     this.repo = new TimeRepository(db, projects, settings)
+  }
+
+  /**
+   * Records an editor heartbeat: the minute of `at` was active in `path` (a workspace folder).
+   * Same minute model as Claude Code and git, so overlapping sources never double count.
+   * Returns false when that minute was already recorded for the folder.
+   */
+  recordEditor(path: string, at: number = Date.now(), now: number = Date.now()): boolean {
+    if (typeof path !== 'string' || !isAbsolute(path) || path.length > 1000) throw new UserError('path must be an absolute folder path')
+    if (!Number.isFinite(at)) throw new UserError('at must be a time')
+    if (at < now - 24 * 3_600_000) throw new UserError('Heartbeat too old (more than 24 hours)')
+    if (at > now + 5 * 60_000) throw new UserError('Heartbeat is in the future')
+    const result = this.db
+      .prepare("INSERT OR IGNORE INTO activity (cwd_key, cwd, minute, source, session_id) VALUES (?, ?, ?, 'editor', NULL)")
+      .run(pathKey(path), path, minuteKey(at))
+    return Number(result.changes) > 0
   }
 
   /** Concurrent callers share the running sync. */

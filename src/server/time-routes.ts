@@ -34,6 +34,13 @@ export function registerTimeRoutes(api: FastifyInstance, app: App): void {
   const range = (q: { period?: string; from?: string; to?: string }) =>
     rangeFrom(q, localToday(), app.settings.get().weekStart)
 
+  // Editor heartbeats (VS Code extension): { path, at? (ISO) }.
+  api.post('/time/heartbeat', async (request, reply) => {
+    const body = z.object({ path: z.string().min(1).max(1000), at: z.string().datetime().optional() }).strict().parse(request.body)
+    app.time.recordEditor(body.path, body.at ? Date.parse(body.at) : Date.now())
+    return reply.code(204).send()
+  })
+
   api.get('/time/report', async (request) => {
     const q = reportQuery.parse(request.query)
     const r = range(q)

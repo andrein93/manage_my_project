@@ -318,6 +318,22 @@ export const MIGRATIONS: string[] = [
     PRIMARY KEY (project_id, field_id)
   );
   `,
+  // Editor heartbeats (VS Code extension) are a third activity source: widen the CHECK by rebuilding.
+  `
+  ALTER TABLE activity RENAME TO activity_old;
+  CREATE TABLE activity (
+    cwd_key TEXT NOT NULL,
+    cwd TEXT NOT NULL,
+    minute TEXT NOT NULL,
+    source TEXT NOT NULL CHECK (source IN ('claude', 'git', 'editor')),
+    session_id TEXT,
+    PRIMARY KEY (cwd_key, minute, source)
+  ) WITHOUT ROWID;
+  INSERT INTO activity (cwd_key, cwd, minute, source, session_id) SELECT cwd_key, cwd, minute, source, session_id FROM activity_old;
+  DROP TABLE activity_old;
+  CREATE INDEX activity_minute ON activity(minute);
+  CREATE INDEX activity_session ON activity(session_id) WHERE session_id IS NOT NULL;
+  `,
 ]
 
 /** Starter categories, created once when the categories table has never been used. */

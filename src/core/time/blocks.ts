@@ -7,7 +7,7 @@ export const BLOCK_PADDING_MINUTES = 2
 export interface Signal {
   /** Epoch ms, minute resolution. */
   at: number
-  source: 'claude' | 'git'
+  source: 'claude' | 'git' | 'editor'
   sessionId: string | null
 }
 
@@ -16,7 +16,7 @@ export interface Block {
   /** Exclusive end, including padding. */
   end: number
   minutes: number
-  sources: ('claude' | 'git')[]
+  sources: ('claude' | 'git' | 'editor')[]
   sessionIds: string[]
 }
 

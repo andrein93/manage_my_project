@@ -33,7 +33,7 @@ interface ActivityRow {
   cwd_key: string
   cwd: string
   minute: string
-  source: 'claude' | 'git'
+  source: 'claude' | 'git' | 'editor'
   session_id: string | null
 }
 

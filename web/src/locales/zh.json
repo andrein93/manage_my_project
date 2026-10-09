@@ -249,7 +249,8 @@
     "recentBlocks": "最近的工作",
     "sources": {
       "claude": "Claude Code",
-      "git": "git"
+      "git": "git",
+      "editor": "编辑器"
     },
     "noBlocks": "还没有记录到活动。",
     "seeAll": "查看时间报告",

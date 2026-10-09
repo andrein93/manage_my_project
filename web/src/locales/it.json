@@ -249,7 +249,8 @@
     "recentBlocks": "Lavoro recente",
     "sources": {
       "claude": "Claude Code",
-      "git": "git"
+      "git": "git",
+      "editor": "Editor"
     },
     "noBlocks": "Ancora nessuna attività registrata.",
     "seeAll": "Vedi il report del tempo",
