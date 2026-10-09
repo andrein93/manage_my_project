@@ -51,6 +51,13 @@ export function buildCli(getApp: () => App, out: (line: string) => void = consol
     .option('--scan', 'scan workspaces first')
     .option('--open', 'open the dashboard in the browser')
     .action(async (opts: { scan?: boolean; open?: boolean }) => {
+      // Started by 'mmp start' with an IPC channel: if that supervisor dies (even killed by force),
+      // the channel closes and this server exits instead of holding the port as an orphan.
+      if (process.send) {
+        process.on('disconnect', () => process.exit(0))
+        // The channel alone must not keep the process alive (e.g. when the port is busy and the server never starts).
+        process.channel?.unref()
+      }
       const app = getApp()
       const { startServer } = await import('../server/index.js')
       if (opts.scan) {
@@ -79,10 +86,11 @@ export function buildCli(getApp: () => App, out: (line: string) => void = consol
       const { loadConfig } = await import('../config.js')
       const installDir = loadConfig().installDir
       const entry = fileURLToPath(new URL('../../bin/mmp.js', import.meta.url))
+      const stamp = buildStampPath(installDir)
       const supervisor = createSupervisor({
         spawnChild(first) {
           const args = [entry, 'serve', ...(first ? ['--scan', ...(opts.open ? ['--open'] : [])] : [])]
-          const child = spawn(process.execPath, args, { stdio: 'inherit' })
+          const child = spawn(process.execPath, args, { stdio: ['inherit', 'inherit', 'inherit', 'ipc'] })
           return {
             kill: (force) => child.kill(force ? 'SIGKILL' : 'SIGTERM'),
             onExit: (cb) => child.on('exit', (code) => cb(code)),
@@ -90,11 +98,15 @@ export function buildCli(getApp: () => App, out: (line: string) => void = consol
         },
         readStamp: () => readBuildInfo(installDir),
         log: out,
+        onFatal: (code) => {
+          // The first server could not start (its error is already printed): stop like the old 'mmp start'.
+          unwatchFile(stamp)
+          process.exitCode = code ?? 1
+        },
         now: () => Date.now(),
         setTimer: (fn, ms) => setTimeout(fn, ms),
         clearTimer: (t) => clearTimeout(t as ReturnType<typeof setTimeout>),
       })
-      const stamp = buildStampPath(installDir)
       supervisor.start()
       watchFile(stamp, { interval: 2000 }, () => supervisor.check())
       const shutdown = async () => {

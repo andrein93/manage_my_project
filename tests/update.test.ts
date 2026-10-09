@@ -1,9 +1,9 @@
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { inspectGit, planUpdate, type GitState } from '../src/core/update.js'
+import { buildIsStale, inspectGit, planUpdate, type GitState } from '../src/core/update.js'
 import { hasGit } from './helpers.js'
 
 const clean: GitState = { isRepo: true, branch: 'main', upstream: 'origin/main', dirty: false, ahead: 0, behind: 0 }
@@ -26,6 +26,26 @@ describe('planUpdate', () => {
   it('is up to date or fast-forwards', () => {
     expect(planUpdate(clean)).toEqual({ kind: 'up-to-date' })
     expect(planUpdate({ ...clean, behind: 5 })).toEqual({ kind: 'update', commits: 5 })
+  })
+  it('refuses to answer when the remote could not be reached', () => {
+    expect(planUpdate({ ...clean, fetchFailed: true })).toMatchObject({ kind: 'refuse', reason: expect.stringContaining('could not reach') })
+  })
+  it('rebuilds an up-to-date checkout whose build is stale (e.g. a previous npm install failed)', () => {
+    expect(planUpdate(clean, { stale: true })).toEqual({ kind: 'rebuild' })
+    expect(planUpdate({ ...clean, behind: 2 }, { stale: true })).toEqual({ kind: 'update', commits: 2 })
+  })
+})
+
+describe('buildIsStale', () => {
+  const stamp = { id: 'x', version: '0.7.0', builtAt: '2026-10-09T12:00:00.000Z' }
+  it('is stale without a stamp, with another version or with a newer commit', () => {
+    expect(buildIsStale(null, '0.7.0', '2026-10-09T11:00:00+02:00')).toBe(true)
+    expect(buildIsStale(stamp, '0.8.0', '2026-10-09T11:00:00Z')).toBe(true)
+    expect(buildIsStale(stamp, '0.7.0', '2026-10-09T12:30:00Z')).toBe(true)
+  })
+  it('is fresh when built after the last commit with the same version', () => {
+    expect(buildIsStale(stamp, '0.7.0', '2026-10-09T11:59:00Z')).toBe(false)
+    expect(buildIsStale(stamp, '0.7.0', null)).toBe(false)
   })
 })
 
@@ -59,7 +79,7 @@ describe.runIf(hasGit)('inspectGit', () => {
 
   it('reports a clean, up-to-date clone', () => {
     const { b } = setup()
-    expect(inspectGit(b)).toEqual({ isRepo: true, branch: 'main', upstream: 'origin/main', dirty: false, ahead: 0, behind: 0 })
+    expect(inspectGit(b)).toMatchObject({ isRepo: true, branch: 'main', upstream: 'origin/main', dirty: false, ahead: 0, behind: 0, headTime: expect.any(String) })
   })
 
   it('sees commits behind after fetch, and local changes', () => {
@@ -69,6 +89,19 @@ describe.runIf(hasGit)('inspectGit', () => {
     git(a, 'push', 'origin', 'main')
     writeFileSync(join(b, 'f.txt'), 'local edit')
     expect(inspectGit(b, { fetch: true })).toMatchObject({ dirty: true, ahead: 0, behind: 1 })
+  })
+
+  it('does not treat a folder inside another repository as a git install', () => {
+    const { b } = setup()
+    const nested = join(b, 'node_modules', 'mmp')
+    mkdirSync(nested, { recursive: true })
+    expect(inspectGit(nested).isRepo).toBe(false)
+  })
+
+  it('reports a failed fetch', () => {
+    const { b, root } = setup()
+    rmSync(join(root, 'remote.git'), { recursive: true, force: true })
+    expect(inspectGit(b, { fetch: true }).fetchFailed).toBe(true)
   })
 
   it('ignores untracked files and reports non-repos', () => {

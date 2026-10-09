@@ -14,6 +14,7 @@ function harness(initial: Stamp | null = { id: 'a', version: '0.6.0' }) {
   const children: FakeChild[] = []
   const timers: { at: number; fn: () => void; id: number }[] = []
   const logs: string[] = []
+  const fatal: (number | null)[] = []
   let nextTimer = 1
   const sup = createSupervisor({
     spawnChild(first) {
@@ -33,6 +34,7 @@ function harness(initial: Stamp | null = { id: 'a', version: '0.6.0' }) {
     },
     readStamp: () => stamp,
     log: (line) => logs.push(line),
+    onFatal: (code) => fatal.push(code),
     now: () => time,
     setTimer: (fn, ms) => {
       const id = nextTimer++
@@ -51,7 +53,7 @@ function harness(initial: Stamp | null = { id: 'a', version: '0.6.0' }) {
       t.fn()
     }
   }
-  return { sup, children, logs, advance, setStamp: (s: Stamp | null) => (stamp = s) }
+  return { sup, children, logs, fatal, advance, setStamp: (s: Stamp | null) => (stamp = s) }
 }
 
 describe('supervisor', () => {
@@ -111,17 +113,47 @@ describe('supervisor', () => {
     expect(h.children[0].forced).toBe(true)
   })
 
-  it('a child failing at startup waits for the next stamp', () => {
+  it('a restarted build failing at startup waits for the next stamp', () => {
+    const h = harness()
+    h.sup.start()
+    h.advance(20_000)
+    h.setStamp({ id: 'b', version: '0.7.0' })
+    h.sup.check()
+    h.children[0].exit(0)
+    h.advance(2_000)
+    h.children[1].exit(1)
+    h.advance(60_000)
+    expect(h.children).toHaveLength(2)
+    expect(h.fatal).toEqual([])
+    expect(h.logs.join('\n')).toMatch(/failed to start/)
+    h.setStamp({ id: 'c', version: '0.7.1' })
+    h.sup.check()
+    expect(h.children).toHaveLength(3)
+  })
+
+  it('the very first child failing at startup is fatal (e.g. port in use)', () => {
     const h = harness()
     h.sup.start()
     h.advance(2_000)
     h.children[0].exit(1)
-    h.advance(60_000)
-    expect(h.children).toHaveLength(1)
-    expect(h.logs.join('\n')).toMatch(/failed to start/)
+    expect(h.fatal).toEqual([1])
     h.setStamp({ id: 'b', version: '0.7.0' })
     h.sup.check()
+    h.advance(60_000)
+    expect(h.children).toHaveLength(1)
+  })
+
+  it('a crash restart uses the newest build on disk', () => {
+    const h = harness()
+    h.sup.start()
+    h.advance(60_000)
+    h.children[0].exit(1)
+    h.setStamp({ id: 'b', version: '0.7.0' })
+    h.sup.check()
+    h.advance(1_000)
     expect(h.children).toHaveLength(2)
+    h.sup.check()
+    expect(h.children[1].killed).toBe(false)
   })
 
   it('a late crash restarts once after 1 s', () => {

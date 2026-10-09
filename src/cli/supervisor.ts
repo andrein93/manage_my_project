@@ -13,6 +13,8 @@ export interface SupervisorDeps {
   spawnChild(first: boolean): ChildHandle
   readStamp(): Stamp | null
   log(line: string): void
+  /** The first server could not start at all (e.g. port in use): the supervisor gives up. */
+  onFatal?(code: number | null): void
   now(): number
   setTimer(fn: () => void, ms: number): unknown
   clearTimer(handle: unknown): void
@@ -44,6 +46,7 @@ export function createSupervisor(
   let pending: Stamp | null = null // stamp to start once the current child has exited
   let startedAt = 0
   let spawned = 0
+  let firstRun = false // the current child is the very first one
   let waitingForBuild = false
   let stopping = false
   let lastCode: number | null = null
@@ -68,6 +71,7 @@ export function createSupervisor(
     running = stamp
     startedAt = deps.now()
     waitingForBuild = false
+    firstRun = spawned === 0
     const handle = deps.spawnChild(spawned++ === 0)
     child = handle
     handle.onExit((code) => onExit(handle, code))
@@ -84,13 +88,19 @@ export function createSupervisor(
       pending = null
       return launch(next)
     }
+    if (deps.now() - startedAt < graceMs && firstRun) {
+      // Nothing ever ran: report the error instead of waiting for a build that is not coming.
+      stopping = true
+      deps.onFatal?.(code)
+      return
+    }
     if (deps.now() - startedAt < graceMs) {
       waitingForBuild = true
       deps.log(`The server failed to start (exit code ${code ?? 'unknown'}). Waiting for the next build…`)
       return
     }
     deps.log(`The server stopped (exit code ${code ?? 'unknown'}). Restarting…`)
-    timer(() => launch(running), crashDelayMs)
+    timer(() => launch(deps.readStamp() ?? running), crashDelayMs)
   }
 
   return {
