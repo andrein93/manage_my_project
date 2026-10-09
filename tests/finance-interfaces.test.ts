@@ -112,3 +112,83 @@ describe('CLI: finance', () => {
     expect(await mmp('ai-plan', 'end', planId, '--date', '2026-12-31')).toBe('AI plan ends on 2026-12-31')
   })
 })
+
+describe('statements interfaces', () => {
+  let acmeId: string
+  beforeEach(() => {
+    acmeId = fx.app.clients.create({ name: 'Acme' }).id
+    fx.app.projects.update(id('shop'), { clientId: acmeId })
+    fx.app.finance.repo.addAgreement({ projectId: id('shop'), kind: 'hourly', amount: 50, startDate: '2026-09-01' })
+    // Today is 2026-10-08: "last month" is September.
+    fx.app.time.repo.addEntry({ projectId: id('shop'), date: '2026-09-10', minutes: 120 })
+  })
+
+  it('HTTP: create, edit, issue, pay, delete rules', async () => {
+    const created = await post('/api/statements', { clientId: acmeId, from: '2026-09-01', to: '2026-09-30' })
+    expect(created.statusCode).toBe(201)
+    const s = created.json()
+    expect(s).toMatchObject({ status: 'draft', subtotalCents: 10000 })
+    const lines = await server.inject({
+      method: 'PUT',
+      url: `/api/statements/${s.id}/lines`,
+      headers: json,
+      payload: { lines: [{ projectId: id('shop'), description: 'Work', quantity: 2, unitCents: 6000 }] },
+    })
+    expect(lines.json().subtotalCents).toBe(12000)
+    expect((await server.inject({ method: 'PATCH', url: `/api/statements/${s.id}`, headers: json, payload: { notes: 'Thanks' } })).json().notes).toBe('Thanks')
+    const issued = (await post(`/api/statements/${s.id}/issue`, { issueDate: '2026-10-01' })).json()
+    expect(issued.number).toBe('PF-2026-001')
+    expect((await server.inject({ method: 'DELETE', url: `/api/statements/${s.id}` })).statusCode).toBe(400)
+    expect((await post(`/api/statements/${s.id}/paid`, { date: '2026-10-05' })).json().status).toBe('paid')
+    const owed = (await server.inject({ url: '/api/finance/owed' })).json()
+    expect(owed.rows.find((r: { clientName: string }) => r.clientName === 'Acme').collectedCents).toBe(12000)
+    expect((await server.inject({ url: `/api/statements?client=${acmeId}&status=paid` })).json()).toHaveLength(1)
+    expect((await post(`/api/statements/${s.id}/unpaid`, {})).json().status).toBe('issued')
+    expect((await post(`/api/statements/${s.id}/void`, {})).json().status).toBe('void')
+    expect((await server.inject({ url: '/api/statements/nope' })).statusCode).toBe(404)
+    const draft = (await post('/api/statements', { clientId: acmeId, from: '2026-09-01', to: '2026-09-30' })).json()
+    expect((await post(`/api/statements/${draft.id}/refill`, {})).json().subtotalCents).toBe(10000)
+    expect((await server.inject({ method: 'DELETE', url: `/api/statements/${draft.id}` })).statusCode).toBe(204)
+  })
+
+  it('CLI: mmp statement', async () => {
+    const output: string[] = []
+    const mmp = async (...args: string[]) => {
+      output.length = 0
+      const cli = buildCli(() => fx.app, (line) => output.push(line))
+      cli.exitOverride()
+      await cli.parseAsync(['node', 'mmp', ...args])
+      return output.join('\n')
+    }
+    const created = await mmp('statement', 'create', 'Acme', '--period', 'last-month')
+    expect(created).toMatch(/Draft statement for Acme, 2026-09-01 → 2026-09-30/)
+    expect(created).toMatch(/Total\s+122.00 EUR/)
+    expect(created).toContain('/statements/')
+    const ref = fx.app.statements.list()[0].id
+    expect(await mmp('statement', 'issue', ref, '--date', '2026-10-01')).toMatch(/Issued PF-2026-001/)
+    expect(await mmp('statement', 'list')).toMatch(/PF-2026-001\s+Acme\s+2026-09-01 → 2026-09-30\s+122.00 EUR\s+issued/)
+    expect(await mmp('statement', 'paid', 'PF-2026-001', '--date', '2026-10-05')).toMatch(/PF-2026-001 marked paid/)
+    expect(await mmp('statement', 'show', 'pf-2026-001')).toMatch(/shop — 2 h/)
+    await expect(mmp('statement', 'delete', 'PF-2026-001')).rejects.toThrow(/only drafts/)
+  })
+
+  it('MCP: create, list, issue and pay statements', async () => {
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
+    await createMcpServer(fx.app).connect(serverTransport)
+    const client = new Client({ name: 'test', version: '0' })
+    await client.connect(clientTransport)
+    const call = async (name: string, args: Record<string, unknown>) => {
+      const res = (await client.callTool({ name, arguments: args })) as { content: { text: string }[]; isError?: boolean }
+      return res.isError ? { error: res.content[0].text } : JSON.parse(res.content[0].text)
+    }
+    const draft = await call('create_statement', { client: 'Acme', period: 'last-month' })
+    expect(draft).toMatchObject({ status: 'draft', client: 'Acme', total: '122.00 EUR' })
+    expect(draft.printUrl).toContain(`/statements/${draft.id}/print`)
+    expect(draft.lines[0]).toMatchObject({ description: 'shop — 2 h', amount: '100.00 EUR' })
+    expect(await call('list_statements', { client: 'Acme' })).toHaveLength(1)
+    expect((await call('issue_statement', { statement: draft.id })).number).toBe('PF-2026-001')
+    expect((await call('mark_statement_paid', { statement: 'PF-2026-001', date: '2026-10-05' })).status).toBe('paid')
+    expect((await call('issue_statement', { statement: 'nope' })).error).toMatch(/not found/i)
+    await client.close()
+  })
+})
