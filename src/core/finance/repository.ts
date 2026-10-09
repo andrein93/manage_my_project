@@ -30,6 +30,8 @@ export interface AgreementInput {
 export interface PaymentInput {
   projectId?: string
   agreementId?: string | null
+  /** Set by statements; payments recorded by hand have none. */
+  statementId?: string
   date?: string
   amount?: string | number
   note?: string
@@ -200,10 +202,21 @@ export class FinanceRepository {
     const ts = now()
     this.db
       .prepare(
-        `INSERT INTO payments (id, owner_id, project_id, agreement_id, date, amount_cents, note, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO payments (id, owner_id, project_id, agreement_id, statement_id, date, amount_cents, note, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(id, localUserId(this.db), projectId, agreementId, cleanDate(input.date ?? localToday()), amountCents, cleanText(input.note, 2000), ts, ts)
+      .run(
+        id,
+        localUserId(this.db),
+        projectId,
+        agreementId,
+        input.statementId ?? null,
+        cleanDate(input.date ?? localToday()),
+        amountCents,
+        cleanText(input.note, 2000),
+        ts,
+        ts,
+      )
     return this.payments().find((p) => p.id === id)!
   }
 
@@ -396,6 +409,7 @@ function toPayment(r: Row): Payment {
     projectName: String(r.project_name),
     clientName: str(r.client_name),
     agreementId: str(r.agreement_id),
+    statementId: str(r.statement_id),
     date: String(r.date),
     amountCents: Number(r.amount_cents),
     note: String(r.note),

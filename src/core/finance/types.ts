@@ -27,6 +27,8 @@ export interface Payment {
   projectName: string
   clientName: string | null
   agreementId: string | null
+  /** Set when the payment was recorded by marking a statement paid. */
+  statementId: string | null
   date: string
   amountCents: number
   note: string
@@ -54,6 +56,70 @@ export interface AiPlan {
   endDate: string | null
   note: string
   createdAt: string
+}
+
+export const STATEMENT_STATUSES = ['draft', 'issued', 'paid', 'void'] as const
+export type StatementStatus = (typeof STATEMENT_STATUSES)[number]
+
+export interface StatementLine {
+  id: string
+  position: number
+  projectId: string
+  projectName: string
+  /** The agreement the line was prefilled from; null for lines typed by hand. */
+  agreementId: string | null
+  description: string
+  quantity: number
+  unitCents: number
+  amountCents: number
+}
+
+export interface StatementLineInput {
+  projectId: string
+  description: string
+  quantity: number
+  unitCents: number
+  /** Defaults to round(quantity × unitCents). */
+  amountCents?: number
+}
+
+export interface BillingParty {
+  name: string
+  address: string
+  taxId: string
+}
+
+/** Billing details frozen when the statement is issued. */
+export interface StatementSnapshot {
+  issuer: BillingParty & { iban: string; footer: string }
+  client: BillingParty
+}
+
+export interface Statement {
+  id: string
+  clientId: string
+  clientName: string
+  status: StatementStatus
+  number: string | null
+  periodFrom: string
+  periodTo: string
+  issueDate: string | null
+  dueDate: string | null
+  paidDate: string | null
+  /** VAT percent shown on the document (amounts are net). */
+  vatRate: number
+  language: string
+  notes: string
+  snapshot: StatementSnapshot | null
+  lines: StatementLine[]
+  subtotalCents: number
+  vatCents: number
+  totalCents: number
+  currency: string
+  /** Issued, unpaid and past its due date. */
+  overdue: boolean
+  createdAt: string
+  updatedAt: string
 }
 
 /** What one agreement earned in a range (unrounded cents), with the details statements need. */
