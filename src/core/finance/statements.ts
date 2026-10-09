@@ -36,6 +36,11 @@ export class StatementRepository {
     private readonly today: () => string = () => localToday(),
   ) {}
 
+  /** The app's "today" (tests pin it), for default periods in the CLI and MCP. */
+  currentDay(): string {
+    return this.today()
+  }
+
   private get financeRepo(): FinanceRepository {
     return this.finance.repo
   }

@@ -3,7 +3,7 @@ import type { App } from '../core/app.js'
 import { localToday } from '../core/dates.js'
 import { resolveClientFilter } from '../core/filters.js'
 import { formatCents } from '../core/finance/money.js'
-import { INTERVALS, type AgreementKind, type Interval } from '../core/finance/types.js'
+import { INTERVALS, STATEMENT_STATUSES, type AgreementKind, type Interval, type Statement, type StatementStatus } from '../core/finance/types.js'
 import { UserError } from '../core/types.js'
 import { formatMinutes } from '../core/time/duration.js'
 import { PERIODS, rangeFrom } from '../core/time/periods.js'
@@ -292,6 +292,85 @@ export function registerFinanceCommands(program: Command, getApp: () => App, out
       app.finance.repo.removeAiPlan(app.finance.repo.resolve('ai_plans', ref))
       out('AI plan removed')
     })
+
+  const statement = program.command('statement').alias('st').description('pro-forma statements for clients (print to PDF from the dashboard)')
+  const printUrl = (s: Statement) => `http://localhost:${getApp().config.port}/statements/${s.id}/print`
+  const status = (s: Statement) => (s.overdue ? 'issued (overdue)' : s.status)
+  const show = (s: Statement) => {
+    const m = (cents: number) => formatCents(cents, s.currency)
+    const title = s.number ? `Statement ${s.number}` : 'Draft statement'
+    out(`${title} for ${s.clientName}, ${s.periodFrom} → ${s.periodTo} (${status(s)})`)
+    if (s.issueDate) out(`Issued ${s.issueDate}, due ${s.dueDate ?? '-'}${s.paidDate ? `, paid ${s.paidDate}` : ''}`)
+    out('')
+    out(s.lines.length ? formatTable(['DESCRIPTION', 'QTY', 'UNIT', 'AMOUNT'], s.lines.map((l) => [l.description, String(l.quantity), m(l.unitCents), m(l.amountCents)])) : '(no lines)')
+    out('')
+    out(formatTable(['', ''], [['Subtotal', m(s.subtotalCents)], [`VAT ${s.vatRate}%`, m(s.vatCents)], ['Total', m(s.totalCents)]]).split('\n').slice(2).join('\n'))
+    out(`Print: ${printUrl(s)}`)
+  }
+  statement
+    .command('create <client>')
+    .description('create a draft prefilled with what was earned in the period')
+    .addOption(new Option('--period <period>', 'period (default: last-month)').choices([...PERIODS]))
+    .option('--from <date>', 'start date (YYYY-MM-DD)')
+    .option('--to <date>', 'end date (YYYY-MM-DD)')
+    .action((ref: string, opts: { period?: string; from?: string; to?: string }) => {
+      const app = getApp()
+      const client = app.clients.resolve(ref)
+      const range = rangeFrom({ period: opts.from || opts.to ? undefined : opts.period ?? 'last-month', from: opts.from, to: opts.to }, app.statements.currentDay(), app.settings.get().weekStart)
+      show(app.statements.create({ clientId: client.id, from: range.from, to: range.to }))
+    })
+  statement
+    .command('list')
+    .description('list statements')
+    .option('--client <client>', 'only this client')
+    .addOption(new Option('--status <status>', 'only this status').choices([...STATEMENT_STATUSES]))
+    .action((opts: { client?: string; status?: StatementStatus }) => {
+      const app = getApp()
+      const list = app.statements.list({ clientId: opts.client ? app.clients.resolve(opts.client).id : undefined, status: opts.status })
+      if (!list.length) return out('No statements.')
+      out(
+        formatTable(
+          ['NUMBER', 'CLIENT', 'PERIOD', 'TOTAL', 'STATUS'],
+          list.map((x) => [x.number ?? 'draft', x.clientName, `${x.periodFrom} → ${x.periodTo}`, formatCents(x.totalCents, x.currency), status(x)]),
+        ),
+      )
+    })
+  statement
+    .command('show <ref>')
+    .description('lines, totals and the print link (ref: number or id)')
+    .action((ref: string) => show(getApp().statements.get(getApp().statements.resolve(ref))))
+  statement
+    .command('issue <ref>')
+    .description('give the draft its number and freeze it')
+    .option('--date <date>', 'issue date (default: today)')
+    .action((ref: string, opts: { date?: string }) => {
+      const s = getApp().statements.issue(getApp().statements.resolve(ref), { issueDate: opts.date })
+      out(`Issued ${s.number}, due ${s.dueDate}. Print: ${printUrl(s)}`)
+    })
+  statement
+    .command('paid <ref>')
+    .description('mark paid: records the payments on its projects')
+    .option('--date <date>', 'payment date (default: today)')
+    .action((ref: string, opts: { date?: string }) => {
+      const s = getApp().statements.markPaid(getApp().statements.resolve(ref), { date: opts.date })
+      out(`${s.number} marked paid on ${s.paidDate} (${formatCents(s.subtotalCents, s.currency)} net recorded as payments).`)
+    })
+  statement
+    .command('unpaid <ref>')
+    .description('undo "paid": removes the payments it recorded')
+    .action((ref: string) => out(`${getApp().statements.markUnpaid(getApp().statements.resolve(ref)).number} is unpaid again.`))
+  statement
+    .command('void <ref>')
+    .description('cancel an issued statement (its number stays used)')
+    .action((ref: string) => out(`${getApp().statements.void(getApp().statements.resolve(ref)).number} voided.`))
+  statement
+    .command('delete <ref>')
+    .description('delete a draft')
+    .action((ref: string) => {
+      getApp().statements.remove(getApp().statements.resolve(ref))
+      out('Draft deleted.')
+    })
+
 }
 
 function describeAgreement(a: { kind: AgreementKind; amountCents: number; interval: Interval | null }, m: (c: number) => string): string {
