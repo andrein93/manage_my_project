@@ -42,6 +42,17 @@ dashboard (Settings), the CLI or your AI.
 
 To use `mmp` as a global command, run `npm link` inside the repo.
 
+### Updating
+
+```bash
+mmp update            # or: node bin/mmp.js update
+mmp update --check    # only tell me whether there is something new
+```
+
+It pulls the latest version and rebuilds it. A running `mmp start` restarts by itself and the
+dashboard offers to reload. `mmp update` refuses to touch an install with local changes or
+local commits. Restart Claude Code sessions to pick up new MCP tools.
+
 ## Connect your AI (MCP)
 
 Register mmp once, for every project, with Claude Code:
