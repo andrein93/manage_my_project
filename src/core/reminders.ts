@@ -3,12 +3,16 @@ import { addDays } from './dates.js'
 import type { DB } from './db.js'
 import { formatCents } from './finance/money.js'
 import { upcoming } from './overview.js'
+import { currentUserId } from './sync/engine.js'
+import type { Task } from './types.js'
 import type { Reminder, ReminderSeverity } from './reminder-types.js'
 
 export type { Reminder } from './reminder-types.js'
 
 /** Charges to pay or invoice show up this many days ahead (today included). */
 const CHARGE_DAYS = 3
+/** State rows for reminders that no longer exist are dropped after this many days. */
+const PRUNE_DAYS = 60
 const SEVERITY_ORDER: Record<ReminderSeverity, number> = { danger: 0, warning: 1, info: 2 }
 
 interface StateRow {
@@ -56,14 +60,28 @@ export class ReminderService {
     for (const key of keys) this.upsert(key, 'notified_on', today)
   }
 
+  /** Forgets state for reminders that no longer exist and were last touched over PRUNE_DAYS ago. */
+  prune(today: string): void {
+    const cutoff = addDays(today, -PRUNE_DAYS)
+    this.db
+      .prepare(
+        `DELETE FROM reminder_state WHERE key NOT IN (SELECT value FROM json_each(?))
+          AND MAX(COALESCE(notified_on, ''), COALESCE(substr(dismissed_at, 1, 10), ''), COALESCE(snoozed_until, '')) < ?`,
+      )
+      .run(JSON.stringify(this.collect(today).map((r) => r.key)), cutoff)
+  }
+
   private collect(today: string): Reminder[] {
     const app = this.app()
     const out: Reminder[] = []
     const { currency } = app.settings.get()
+    // In a team, other people's tasks are theirs to chase.
+    const me = currentUserId(this.db)
+    const mine = (t: Task) => !t.assignee || t.assignee.id === me
 
-    for (const t of app.tasks.list({ due: 'overdue' })) {
+    for (const t of app.tasks.list({ due: 'overdue' }).filter(mine)) {
       out.push({
-        key: `task_overdue:${t.id}`,
+        key: `task_overdue:${t.id}:${t.dueDate}`,
         kind: 'task_overdue',
         severity: 'danger',
         date: t.dueDate!,
@@ -75,7 +93,7 @@ export class ReminderService {
     }
     for (const s of app.statements.overdue()) {
       out.push({
-        key: `statement_overdue:${s.id}`,
+        key: `statement_overdue:${s.id}:${s.dueDate}`,
         kind: 'statement_overdue',
         severity: 'danger',
         date: s.dueDate!,
@@ -85,7 +103,7 @@ export class ReminderService {
         params: { number: s.number!, client: s.clientName, amountCents: s.totalCents, currency: s.currency },
       })
     }
-    for (const t of app.tasks.list({ due: 'today' }).filter((t) => t.dueDate === today)) {
+    for (const t of app.tasks.list({ due: 'today' }).filter((t) => t.dueDate === today && mine(t))) {
       out.push({
         key: `task_due_today:${t.id}:${today}`,
         kind: 'task_due_today',

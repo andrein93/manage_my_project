@@ -565,6 +565,7 @@
       "toPay": "待付款：{label}",
       "toInvoice": "待开票：{label}",
       "fieldDate": "{field}：{date}"
-    }
+    },
+    "close": "关闭"
   }
 }

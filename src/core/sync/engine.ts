@@ -596,7 +596,7 @@ export function stableId(input: string): string {
   return `${h.slice(0, 8)}-${h.slice(8, 12)}-5${h.slice(13, 16)}-${((parseInt(h[16], 16) & 0x3) | 0x8).toString(16)}${h.slice(17, 20)}-${h.slice(20, 32)}`
 }
 
-function currentUserId(db: DB): string {
+export function currentUserId(db: DB): string {
   const me = db.prepare("SELECT value FROM sync_state WHERE key = 'userId'").get() as { value: string } | undefined
   return me?.value ?? (db.prepare('SELECT id FROM users ORDER BY created_at LIMIT 1').get() as { id: string }).id
 }

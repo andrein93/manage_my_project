@@ -565,6 +565,7 @@
       "toPay": "A pagar: {label}",
       "toInvoice": "A facturar: {label}",
       "fieldDate": "{field}: {date}"
-    }
+    },
+    "close": "Cerrar"
   }
 }

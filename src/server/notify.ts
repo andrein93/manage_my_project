@@ -4,8 +4,26 @@ import type { App } from '../core/app.js'
 /** Windows' PowerShell AppUserModelID: lets a script show a toast without registering an app. */
 const POWERSHELL_APP_ID = '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe'
 
-const xml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-/** A PowerShell single-quoted string literal. */
+/** Longest title/body sent (keeps the Windows command line far below its limit). */
+const MAX_TEXT = 250
+
+/** Drops control characters (invalid in XML, confusing elsewhere) and caps the length. */
+const clean = (s: string) => {
+  const text = s.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+  return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT - 1)}…` : text
+}
+/**
+ * XML text that is pure ASCII: anything else becomes a character reference. PowerShell also ends
+ * single-quoted strings at typographic quotes (’ ‘), so only the ASCII ' is left to escape.
+ */
+const xml = (s: string) =>
+  s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/[^\x20-\x7E\n]/gu, (c) => `&#${c.codePointAt(0)};`)
+/** A PowerShell single-quoted string literal (input must be ASCII, see xml()). */
 const psString = (s: string) => `'${s.replace(/'/g, "''")}'`
 const appleScriptString = (s: string) => `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
 
@@ -13,7 +31,9 @@ const appleScriptString = (s: string) => `"${s.replace(/\\/g, '\\\\').replace(/"
  * The command that shows a desktop notification. Text never reaches a shell: on Windows the
  * whole script is passed base64-encoded, on macOS as one -e argument, on Linux as plain args.
  */
-export function buildNotifyCommand(platform: NodeJS.Platform, title: string, body: string): { cmd: string; args: string[] } {
+export function buildNotifyCommand(platform: NodeJS.Platform, rawTitle: string, rawBody: string): { cmd: string; args: string[] } {
+  const title = clean(rawTitle)
+  const body = clean(rawBody)
   if (platform === 'win32') {
     const toast = `<toast><visual><binding template="ToastGeneric"><text>${xml(title)}</text><text>${xml(body)}</text></binding></visual></toast>`
     const script = [
@@ -28,7 +48,7 @@ export function buildNotifyCommand(platform: NodeJS.Platform, title: string, bod
   if (platform === 'darwin') {
     return { cmd: 'osascript', args: ['-e', `display notification ${appleScriptString(body)} with title ${appleScriptString(title)}`] }
   }
-  return { cmd: 'notify-send', args: ['--app-name=mmp', title, body] }
+  return { cmd: 'notify-send', args: ['--app-name=mmp', '--', title, body] }
 }
 
 /** Shows a desktop notification; resolves false (never throws) when the system refuses. */

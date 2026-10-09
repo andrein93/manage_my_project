@@ -109,6 +109,8 @@ function onKeydown(e: KeyboardEvent) {
   if (isPaletteShortcut(e)) {
     e.preventDefault()
     paletteOpen.value = !paletteOpen.value
+  } else if (e.key === 'Escape' && remindersOpen.value) {
+    remindersOpen.value = false
   } else if (e.key === 'Escape' && drawerOpen.value) {
     drawerOpen.value = false
   } else if (e.key === 'Tab' && drawerOpen.value) {

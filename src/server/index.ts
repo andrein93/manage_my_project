@@ -134,11 +134,14 @@ export async function startServer(app: App, options: ServerOptions = {}): Promis
     // Desktop notifications (Settings → Notifications); the setting is read on every run.
     let notifyFailed = false
     const notifyRun = () =>
-      sendDueNotifications(app, app.today(), options.notify).catch((error) => {
-        if (!notifyFailed) server.log.error(error)
-        notifyFailed = true
-        return 0
-      })
+      Promise.resolve()
+        .then(() => app.reminders.prune(app.today()))
+        .then(() => sendDueNotifications(app, app.today(), options.notify))
+        .catch((error) => {
+          if (!notifyFailed) server.log.error(error)
+          notifyFailed = true
+          return 0
+        })
     firstNotify = setTimeout(notifyRun, 30_000)
     firstNotify.unref()
     notifyTimer = setInterval(notifyRun, NOTIFY_INTERVAL_MS)

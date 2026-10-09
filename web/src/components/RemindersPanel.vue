@@ -4,22 +4,48 @@ import { AlarmClock, CalendarClock, CheckSquare, CircleAlert, Clock, FileText, W
 import { nextTick, ref, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api, type Reminder } from '../api'
+import { useErrors } from '../composables'
 import { formatMoney } from '../time'
 
 const props = defineProps<{ open: boolean; reminders: Reminder[] }>()
 const emit = defineEmits<{ close: []; changed: [] }>()
 const { t } = useI18n()
 const closeButton = ref<HTMLButtonElement | null>(null)
+const panel = ref<{ $el: HTMLElement } | null>(null)
 const busy = ref<string | null>(null)
+const { error, report, clear } = useErrors()
 
+// Modal: focus moves in on open and back to whatever opened it on close.
+let opener: HTMLElement | null = null
 watch(
   () => props.open,
   async (open) => {
-    if (!open) return
-    await nextTick()
-    closeButton.value?.focus()
+    if (open) {
+      opener = document.activeElement as HTMLElement | null
+      clear()
+      await nextTick()
+      closeButton.value?.focus()
+    } else {
+      opener?.focus()
+      opener = null
+    }
   },
 )
+
+/** Keeps Tab inside the panel. */
+function trapTab(e: KeyboardEvent) {
+  const items = [...(panel.value?.$el.querySelectorAll<HTMLElement>('a[href], button:not([disabled])') ?? [])]
+  if (!items.length) return
+  const first = items[0]
+  const last = items[items.length - 1]
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault()
+    last.focus()
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault()
+    first.focus()
+  }
+}
 
 const icons: Record<Reminder['kind'], Component> = {
   task_overdue: CircleAlert,
@@ -57,9 +83,14 @@ function detail(r: Reminder): string {
 
 async function act(r: Reminder, action: 'dismiss' | 'snooze') {
   busy.value = r.key
+  clear()
   try {
     await (action === 'dismiss' ? api.dismissReminder(r.key) : api.snoozeReminder(r.key))
     emit('changed')
+    // The row (and the focused button) goes away: keep focus inside the panel.
+    closeButton.value?.focus()
+  } catch (e) {
+    report(e)
   } finally {
     busy.value = null
   }
@@ -78,6 +109,7 @@ async function act(r: Reminder, action: 'dismiss' | 'snooze') {
     />
     <Motion
       v-if="open"
+      ref="panel"
       as="aside"
       role="dialog"
       aria-modal="true"
@@ -88,13 +120,15 @@ async function act(r: Reminder, action: 'dismiss' | 'snooze') {
       :exit="{ x: 460 }"
       :transition="{ type: 'spring', stiffness: 380, damping: 38 }"
       @keydown.esc="emit('close')"
+      @keydown.tab="trapTab"
     >
       <header class="flex items-center justify-between border-b border-line px-5 py-4">
         <h2 class="text-lg font-semibold">{{ t('reminders.title') }}</h2>
-        <button ref="closeButton" class="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink" :aria-label="t('ui.dismiss')" @click="emit('close')">
+        <button ref="closeButton" class="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink" :aria-label="t('reminders.close')" @click="emit('close')">
           <X class="size-4" aria-hidden="true" />
         </button>
       </header>
+      <p v-if="error" class="border-b border-line px-5 py-2 text-sm text-danger" role="alert">{{ error }}</p>
       <p v-if="!reminders.length" class="px-5 py-10 text-center text-sm text-muted">{{ t('reminders.empty') }}</p>
       <ul v-else class="flex-1 divide-y divide-line overflow-y-auto">
         <li v-for="r in reminders" :key="r.key" class="flex items-start gap-3 px-5 py-3.5">

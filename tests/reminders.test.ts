@@ -36,8 +36,8 @@ describe('reminders', () => {
     const list = fx.app.reminders.list(TODAY)
     expect(list.map((r) => r.kind)).toEqual(['statement_overdue', 'task_overdue', 'task_due_today', 'charge_soon', 'field_date'])
     expect(list.map((r) => r.key)).toEqual([
-      `statement_overdue:${statement.id}`,
-      `task_overdue:${late.id}`,
+      `statement_overdue:${statement.id}:${statement.dueDate}`,
+      `task_overdue:${late.id}:2026-10-01`,
       `task_due_today:${today.id}:${TODAY}`,
       expect.stringMatching(/^charge_soon:pay:/),
       `field_date:${id('blog')}:${expiry.id}:2026-10-15`,
@@ -87,7 +87,7 @@ describe('desktop notification command', () => {
       cmd: 'osascript',
       args: ['-e', 'display notification "a\\\\b" with title "Say \\"hi\\""'],
     })
-    expect(buildNotifyCommand('linux', 'T', 'B')).toEqual({ cmd: 'notify-send', args: ['--app-name=mmp', 'T', 'B'] })
+    expect(buildNotifyCommand('linux', 'T', 'B')).toEqual({ cmd: 'notify-send', args: ['--app-name=mmp', '--', 'T', 'B'] })
   })
 })
 
@@ -117,5 +117,60 @@ describe('desktop notification run', () => {
     expect(await sendDueNotifications(fx.app, TODAY, async () => false)).toBe(0)
     expect(await sendDueNotifications(fx.app, TODAY, async (title) => (sent.push(title), true))).toBe(1)
     expect(sent).toEqual(['Due today: Call Acme'])
+  })
+})
+
+describe('review fixes', () => {
+  it('Windows: the script is pure ASCII, so typographic quotes cannot end the PowerShell string', () => {
+    const { args } = buildNotifyCommand('win32', 'x’; Write-Output INJECTED; ‘ L’ordine 中文', 'Don’t forget')
+    const script = Buffer.from(args[3], 'base64').toString('utf16le')
+    expect(script).toMatch(/^[\x00-\x7F]*$/)
+    expect(script).toContain('x&#8217;; Write-Output INJECTED; &#8216; L&#8217;ordine &#20013;&#25991;')
+    expect(script).toContain('Don&#8217;t forget')
+  })
+
+  it('Windows: strips XML-invalid control characters and caps very long text', () => {
+    const { args } = buildNotifyCommand('win32', 'a\u0001b\u000Bc', 'x'.repeat(5000))
+    const script = Buffer.from(args[3], 'base64').toString('utf16le')
+    expect(script).toContain('<text>abc</text>')
+    expect(script).not.toContain('x'.repeat(301))
+  })
+
+  it('Linux: a title starting with a dash is not read as an option', () => {
+    expect(buildNotifyCommand('linux', '-u critical', 'B').args).toEqual(['--app-name=mmp', '--', '-u critical', 'B'])
+  })
+
+  it('a dismissed overdue task comes back once rescheduled and missed again', () => {
+    const shop = id('shop')
+    const [late] = fx.app.tasks.create(shop, [{ title: 'Late', dueDate: '2026-10-01' }])
+    fx.app.reminders.dismiss(fx.app.reminders.list(TODAY)[0].key)
+    expect(fx.app.reminders.list(TODAY)).toHaveLength(0)
+    fx.app.tasks.update(late.id, { dueDate: '2026-10-05' })
+    expect(fx.app.reminders.list(TODAY).map((r) => r.title)).toEqual(['Overdue task: Late'])
+  })
+
+  it("skips teammates' tasks; keeps unassigned ones and mine", () => {
+    const shop = id('shop')
+    const now = new Date().toISOString()
+    fx.app.db.prepare('INSERT INTO users (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)').run('mate', 'Mate', now, now)
+    const [theirs, mine] = fx.app.tasks.create(shop, [
+      { title: 'Theirs', dueDate: '2026-10-01' },
+      { title: 'Mine', dueDate: TODAY },
+      { title: 'Nobody', dueDate: '2026-10-02' },
+    ])
+    fx.app.tasks.update(theirs.id, { assigneeId: 'mate' })
+    const me = (fx.app.db.prepare('SELECT id FROM users WHERE id != ? ORDER BY created_at LIMIT 1').get('mate') as { id: string }).id
+    fx.app.tasks.update(mine.id, { assigneeId: me })
+    expect(fx.app.reminders.list(TODAY).map((r) => r.title).sort()).toEqual(['Due today: Mine', 'Overdue task: Nobody'])
+  })
+
+  it('prunes old state for reminders that no longer exist', () => {
+    fx.app.tasks.create(id('shop'), [{ title: 'Call Acme', dueDate: TODAY }])
+    const active = fx.app.reminders.list(TODAY)[0].key
+    fx.app.reminders.markNotified([active, 'ghost:old'], '2026-07-01')
+    fx.app.reminders.markNotified(['ghost:recent'], '2026-10-01')
+    fx.app.reminders.prune(TODAY)
+    const keys = (fx.app.db.prepare('SELECT key FROM reminder_state ORDER BY key').all() as { key: string }[]).map((r) => r.key)
+    expect(keys).toEqual(['ghost:recent', active].sort())
   })
 })
