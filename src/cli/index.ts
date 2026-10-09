@@ -46,20 +46,63 @@ export function buildCli(getApp: () => App, out: (line: string) => void = consol
     new Option('--status <status>', 'filter by status').choices([...PROJECT_STATUSES])
 
   program
-    .command('start')
-    .description('start the web dashboard (scans first)')
-    .option('--no-open', 'do not open the browser')
-    .action(async (opts: { open: boolean }) => {
+    .command('serve', { hidden: true })
+    .description('run the web server (used by "mmp start")')
+    .option('--scan', 'scan workspaces first')
+    .option('--open', 'open the dashboard in the browser')
+    .action(async (opts: { scan?: boolean; open?: boolean }) => {
       const app = getApp()
       const { startServer } = await import('../server/index.js')
-      const result = await app.scan()
-      out(`Scanned ${result.total} projects in ${result.durationMs} ms`)
+      if (opts.scan) {
+        const result = await app.scan()
+        out(`Scanned ${result.total} projects in ${result.durationMs} ms`)
+      }
       const { url } = await startServer(app)
       out(`Dashboard running at ${url}  (Ctrl+C to stop)`)
       if (opts.open && app.config.openBrowser) {
         const { openUrl } = await import('../server/open.js')
         openUrl(url)
       }
+    })
+
+  program
+    .command('start')
+    .description('start the web dashboard (scans first); restarts by itself after an update')
+    .option('--no-open', 'do not open the browser')
+    .action(async (opts: { open: boolean }) => {
+      // The parent only supervises: the server runs in a child so a new build can replace it.
+      const { spawn } = await import('node:child_process')
+      const { unwatchFile, watchFile } = await import('node:fs')
+      const { fileURLToPath } = await import('node:url')
+      const { createSupervisor } = await import('./supervisor.js')
+      const { buildStampPath, readBuildInfo } = await import('../build-info.js')
+      const { loadConfig } = await import('../config.js')
+      const installDir = loadConfig().installDir
+      const entry = fileURLToPath(new URL('../../bin/mmp.js', import.meta.url))
+      const supervisor = createSupervisor({
+        spawnChild(first) {
+          const args = [entry, 'serve', ...(first ? ['--scan', ...(opts.open ? ['--open'] : [])] : [])]
+          const child = spawn(process.execPath, args, { stdio: 'inherit' })
+          return {
+            kill: (force) => child.kill(force ? 'SIGKILL' : 'SIGTERM'),
+            onExit: (cb) => child.on('exit', (code) => cb(code)),
+          }
+        },
+        readStamp: () => readBuildInfo(installDir),
+        log: out,
+        now: () => Date.now(),
+        setTimer: (fn, ms) => setTimeout(fn, ms),
+        clearTimer: (t) => clearTimeout(t as ReturnType<typeof setTimeout>),
+      })
+      const stamp = buildStampPath(installDir)
+      supervisor.start()
+      watchFile(stamp, { interval: 2000 }, () => supervisor.check())
+      const shutdown = async () => {
+        unwatchFile(stamp)
+        process.exitCode = (await supervisor.stop()) ?? 0
+      }
+      process.once('SIGINT', shutdown)
+      process.once('SIGTERM', shutdown)
     })
 
   program
