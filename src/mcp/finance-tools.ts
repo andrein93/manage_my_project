@@ -41,6 +41,7 @@ function readableStatement(app: App, s: Statement) {
     id: s.id,
     number: s.number,
     status: s.overdue ? 'overdue' : s.status,
+    language: s.language,
     client: s.clientName,
     period: { from: s.periodFrom, to: s.periodTo },
     issueDate: s.issueDate,
@@ -68,9 +69,10 @@ export function registerFinanceTools(server: McpServer, app: App): void {
         period: z.enum(PERIODS).optional(),
         from: day.optional(),
         to: day.optional(),
+        language: z.string().optional().describe('Document language code: en, it, es, de, fr or zh. Use the language the user writes in.'),
       },
     },
-    tool(async (a: { client: string; period?: string; from?: string; to?: string }) => {
+    tool(async (a: { client: string; period?: string; from?: string; to?: string; language?: string }) => {
       await app.time.freshen()
       const client = app.clients.resolve(a.client)
       const range = rangeFrom(
@@ -78,7 +80,7 @@ export function registerFinanceTools(server: McpServer, app: App): void {
         app.statements.currentDay(),
         app.settings.get().weekStart,
       )
-      return readableStatement(app, app.statements.create({ clientId: client.id, from: range.from, to: range.to }))
+      return readableStatement(app, app.statements.create({ clientId: client.id, from: range.from, to: range.to, language: a.language }))
     }),
   )
 

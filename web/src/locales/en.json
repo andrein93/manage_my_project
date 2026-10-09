@@ -517,6 +517,7 @@
     "periodLabel": "Period {from} – {to}",
     "watermark": "DRAFT",
     "overdueSince": "Overdue since {date}",
-    "unsaved": "You have unsaved changes"
+    "unsaved": "You have unsaved changes",
+    "issueConfirm": "Click again to issue"
   }
 }

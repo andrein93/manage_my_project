@@ -173,3 +173,43 @@ describe('statement prefill language', () => {
     expect(en.lines[1].description).toBe('blog — Recurring fee (1 × month)')
   })
 })
+
+describe('statement review fixes', () => {
+  let acme: { id: string }
+  const id = (name: string) => fx.app.projects.resolve(name).id
+  beforeEach(async () => {
+    await fx.app.scan()
+    acme = fx.app.clients.create({ name: 'Acme' })
+    fx.app.projects.update(id('shop'), { clientId: acme.id })
+    fx.app.projects.update(id('blog'), { clientId: acme.id })
+  })
+
+  it('bills hourly lines as rounded hours × rate, so the printed arithmetic adds up', () => {
+    fx.app.finance.repo.addAgreement({ projectId: id('shop'), kind: 'hourly', amount: 45, startDate: '2026-10-01' })
+    fx.app.time.repo.addEntry({ projectId: id('shop'), date: '2026-10-02', minutes: 100 })
+    const line = fx.app.statements.create({ clientId: acme.id, from: '2026-10-01', to: '2026-10-31' }).lines[0]
+    expect(line).toMatchObject({ quantity: 1.67, unitCents: 4500, amountCents: 7515 })
+  })
+
+  it('refuses to issue when a project would be paid a negative amount', () => {
+    const d = fx.app.statements.create({ clientId: acme.id, from: '2026-10-01', to: '2026-10-31' })
+    fx.app.statements.setLines(d.id, [
+      { projectId: id('shop'), description: 'Work', quantity: 1, unitCents: 10000 },
+      { projectId: id('blog'), description: 'Discount', quantity: 1, unitCents: -2000 },
+    ])
+    expect(() => fx.app.statements.issue(d.id)).toThrow(/blog.*negative/)
+    fx.app.statements.setLines(d.id, [
+      { projectId: id('shop'), description: 'Work', quantity: 1, unitCents: 10000 },
+      { projectId: id('shop'), description: 'Discount', quantity: 1, unitCents: -2000 },
+    ])
+    const s = fx.app.statements.issue(d.id)
+    expect(fx.app.statements.markPaid(s.id).status).toBe('paid')
+    expect(fx.app.finance.repo.payments({ clientId: acme.id }).map((p) => p.amountCents)).toEqual([8000])
+  })
+
+  it('keeps the currency it was created with', () => {
+    const d = fx.app.statements.create({ clientId: acme.id, from: '2026-10-01', to: '2026-10-31' })
+    fx.app.settings.update({ currency: 'USD' })
+    expect(fx.app.statements.get(d.id).currency).toBe('EUR')
+  })
+})

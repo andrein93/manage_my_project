@@ -169,6 +169,9 @@ describe('statements interfaces', () => {
     expect(await mmp('statement', 'list')).toMatch(/PF-2026-001\s+Acme\s+2026-09-01 → 2026-09-30\s+122.00 EUR\s+issued/)
     expect(await mmp('statement', 'paid', 'PF-2026-001', '--date', '2026-10-05')).toMatch(/PF-2026-001 marked paid/)
     expect(await mmp('statement', 'show', 'pf-2026-001')).toMatch(/shop — 2 h/)
+    const it_ = await mmp('statement', 'create', 'Acme', '--period', 'last-month', '--language', 'it')
+    expect(fx.app.statements.list({ status: 'draft' })[0].language).toBe('it')
+    expect(it_).toContain('Draft statement')
     await expect(mmp('statement', 'delete', 'PF-2026-001')).rejects.toThrow(/only drafts/)
   })
 
@@ -189,6 +192,7 @@ describe('statements interfaces', () => {
     expect((await call('issue_statement', { statement: draft.id })).number).toBe('PF-2026-001')
     expect((await call('mark_statement_paid', { statement: 'PF-2026-001', date: '2026-10-05' })).status).toBe('paid')
     expect((await call('issue_statement', { statement: 'nope' })).error).toMatch(/not found/i)
+    expect((await call('create_statement', { client: 'Acme', period: 'last-month', language: 'it' })).language).toBe('it')
     await client.close()
   })
 })

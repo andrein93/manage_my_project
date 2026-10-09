@@ -291,6 +291,10 @@ export const MIGRATIONS: string[] = [
     amount_cents INTEGER NOT NULL
   );
   `,
+  // A statement keeps the currency it was created with, whatever the setting becomes later.
+  `
+  ALTER TABLE statements ADD COLUMN currency TEXT NOT NULL DEFAULT '';
+  `,
 ]
 
 /** Starter categories, created once when the categories table has never been used. */

@@ -36,7 +36,7 @@ const fields = ref({ periodFrom: '', periodTo: '', vatRate: 0, language: 'en', n
 const dirty = ref(false)
 const saved = ref(false)
 const busy = ref(false)
-const confirm = ref<'refill' | 'void' | 'delete' | null>(null)
+const confirm = ref<'refill' | 'issue' | 'void' | 'delete' | null>(null)
 const paidDate = ref(localDate(new Date()))
 
 const isDraft = computed(() => statement.value?.status === 'draft')
@@ -85,27 +85,29 @@ async function act(fn: () => Promise<Statement | void>) {
   }
 }
 
-const save = () =>
-  act(async () => {
-    const s = statement.value!
-    await api.updateStatement(s.id, {
-      periodFrom: fields.value.periodFrom,
-      periodTo: fields.value.periodTo,
-      vatRate: Number(fields.value.vatRate) || 0,
-      language: fields.value.language,
-      notes: fields.value.notes,
-      dueDate: fields.value.dueDate || null,
-    })
-    const result = await api.setStatementLines(
-      s.id,
-      lines.value.map((l) => ({ projectId: l.projectId, description: l.description, quantity: Number(l.quantity), unitCents: cents(l.unit), amountCents: amountOf(l) })),
-    )
-    saved.value = true
-    setTimeout(() => (saved.value = false), 2500)
-    return result
+/** Saves fields and lines; throws on failure so issue/refill never run on stale lines. */
+async function persist(): Promise<Statement> {
+  const s = statement.value!
+  await api.updateStatement(s.id, {
+    periodFrom: fields.value.periodFrom,
+    periodTo: fields.value.periodTo,
+    vatRate: Number(fields.value.vatRate) || 0,
+    language: fields.value.language,
+    notes: fields.value.notes,
+    dueDate: fields.value.dueDate || null,
   })
+  const result = await api.setStatementLines(
+    s.id,
+    lines.value.map((l) => ({ projectId: l.projectId, description: l.description, quantity: Number(l.quantity), unitCents: cents(l.unit), amountCents: amountOf(l) })),
+  )
+  saved.value = true
+  setTimeout(() => (saved.value = false), 2500)
+  return result
+}
 
-function twoClick(kind: 'refill' | 'void' | 'delete', run: () => void) {
+const save = () => act(persist)
+
+function twoClick(kind: 'refill' | 'issue' | 'void' | 'delete', run: () => void) {
   if (confirm.value !== kind) {
     confirm.value = kind
     return
@@ -114,8 +116,21 @@ function twoClick(kind: 'refill' | 'void' | 'delete', run: () => void) {
   run()
 }
 
-const refill = () => twoClick('refill', () => act(async () => (dirty.value ? save().then(() => api.refillStatement(props.id)) : api.refillStatement(props.id))))
-const issue = () => act(async () => (dirty.value ? (await save(), api.issueStatement(props.id)) : api.issueStatement(props.id)))
+/** Unsaved edits are saved first; if that fails, nothing else happens (the error is shown). */
+const refill = () =>
+  twoClick('refill', () =>
+    act(async () => {
+      if (dirty.value) await persist()
+      return api.refillStatement(props.id)
+    }),
+  )
+const issue = () =>
+  twoClick('issue', () =>
+    act(async () => {
+      if (dirty.value) await persist()
+      return api.issueStatement(props.id)
+    }),
+  )
 const markPaid = () => act(() => api.markStatementPaid(props.id, paidDate.value))
 const markUnpaid = () => act(() => api.markStatementUnpaid(props.id))
 const voidIt = () => twoClick('void', () => act(() => api.voidStatement(props.id)))
@@ -226,8 +241,12 @@ const printHref = computed(() => router.resolve({ name: 'statement-print', param
                   </select>
                 </td>
                 <td class="py-1 pr-2"><input v-model="l.description" class="field" maxlength="500" :aria-label="t('statement.description')" /></td>
-                <td class="py-1 pr-2"><input v-model.number="l.quantity" type="number" min="0" step="0.01" class="field text-right" :aria-label="t('statement.quantity')" /></td>
-                <td class="py-1 pr-2"><input v-model.number="l.unit" type="number" step="0.01" class="field text-right" :aria-label="t('statement.unitPrice')" /></td>
+                <td class="py-1 pr-2">
+                  <input v-model.number="l.quantity" type="number" min="0" step="0.01" class="field text-right" :aria-label="t('statement.quantity')" @input="l.amount = null" />
+                </td>
+                <td class="py-1 pr-2">
+                  <input v-model.number="l.unit" type="number" step="0.01" class="field text-right" :aria-label="t('statement.unitPrice')" @input="l.amount = null" />
+                </td>
                 <td class="py-1 pr-2">
                   <input
                     :value="(amountOf(l) / 100).toFixed(2)"
@@ -297,7 +316,9 @@ const printHref = computed(() => router.resolve({ name: 'statement-print', param
               {{ confirm === 'delete' ? t('statement.deleteConfirm') : t('statement.delete') }}
             </UiButton>
             <UiButton :disabled="busy || !dirty" @click="save">{{ t('statement.save') }}</UiButton>
-            <UiButton variant="primary" :icon="Send" :disabled="busy || !lines.length" :title="t('statement.issueHint')" @click="issue">{{ t('statement.issue') }}</UiButton>
+            <UiButton variant="primary" :icon="Send" :disabled="busy || !lines.length" :title="t('statement.issueHint')" @click="issue">
+              {{ confirm === 'issue' ? t('statement.issueConfirm') : t('statement.issue') }}
+            </UiButton>
           </template>
           <template v-else-if="statement.status === 'issued'">
             <UiButton :icon="Ban" variant="danger" :class="{ '!border-danger': confirm === 'void' }" :disabled="busy" @click="voidIt">

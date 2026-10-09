@@ -517,6 +517,7 @@
     "periodLabel": "Periodo {from} – {to}",
     "watermark": "BOZZA",
     "overdueSince": "Scaduto dal {date}",
-    "unsaved": "Hai modifiche non salvate"
+    "unsaved": "Hai modifiche non salvate",
+    "issueConfirm": "Clicca di nuovo per emettere"
   }
 }

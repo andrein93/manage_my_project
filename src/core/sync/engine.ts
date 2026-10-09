@@ -381,6 +381,7 @@ export class SyncService {
       const column = table === 'clients' ? 'client_id' : 'category_id'
       this.db.prepare(`UPDATE ${table} SET id = ? WHERE id = ?`).run(id, twin.id as string)
       this.db.prepare(`UPDATE projects SET ${column} = ? WHERE ${column} = ?`).run(id, twin.id as string)
+      if (table === 'clients') this.db.prepare('UPDATE statements SET client_id = ? WHERE client_id = ?').run(id, twin.id as string)
       this.db.prepare(`UPDATE ${table} SET updated_at = '' WHERE id = ?`).run(id) // the team version wins
       const keep = table === 'clients' ? { email: twin.email, notes: twin.notes } : { color: twin.color }
       return { name, keep }
@@ -608,6 +609,7 @@ const USER_REFS: [string, string][] = [
   ['tasks', 'assignee_id'],
   ['agreements', 'owner_id'],
   ['payments', 'owner_id'],
+  ['statements', 'owner_id'],
   ['expenses', 'owner_id'],
   ['ai_plans', 'owner_id'],
   ['time_entries', 'owner_id'],
@@ -630,7 +632,7 @@ function rekeyUser(db: DB, from: string, to: string, name: string): void {
   db.prepare('DELETE FROM users WHERE id = ?').run(from)
 }
 
-const PROJECT_REFS = ['tasks', 'project_tags', 'time_entries', 'agreements', 'payments', 'expenses', 'time_daily']
+const PROJECT_REFS = ['tasks', 'project_tags', 'time_entries', 'agreements', 'payments', 'expenses', 'time_daily', 'statement_lines']
 
 /** Gives a local project the team's id (call inside a transaction with deferred FKs). */
 function rekeyProject(db: DB, from: string, to: string): void {

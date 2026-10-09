@@ -517,6 +517,7 @@
     "periodLabel": "Zeitraum {from} – {to}",
     "watermark": "ENTWURF",
     "overdueSince": "Überfällig seit {date}",
-    "unsaved": "Ungespeicherte Änderungen"
+    "unsaved": "Ungespeicherte Änderungen",
+    "issueConfirm": "Erneut klicken zum Ausstellen"
   }
 }

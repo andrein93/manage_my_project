@@ -1,7 +1,7 @@
 import type { DB } from '../db.js'
 import { now } from '../ids.js'
 
-const CHILDREN = ['tasks', 'time_entries', 'agreements', 'payments', 'expenses', 'time_daily']
+const CHILDREN = ['tasks', 'time_entries', 'agreements', 'payments', 'expenses', 'time_daily', 'statement_lines']
 
 /**
  * Sharing a local project whose repository is already a team project (pulled as "not on this

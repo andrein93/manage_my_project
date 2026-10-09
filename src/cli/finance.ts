@@ -313,11 +313,12 @@ export function registerFinanceCommands(program: Command, getApp: () => App, out
     .addOption(new Option('--period <period>', 'period (default: last-month)').choices([...PERIODS]))
     .option('--from <date>', 'start date (YYYY-MM-DD)')
     .option('--to <date>', 'end date (YYYY-MM-DD)')
-    .action((ref: string, opts: { period?: string; from?: string; to?: string }) => {
+    .option('--language <code>', 'document language: en, it, es, de, fr, zh (default en)')
+    .action((ref: string, opts: { period?: string; from?: string; to?: string; language?: string }) => {
       const app = getApp()
       const client = app.clients.resolve(ref)
       const range = rangeFrom({ period: opts.from || opts.to ? undefined : opts.period ?? 'last-month', from: opts.from, to: opts.to }, app.statements.currentDay(), app.settings.get().weekStart)
-      show(app.statements.create({ clientId: client.id, from: range.from, to: range.to }))
+      show(app.statements.create({ clientId: client.id, from: range.from, to: range.to, language: opts.language }))
     })
   statement
     .command('list')

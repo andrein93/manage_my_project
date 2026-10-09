@@ -517,6 +517,7 @@
     "periodLabel": "Periodo {from} – {to}",
     "watermark": "BORRADOR",
     "overdueSince": "Vencido desde el {date}",
-    "unsaved": "Tienes cambios sin guardar"
+    "unsaved": "Tienes cambios sin guardar",
+    "issueConfirm": "Haz clic de nuevo para emitir"
   }
 }

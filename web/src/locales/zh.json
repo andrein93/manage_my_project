@@ -517,6 +517,7 @@
     "periodLabel": "期间 {from} – {to}",
     "watermark": "草稿",
     "overdueSince": "自 {date} 起逾期",
-    "unsaved": "有未保存的更改"
+    "unsaved": "有未保存的更改",
+    "issueConfirm": "再次点击以开具"
   }
 }

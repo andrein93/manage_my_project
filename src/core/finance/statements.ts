@@ -90,10 +90,21 @@ export class StatementRepository {
     transaction(this.db, () => {
       this.db
         .prepare(
-          `INSERT INTO statements (id, owner_id, client_id, status, period_from, period_to, vat_rate, language, created_at, updated_at)
-           VALUES (?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO statements (id, owner_id, client_id, status, period_from, period_to, vat_rate, language, currency, created_at, updated_at)
+           VALUES (?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run(id, localUserId(this.db), client.id, from, to, this.settings.get().billing.vatRate, cleanLanguage(input.language), ts, ts)
+        .run(
+          id,
+          localUserId(this.db),
+          client.id,
+          from,
+          to,
+          this.settings.get().billing.vatRate,
+          cleanLanguage(input.language),
+          this.settings.get().currency,
+          ts,
+          ts,
+        )
       this.writeLines(id, this.prefill(client.id, from, to, cleanLanguage(input.language)))
     })
     return this.get(id)
@@ -148,6 +159,16 @@ export class StatementRepository {
     if (!s.lines.length) throw new UserError('A statement needs at least one line before it can be issued')
     if (s.subtotalCents === 0) throw new UserError('A statement with a zero total cannot be issued')
     s.lines.forEach((l, i) => this.requireClientProject(s.clientId, s.clientName, l.projectId, i + 1))
+    // "Paid" records one payment per project, and payments cannot be negative.
+    const perProject = new Map<string, { name: string; cents: number }>()
+    for (const l of s.lines) {
+      const p = perProject.get(l.projectId) ?? { name: l.projectName, cents: 0 }
+      p.cents += l.amountCents
+      perProject.set(l.projectId, p)
+    }
+    for (const p of perProject.values()) {
+      if (p.cents < 0) throw new UserError(`The lines of ${p.name} add up to a negative amount: put discounts on the same project as the work they reduce`)
+    }
     const issueDate = cleanDate(input.issueDate ?? this.today())
     const billing = this.settings.get().billing
     const client = this.clients.get(s.clientId)!
@@ -160,12 +181,14 @@ export class StatementRepository {
       const max = this.db.prepare('SELECT MAX(seq) AS seq FROM statements WHERE year = ?').get(year) as { seq: number | null }
       const seq = (max.seq ?? 0) + 1
       const number = `${billing.numberPrefix}${year}-${String(seq).padStart(3, '0')}`
-      this.db
+      const result = this.db
         .prepare(
           `UPDATE statements SET status = 'issued', number = ?, year = ?, seq = ?, issue_date = ?, due_date = ?, snapshot = ?, updated_at = ?
-           WHERE id = ?`,
+           WHERE id = ? AND status = 'draft'`,
         )
         .run(number, year, seq, issueDate, s.dueDate ?? addDays(issueDate, billing.dueDays), JSON.stringify(snapshot), now(), id)
+      // Another process (dashboard vs AI) may have issued it meanwhile: never renumber.
+      if (Number(result.changes) === 0) throw new UserError('This statement was issued meanwhile; reload it')
     })
     return this.get(id)
   }
@@ -179,11 +202,12 @@ export class StatementRepository {
     const perProject = new Map<string, number>()
     for (const l of s.lines) perProject.set(l.projectId, (perProject.get(l.projectId) ?? 0) + l.amountCents)
     transaction(this.db, () => {
+      const result = this.db.prepare("UPDATE statements SET status = 'paid', paid_date = ?, updated_at = ? WHERE id = ? AND status = 'issued'").run(date, now(), id)
+      if (Number(result.changes) === 0) throw new UserError('This statement changed meanwhile; reload it')
       for (const [projectId, cents] of perProject) {
         if (cents === 0) continue
         this.financeRepo.addPayment({ projectId, amount: cents / 100, date, note: `Statement ${s.number}`, statementId: s.id })
       }
-      this.db.prepare("UPDATE statements SET status = 'paid', paid_date = ?, updated_at = ? WHERE id = ?").run(date, now(), id)
     })
     return this.get(id)
   }
@@ -193,8 +217,9 @@ export class StatementRepository {
     const s = this.get(id)
     if (s.status !== 'paid') throw new UserError('Only a paid statement can be marked as unpaid')
     transaction(this.db, () => {
+      const result = this.db.prepare("UPDATE statements SET status = 'issued', paid_date = NULL, updated_at = ? WHERE id = ? AND status = 'paid'").run(now(), id)
+      if (Number(result.changes) === 0) throw new UserError('This statement changed meanwhile; reload it')
       for (const p of this.financeRepo.payments().filter((p) => p.statementId === id)) this.financeRepo.removePayment(p.id)
-      this.db.prepare("UPDATE statements SET status = 'issued', paid_date = NULL, updated_at = ? WHERE id = ?").run(now(), id)
     })
     return this.get(id)
   }
@@ -202,7 +227,8 @@ export class StatementRepository {
   void(id: string): Statement {
     const s = this.get(id)
     if (s.status !== 'issued') throw new UserError('Only an issued, unpaid statement can be voided (delete drafts instead)')
-    this.db.prepare("UPDATE statements SET status = 'void', updated_at = ? WHERE id = ?").run(now(), id)
+    const result = this.db.prepare("UPDATE statements SET status = 'void', updated_at = ? WHERE id = ? AND status = 'issued'").run(now(), id)
+    if (Number(result.changes) === 0) throw new UserError('This statement changed meanwhile; reload it')
     return this.get(id)
   }
 
@@ -232,7 +258,9 @@ export class StatementRepository {
       if (!a || !project || project.client?.id !== clientId || cents === 0) continue
       if (a.kind === 'hourly') {
         const hours = Math.round((e.minutes / 60) * 100) / 100
-        lines.push({ a, name: project.name, projectId: project.id, description: `${project.name} — ${hours} ${w.hours}`, quantity: hours, unitCents: a.amountCents, amountCents: cents })
+        // Bill the hours shown (2 decimals) × rate, so the printed line adds up; it may differ from the
+        // exact accrual in the finance report by a few cents.
+        lines.push({ a, name: project.name, projectId: project.id, description: `${project.name} — ${hours} ${w.hours}`, quantity: hours, unitCents: a.amountCents, amountCents: Math.round(hours * a.amountCents) })
       } else if (a.kind === 'fixed') {
         lines.push({ a, name: project.name, projectId: project.id, description: `${project.name} — ${a.note || w.fixed} (${w.share})`, quantity: 1, unitCents: cents, amountCents: cents })
       } else {
@@ -315,7 +343,7 @@ export class StatementRepository {
       subtotalCents,
       vatCents,
       totalCents: subtotalCents + vatCents,
-      currency: this.settings.get().currency,
+      currency: String(r.currency || '') || this.settings.get().currency,
       overdue: status === 'issued' && !!dueDate && dueDate < this.today(),
       createdAt: String(r.created_at),
       updatedAt: String(r.updated_at),

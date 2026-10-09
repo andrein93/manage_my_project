@@ -517,6 +517,7 @@
     "periodLabel": "Période {from} – {to}",
     "watermark": "BROUILLON",
     "overdueSince": "En retard depuis le {date}",
-    "unsaved": "Modifications non enregistrées"
+    "unsaved": "Modifications non enregistrées",
+    "issueConfirm": "Cliquez à nouveau pour émettre"
   }
 }
