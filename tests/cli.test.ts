@@ -54,3 +54,9 @@ describe('CLI', () => {
     expect(relativeTime('2024-01-01T12:00:00Z', now)).toBe('2y ago')
   })
 })
+
+describe('update', () => {
+  it('refuses to update an install that is not a git clone', async () => {
+    await expect(mmp('update', '--check')).rejects.toThrow(/not installed from git/)
+  })
+})

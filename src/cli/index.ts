@@ -9,6 +9,7 @@ import { registerExtrasCommands } from './extras.js'
 import { registerFinanceCommands } from './finance.js'
 import { registerSyncCommands } from './sync.js'
 import { registerTimeCommands } from './time.js'
+import { registerUpdateCommand } from './update.js'
 
 
 interface ListOptions {
@@ -205,6 +206,7 @@ export function buildCli(getApp: () => App, out: (line: string) => void = consol
   registerFinanceCommands(program, getApp, out)
   registerExtrasCommands(program, getApp, out)
   registerSyncCommands(program, getApp, out)
+  registerUpdateCommand(program, () => getApp().config.installDir, out)
 
   program
     .command('mcp')
