@@ -54,6 +54,7 @@ describe('MCP server', () => {
       'owed_report',
       'project_health',
       'record_payment',
+      'reminders',
       'scan_projects',
       'set_project_field',
       'sync_now',

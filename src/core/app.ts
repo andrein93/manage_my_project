@@ -1,4 +1,5 @@
 import { dirname, join } from 'node:path'
+import { localToday } from './dates.js'
 import { loadConfig, type Config } from '../config.js'
 import { CategoryRepository } from './categories.js'
 import { ClientRepository } from './clients.js'
@@ -11,6 +12,7 @@ import { TaskRepository } from './tasks.js'
 import { FinanceService } from './finance/report.js'
 import { StatementRepository } from './finance/statements.js'
 import { FieldRepository } from './fields.js'
+import { ReminderService } from './reminders.js'
 import { SyncService } from './sync/engine.js'
 import { TimeService } from './time/service.js'
 import { UserError, type Project, type ScanResult } from './types.js'
@@ -29,7 +31,10 @@ export interface App {
   finance: FinanceService
   statements: StatementRepository
   fields: FieldRepository
+  reminders: ReminderService
   sync: SyncService
+  /** Today's local date (YYYY-MM-DD); tests pin it. */
+  today(): string
   scan(): Promise<ScanResult>
   /** Registers a single folder as a manual project (or returns the existing one). */
   addProject(path: string): Promise<Project>
@@ -60,6 +65,9 @@ export function createApp(options: CreateAppOptions = {}): App {
   const finance = new FinanceService(db, projects, settings, time.repo, options.today)
   const statements = new StatementRepository(db, finance, settings, clients, projects, options.today)
   const fields = new FieldRepository(db)
+  // Reminders read most of the app; it is passed lazily because it is being built here.
+  let self: App
+  const reminders = new ReminderService(db, () => self)
   const sync = new SyncService(db, config.dataDir, time.repo, options.fetch)
 
   // First run only (counting removed rows too, so a deliberately removed workspace stays removed):
@@ -80,7 +88,7 @@ export function createApp(options: CreateAppOptions = {}): App {
       running = undefined
     }))
 
-  return {
+  self = {
     config,
     db,
     projects,
@@ -93,7 +101,9 @@ export function createApp(options: CreateAppOptions = {}): App {
     finance,
     statements,
     fields,
+    reminders,
     sync,
+    today: () => (options.today ?? localToday)(),
     scan() {
       // One scan at a time per process. Callers arriving mid-scan share a single follow-up
       // scan, so they always see changes made before their call (e.g. a new workspace).
@@ -119,4 +129,5 @@ export function createApp(options: CreateAppOptions = {}): App {
     },
     close: () => db.close(),
   }
+  return self
 }

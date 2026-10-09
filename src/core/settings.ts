@@ -22,9 +22,15 @@ export interface Settings {
   /** Base-currency units per US dollar, used to convert AI costs. */
   usdRate: number
   billing: Billing
+  notifications: Notifications
 }
 
 export type SettingsPatch = Partial<Omit<Settings, 'billing'>> & { billing?: Partial<Billing> }
+
+export interface Notifications {
+  /** Desktop notifications from a running "mmp start" (off by default). */
+  desktop: boolean
+}
 
 export const DEFAULT_SETTINGS: Settings = {
   ignoreNames: ['node_modules', 'vendor', '$RECYCLE.BIN', 'System Volume Information'],
@@ -34,6 +40,7 @@ export const DEFAULT_SETTINGS: Settings = {
   currency: 'EUR',
   usdRate: 1,
   billing: DEFAULT_BILLING,
+  notifications: { desktop: false },
 }
 
 export class SettingsRepository {
@@ -48,6 +55,10 @@ export class SettingsRepository {
   update(patch: SettingsPatch): Settings {
     const values: Partial<Settings> = {}
     if (patch.billing !== undefined) values.billing = cleanBilling({ ...this.get().billing, ...patch.billing })
+    if (patch.notifications !== undefined) {
+      if (typeof patch.notifications?.desktop !== 'boolean') throw new UserError('notifications.desktop must be true or false')
+      values.notifications = { desktop: patch.notifications.desktop }
+    }
     if (patch.ignoreNames !== undefined) {
       if (!Array.isArray(patch.ignoreNames) || patch.ignoreNames.some((n) => typeof n !== 'string')) {
         throw new UserError('ignoreNames must be a list of folder names')

@@ -55,6 +55,7 @@ const settingsBody = z
     weekStart: z.enum(['monday', 'sunday']).optional(),
     currency: z.string().max(3).optional(),
     usdRate: z.number().optional(),
+    notifications: z.object({ desktop: z.boolean() }).strict().optional(),
     billing: z
       .object({
         name: z.string(),

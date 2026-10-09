@@ -25,6 +25,23 @@ export function describeFlag(f: HealthFlag): string {
 }
 
 export function registerExtrasCommands(program: Command, getApp: () => App, out: Out): void {
+  const reminders = program
+    .command('reminders')
+    .description('what needs your attention today: overdue tasks and statements, charges, field dates')
+    .action(() => {
+      const app = getApp()
+      const list = app.reminders.list(app.today())
+      if (!list.length) return out('Nothing needs your attention.')
+      out(formatTable(['DATE', 'WHAT', 'DETAIL', 'KEY'], list.map((r) => [r.date, r.title, r.detail, r.key])))
+    })
+  reminders
+    .command('dismiss <key>')
+    .description('hide a reminder (it comes back only if something new happens)')
+    .action((key: string) => {
+      getApp().reminders.dismiss(key)
+      out('Dismissed.')
+    })
+
   program
     .command('digest')
     .description('weekly summary: time, AI cost, money, tasks, health and upcoming charges')

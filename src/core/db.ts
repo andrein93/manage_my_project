@@ -334,6 +334,15 @@ export const MIGRATIONS: string[] = [
   CREATE INDEX activity_minute ON activity(minute);
   CREATE INDEX activity_session ON activity(session_id) WHERE session_id IS NOT NULL;
   `,
+  // Reminders: what the user dismissed, snoozed or was already notified about. Local only.
+  `
+  CREATE TABLE reminder_state (
+    key TEXT PRIMARY KEY,
+    dismissed_at TEXT,
+    snoozed_until TEXT,
+    notified_on TEXT
+  );
+  `,
 ]
 
 /** Starter categories, created once when the categories table has never been used. */

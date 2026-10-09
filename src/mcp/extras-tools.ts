@@ -6,6 +6,18 @@ import { tool } from './tool.js'
 
 export function registerExtrasTools(server: McpServer, app: App): void {
   server.registerTool(
+    'reminders',
+    {
+      title: 'Reminders',
+      description:
+        'What needs the user today: overdue tasks and statements, tasks due today, charges to pay or invoice in the next 3 days, ' +
+        'custom date fields about to expire (e.g. domains). Most urgent first.',
+      inputSchema: {},
+    },
+    tool(() => app.reminders.list(app.today()).map(({ title, detail, date, kind, key }) => ({ title, detail, date, kind, key }))),
+  )
+
+  server.registerTool(
     'weekly_digest',
     {
       title: 'Weekly digest',

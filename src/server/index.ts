@@ -5,6 +5,7 @@ import Fastify, { type FastifyInstance } from 'fastify'
 import { ZodError } from 'zod'
 import type { App } from '../core/app.js'
 import { UserError } from '../core/types.js'
+import { sendDueNotifications } from './notify.js'
 import { systemOpener, type Opener } from './open.js'
 import { registerOrganizeRoutes } from './organize-routes.js'
 import { registerRoutes } from './routes.js'
@@ -21,10 +22,13 @@ export interface ServerOptions {
   logger?: boolean
   /** Import time activity on start and every few minutes (default true for startServer). */
   backgroundSync?: boolean
+  /** Desktop notifier (tests pass a fake one). */
+  notify?: (title: string, body: string) => Promise<boolean>
 }
 
 const SYNC_INTERVAL_MS = 5 * 60_000
 const TEAM_SYNC_INTERVAL_MS = 2 * 60_000
+const NOTIFY_INTERVAL_MS = 15 * 60_000
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
 const MUTATING = new Set(['POST', 'PUT', 'PATCH'])
@@ -64,7 +68,7 @@ export async function buildServer(app: App, options: ServerOptions = {}): Promis
       registerOrganizeRoutes(api, app)
       registerTimeRoutes(api, app)
       registerFinanceRoutes(api, app)
-      registerExtrasRoutes(api, app)
+      registerExtrasRoutes(api, app, options.notify)
       registerSyncRoutes(api, app)
       api.get('/help', async () => helpDocs(app))
     },
@@ -98,9 +102,13 @@ export async function startServer(app: App, options: ServerOptions = {}): Promis
   // Hooks must be registered before listen().
   let timer: ReturnType<typeof setInterval> | undefined
   let teamTimer: ReturnType<typeof setInterval> | undefined
+  let notifyTimer: ReturnType<typeof setInterval> | undefined
+  let firstNotify: ReturnType<typeof setTimeout> | undefined
   server.addHook('onClose', async () => {
     clearInterval(timer)
     clearInterval(teamTimer)
+    clearInterval(notifyTimer)
+    clearTimeout(firstNotify)
   })
   try {
     await server.listen({ port: app.config.port, host: app.config.host })
@@ -123,6 +131,18 @@ export async function startServer(app: App, options: ServerOptions = {}): Promis
     teamSync()
     teamTimer = setInterval(teamSync, TEAM_SYNC_INTERVAL_MS)
     teamTimer.unref()
+    // Desktop notifications (Settings → Notifications); the setting is read on every run.
+    let notifyFailed = false
+    const notifyRun = () =>
+      sendDueNotifications(app, app.today(), options.notify).catch((error) => {
+        if (!notifyFailed) server.log.error(error)
+        notifyFailed = true
+        return 0
+      })
+    firstNotify = setTimeout(notifyRun, 30_000)
+    firstNotify.unref()
+    notifyTimer = setInterval(notifyRun, NOTIFY_INTERVAL_MS)
+    notifyTimer.unref()
   }
   return { url: `http://localhost:${app.config.port}`, server }
 }
