@@ -28,4 +28,6 @@ const router = createRouter({
   ],
 })
 
-createApp(App).use(router).use(i18n).mount('#app')
+const app = createApp(App).use(router).use(i18n)
+// Mount once the first route is resolved, so the page transition doesn't animate out of an empty view.
+router.isReady().then(() => app.mount('#app'))

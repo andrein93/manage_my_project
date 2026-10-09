@@ -32,3 +32,19 @@ export function setThemePreference(pref: ThemePreference): void {
 export function toggleTheme(): void {
   setThemePreference(themePreference.value === 'dark' ? 'light' : 'dark')
 }
+
+/** Theme set by another tab, or null when the storage event is about something else. A null key means storage was cleared. */
+export function themeFromStorageEvent(e: Pick<StorageEvent, 'key' | 'newValue'>): ThemePreference | null {
+  if (e.key !== null && e.key !== THEME_KEY) return null
+  return parseThemePreference(e.newValue)
+}
+
+// Keep every open tab on the same theme.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    const pref = themeFromStorageEvent(e)
+    if (pref === null) return
+    themePreference.value = pref
+    applyThemePreference(pref)
+  })
+}

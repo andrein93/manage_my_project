@@ -58,7 +58,9 @@ watch(
       await nextTick()
       input.value?.focus()
     } else {
-      returnFocus?.focus?.()
+      // The opener may be gone (e.g. the mobile drawer closed): fall back to the menu button or the page.
+      const target = returnFocus?.isConnected ? returnFocus : document.querySelector<HTMLElement>('[data-focus-fallback]')
+      target?.focus()
     }
   },
 )
@@ -144,10 +146,11 @@ watch(active, async (i) => {
         <UiKbd>Esc</UiKbd>
       </div>
 
-      <div id="palette-list" class="max-h-[min(60vh,26rem)] overflow-y-auto p-2" role="listbox">
+      <div class="max-h-[min(60vh,26rem)] overflow-y-auto p-2">
         <p v-if="!flat.length" class="px-3 py-8 text-center text-sm text-muted">{{ t('ui.palette.empty', { query }) }}</p>
-        <section v-for="g in groups" :key="g.group" class="mb-1">
-          <p class="label px-2.5 pt-2 pb-1">{{ t(`ui.palette.${g.group}`) }}</p>
+        <div id="palette-list" role="listbox">
+        <div v-for="g in groups" :key="g.group" class="mb-1" role="group" :aria-labelledby="`palette-group-${g.group}`">
+          <p :id="`palette-group-${g.group}`" class="label px-2.5 pt-2 pb-1">{{ t(`ui.palette.${g.group}`) }}</p>
           <button
             v-for="item in g.items"
             :id="`palette-item-${flat.indexOf(item)}`"
@@ -166,7 +169,8 @@ watch(active, async (i) => {
             <span v-if="item.hint" class="max-w-[40%] shrink-0 truncate text-xs">{{ item.hint }}</span>
             <CornerDownLeft v-if="flat.indexOf(item) === active" class="size-3.5 shrink-0" aria-hidden="true" />
           </button>
-        </section>
+        </div>
+        </div>
       </div>
 
       <div class="hidden items-center gap-4 border-t border-line px-4 py-2 text-xs text-muted sm:flex">

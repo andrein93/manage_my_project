@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { AnimatePresence, Motion, MotionConfig } from 'motion-v'
-import { CheckSquare, Clock, FolderGit2, LayoutDashboard, Menu, Settings, Users, Wallet, X } from 'lucide-vue-next'
+import { CheckSquare, Clock, FolderGit2, LayoutDashboard, Menu, Search, Settings, Users, Wallet, X } from 'lucide-vue-next'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
@@ -8,6 +8,7 @@ import { api } from './api'
 import AppSidebar, { type NavLink } from './components/AppSidebar.vue'
 import CommandPalette from './components/CommandPalette.vue'
 import { scanTick, useErrors } from './composables'
+import { finePointer } from './motion'
 import { isPaletteShortcut } from './palette'
 import { readPref, writePref } from './prefs'
 import { pushToast } from './toasts'
@@ -70,6 +71,7 @@ function openPaletteFromDrawer() {
 const scanning = ref(false)
 const { error, report, clear } = useErrors()
 async function rescan() {
+  if (scanning.value) return
   scanning.value = true
   clear()
   try {
@@ -132,7 +134,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
           :exit="{ x: -280 }"
           :transition="{ type: 'spring', stiffness: 380, damping: 36 }"
         >
-          <AppSidebar :links="links" :collapsed="false" :scanning="scanning" @rescan="rescan" @search="openPaletteFromDrawer" @navigate="drawerOpen = false" />
+          <AppSidebar
+            :links="links"
+            :collapsed="false"
+            :scanning="scanning"
+            layout-id="nav-active-drawer"
+            @rescan="rescan"
+            @search="openPaletteFromDrawer"
+            @navigate="drawerOpen = false"
+          />
           <button class="absolute top-3.5 right-3 rounded-md p-1 text-muted hover:bg-surface-2 hover:text-ink" :aria-label="t('ui.closeMenu')" @click="drawerOpen = false">
             <X class="size-4" aria-hidden="true" />
           </button>
@@ -146,13 +156,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
             class="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink"
             :aria-label="t('ui.menu')"
             :aria-expanded="drawerOpen"
+            data-focus-fallback
             @click="drawerOpen = true"
           >
             <Menu class="size-5" aria-hidden="true" />
           </button>
           <span class="font-semibold tracking-tight">mmp</span>
-          <button class="ml-auto flex items-center gap-1.5 text-sm text-muted" :aria-label="t('ui.search')" @click="paletteOpen = true">
-            <UiKbd>Ctrl K</UiKbd>
+          <button class="ml-auto flex items-center gap-1.5 rounded-md p-1.5 text-sm text-muted hover:bg-surface-2 hover:text-ink" :aria-label="t('ui.search')" @click="paletteOpen = true">
+            <Search class="size-5" aria-hidden="true" />
+            <UiKbd v-if="finePointer">Ctrl K</UiKbd>
           </button>
         </div>
 

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { readPref, writePref } from '../web/src/prefs'
-import { THEME_KEY, applyThemePreference, parseThemePreference, readThemePreference } from '../web/src/theme'
+import { THEME_KEY, applyThemePreference, parseThemePreference, readThemePreference, themeFromStorageEvent } from '../web/src/theme'
 
 function memoryStorage() {
   const data = new Map<string, string>()
@@ -68,5 +68,23 @@ describe('theme', () => {
     expect(attrs.get('data-theme')).toBe('dark')
     applyThemePreference('light', root)
     expect(attrs.get('data-theme')).toBe('light')
+  })
+})
+
+describe('cross-tab theme sync', () => {
+  it('reads the new theme from another tab', () => {
+    expect(themeFromStorageEvent({ key: THEME_KEY, newValue: 'light' })).toBe('light')
+  })
+
+  it('treats a removed key as dark (the default)', () => {
+    expect(themeFromStorageEvent({ key: THEME_KEY, newValue: null })).toBe('dark')
+  })
+
+  it('ignores other keys', () => {
+    expect(themeFromStorageEvent({ key: 'mmp.language', newValue: 'it' })).toBeNull()
+  })
+
+  it('handles storage being cleared (key null) as dark', () => {
+    expect(themeFromStorageEvent({ key: null, newValue: null })).toBe('dark')
   })
 })

@@ -17,7 +17,8 @@ import { useRoute } from 'vue-router'
 import { themePreference, toggleTheme } from '../theme'
 import UiKbd from '../ui/UiKbd.vue'
 
-defineProps<{ links: NavLink[]; collapsed: boolean; scanning: boolean }>()
+// Each mounted sidebar needs its own layout id, or the active pill animates between them.
+withDefaults(defineProps<{ links: NavLink[]; collapsed: boolean; scanning: boolean; layoutId?: string }>(), { layoutId: 'nav-active' })
 const emit = defineEmits<{ toggle: []; rescan: []; search: []; navigate: [] }>()
 const { t } = useI18n()
 const route = useRoute()
@@ -27,7 +28,7 @@ const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigat
 <template>
   <div class="flex h-full flex-col gap-1 p-3">
     <div class="mb-3 flex items-center gap-2 px-1.5" :class="collapsed ? 'justify-center' : 'justify-between'">
-      <RouterLink to="/" class="flex items-center gap-2 text-[15px] font-semibold tracking-tight" @click="emit('navigate')">
+      <RouterLink to="/" class="flex items-center gap-2 text-[15px] font-semibold tracking-tight" aria-label="mmp" @click="emit('navigate')">
         <img src="/favicon.svg" alt="" class="size-6" />
         <span v-if="!collapsed">mmp</span>
       </RouterLink>
@@ -61,7 +62,7 @@ const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigat
       >
         <Motion
           v-if="link.active(route.path)"
-          layout-id="nav-active"
+          :layout-id="layoutId"
           class="absolute inset-0 rounded-md border border-line bg-surface-2 shadow-card"
           :transition="{ type: 'spring', stiffness: 500, damping: 38 }"
         />
