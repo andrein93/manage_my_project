@@ -267,6 +267,8 @@ describe('team sync', () => {
     b.app.projects.update(local.id, { clientId: brunoClient.id })
     b.app.finance.repo.addAgreement({ projectId: local.id, kind: 'fixed', amount: 100, startDate: '2026-10-01', endDate: '2026-10-31' })
     const statement = b.app.statements.create({ clientId: brunoClient.id, from: '2026-10-01', to: '2026-10-31' })
+    const liveSite = b.app.fields.create({ name: 'Live site', kind: 'url' })
+    b.app.fields.setValues(local.id, { [liveSite.id]: 'https://shop.example' })
 
     await a.app.sync.login(server.url, tokenA)
     await b.app.sync.login(server.url, tokenB)
@@ -287,6 +289,8 @@ describe('team sync', () => {
     expect(b.app.tasks.list({ projectId: shop.id }).map((t) => t.title)).toEqual(['Bruno local task'])
     // Statement lines follow the project to its team id.
     expect(b.app.statements.get(statement.id).lines.map((l) => l.projectId)).toEqual([shop.id])
+    // Custom field values follow the project too.
+    expect(b.app.fields.values(shop.id).find((v) => v.fieldId === liveSite.id)?.value).toBe('https://shop.example')
     expect(b.app.projects.list({ all: true }).filter((p) => p.name === 'shop' || p.name === 'shop-clone')).toHaveLength(1)
     await b.app.sync.run()
     await a.app.sync.run()

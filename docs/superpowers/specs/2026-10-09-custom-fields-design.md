@@ -19,7 +19,7 @@ and the AI can read and set them; project search finds projects by field values.
 - **Date fields have `remindDays`** (default 30, null = never): step 6 uses it to remind before
   the date (e.g. domain expiry).
 - **Local only:** definitions and values are not part of team sync (like statements). Shared
-  projects keep their local field values.
+  projects keep their local field values: they follow the project when sharing re-keys or merges it.
 - **Search:** the project list's text search also matches field values.
 - **Deleting a field** soft-deletes the definition and hard-deletes its values.
 
@@ -45,8 +45,9 @@ CREATE TABLE project_field_values (
 - `values(projectId): FieldValue[]` — every defined field with its value (`''` when unset).
 - `setValues(projectId, { [fieldId]: string | null })` — validates per kind, `''`/null clears.
 - `allValues(): Map<projectId, string[]>` for search.
-- `upcomingDates(today, maxDays)` — for step 6: `{ projectId, projectName, fieldName, date, daysLeft }`
-  for date fields with `remindDays` whose date is within `remindDays` (and not past more than 0 days).
+- `upcomingDates(today)` — for step 6: `{ projectId, projectName, fieldId, fieldName, date, daysLeft }`
+  for date fields with `remindDays` whose date is within `remindDays`; a passed date keeps
+  reminding for 30 days (an expired domain still needs attention), then drops out.
 - Validation: names 1–60 chars, unique (case-insensitive); `url` must parse as http(s);
   `date` = YYYY-MM-DD real date; `number` finite (stored normalized, `,` accepted as decimal);
   `text` ≤ 2000 chars; `remindDays` integer 0–365 or null, only for date fields.

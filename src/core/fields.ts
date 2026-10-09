@@ -1,4 +1,4 @@
-import { addDays } from './dates.js'
+import { cleanDate } from './dates.js'
 import { localUserId, transaction, type DB } from './db.js'
 import { newId, now } from './ids.js'
 import { cleanName, resolveRef, uniqueName } from './refs.js'
@@ -12,6 +12,8 @@ export type { FieldKind, FieldValue, ProjectField, UpcomingFieldDate }
 type Row = Record<string, unknown>
 
 const DEFAULT_REMIND_DAYS = 30
+/** How long a passed date keeps reminding before it drops out. */
+const PAST_GRACE_DAYS = 30
 
 /** User-defined project fields (production URL, domain expiry…). Local only: not team-synced. */
 export class FieldRepository {
@@ -118,8 +120,8 @@ export class FieldRepository {
   }
 
   /**
-   * Date values inside their field's remind window (`daysLeft <= remindDays`), passed dates
-   * included (an expired domain still needs attention), soonest first.
+   * Date values inside their field's remind window (`daysLeft <= remindDays`), soonest first.
+   * Passed dates keep reminding for PAST_GRACE_DAYS (an expired domain still needs attention).
    */
   upcomingDates(today: string): UpcomingFieldDate[] {
     const rows = this.db
@@ -140,7 +142,7 @@ export class FieldRepository {
         daysLeft: daysBetween(today, String(r.value)),
         remind: Number(r.remind_days),
       }))
-      .filter((d) => d.daysLeft <= d.remind)
+      .filter((d) => d.daysLeft <= d.remind && d.daysLeft >= -PAST_GRACE_DAYS)
       .sort((a, b) => a.date.localeCompare(b.date) || a.projectName.localeCompare(b.projectName))
       .map(({ remind: _remind, ...d }) => d)
   }
@@ -192,9 +194,11 @@ function cleanValue(field: ProjectField, raw: string): string {
     return value
   }
   if (field.kind === 'date') {
-    const ok = /^\d{4}-\d{2}-\d{2}$/.test(value) && addDays(value, 0) === value
-    if (!ok) throw new UserError(`${field.name}: "${value}" is not a valid date (YYYY-MM-DD)`)
-    return value
+    try {
+      return cleanDate(value)
+    } catch {
+      throw new UserError(`${field.name}: "${value}" is not a valid date (YYYY-MM-DD)`)
+    }
   }
   if (field.kind === 'number') {
     const n = Number(value.replace(',', '.'))

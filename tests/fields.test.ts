@@ -45,6 +45,9 @@ describe('custom fields', () => {
     })
     expect(() => fx.app.fields.setValues(shop, { [url.id]: 'javascript:alert(1)' })).toThrow(/http/)
     expect(() => fx.app.fields.setValues(shop, { [date.id]: '2027-02-30' })).toThrow(/date/i)
+    for (const bad of ['2027-13-01', '2027-00-10', '2027-01-32']) {
+      expect(() => fx.app.fields.setValues(shop, { [date.id]: bad })).toThrow(/Expiry: .* is not a valid date/)
+    }
     expect(() => fx.app.fields.setValues(shop, { [num.id]: 'lots' })).toThrow(/number/)
     expect(() => fx.app.fields.setValues(shop, { nope: 'x' })).toThrow(/not found/i)
     fx.app.fields.setValues(shop, { [text.id]: '', [num.id]: null })
@@ -63,6 +66,9 @@ describe('custom fields', () => {
     const never = fx.app.fields.create({ name: 'Launch', kind: 'date', remindDays: null })
     fx.app.fields.setValues(id('shop'), { [expiry.id]: '2026-10-20', [contract.id]: '2026-10-20', [never.id]: '2026-10-09' })
     fx.app.fields.setValues(id('blog'), { [expiry.id]: '2026-10-01' })
+    // Long past: no longer a reminder (passed dates stay for 30 days).
+    const old = fx.app.fields.create({ name: 'Old contract', kind: 'date' })
+    fx.app.fields.setValues(id('blog'), { [old.id]: '2026-08-01' })
     expect(fx.app.fields.upcomingDates('2026-10-08')).toEqual([
       { projectId: id('blog'), projectName: 'blog', fieldId: expiry.id, fieldName: 'Domain expiry', date: '2026-10-01', daysLeft: -7 },
       { projectId: id('shop'), projectName: 'shop', fieldId: expiry.id, fieldName: 'Domain expiry', date: '2026-10-20', daysLeft: 12 },

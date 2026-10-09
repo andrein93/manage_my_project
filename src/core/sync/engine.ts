@@ -632,7 +632,7 @@ function rekeyUser(db: DB, from: string, to: string, name: string): void {
   db.prepare('DELETE FROM users WHERE id = ?').run(from)
 }
 
-const PROJECT_REFS = ['tasks', 'project_tags', 'time_entries', 'agreements', 'payments', 'expenses', 'time_daily', 'statement_lines']
+const PROJECT_REFS = ['tasks', 'project_tags', 'time_entries', 'agreements', 'payments', 'expenses', 'time_daily', 'statement_lines', 'project_field_values']
 
 /** Gives a local project the team's id (call inside a transaction with deferred FKs). */
 function rekeyProject(db: DB, from: string, to: string): void {
