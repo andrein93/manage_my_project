@@ -167,3 +167,18 @@ describe('finance records', () => {
     expect(() => fx.app.settings.update({ usdRate: 0 })).toThrow(/positive/)
   })
 })
+
+describe('earnedByAgreement', () => {
+  it('matches the report earned per project, with hours and fee counts', () => {
+    setupMoney()
+    const byAgreement = fx.app.finance.earnedByAgreement(OCT)
+    const report = fx.app.finance.report({ range: OCT })
+    for (const r of report.rows) {
+      const sum = byAgreement.filter((e) => e.projectId === r.key).reduce((s, e) => s + e.cents, 0)
+      expect(Math.round(sum)).toBe(r.earnedCents)
+    }
+    const hourly = byAgreement.find((e) => e.minutes > 0)!
+    expect(hourly).toMatchObject({ projectId: id('shop'), minutes: 62 })
+    expect(byAgreement.find((e) => e.occurrences > 0)).toMatchObject({ projectId: id('shop'), occurrences: 1, cents: 15000 })
+  })
+})

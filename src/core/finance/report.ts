@@ -6,7 +6,9 @@ import { localDateOf, minuteToMs, type DateRange } from '../time/periods.js'
 import type { TimeRepository } from '../time/repository.js'
 import { addTo, monthOf, occurrences, spreadFixed, type DayAmounts } from './accrual.js'
 import { FinanceRepository } from './repository.js'
-import type { AiPlan, FinanceNumbers, FinanceReport, FinanceRow, OwedRow } from './types.js'
+import type { AgreementEarning, AiPlan, FinanceNumbers, FinanceReport, FinanceRow, OwedRow } from './types.js'
+
+type DailyTime = ReturnType<TimeRepository['daily']>
 
 export interface FinanceFilters {
   projectId?: string
@@ -124,6 +126,44 @@ export class FinanceService {
     return { from: from < today ? from : today, to: today }
   }
 
+  /** What each agreement earned in `range` (unrounded cents), with hours and fee counts for statements. */
+  earnedByAgreement(range: DateRange): AgreementEarning[] {
+    const ext = { from: monthOf(range.from).from, to: monthOf(range.to).to }
+    const daily = this.time.daily(ext)
+    this.addTeamMinutes(daily, ext)
+    return this.earnedFrom(range, daily)
+  }
+
+  /** The single revenue accrual, shared by reports and statements. */
+  private earnedFrom(range: DateRange, daily: DailyTime): AgreementEarning[] {
+    const out: AgreementEarning[] = []
+    for (const a of this.repo.agreements()) {
+      const earned: DayAmounts = new Map()
+      let minutesSum = 0
+      let count = 0
+      if (a.kind === 'hourly') {
+        for (const [day, minutes] of daily.get(a.projectId)?.minutes ?? new Map<string, number>()) {
+          if (day < range.from || day > range.to || day < a.startDate || (a.endDate && day > a.endDate)) continue
+          addTo(earned, day, (minutes * a.amountCents) / 60)
+          minutesSum += minutes
+        }
+      } else if (a.kind === 'fixed') {
+        spreadFixed(a.amountCents, a.startDate, a.endDate, range, earned)
+      } else {
+        for (const day of occurrences(a.startDate, a.endDate, a.interval ?? 'month', range.to)) {
+          if (day >= range.from) {
+            addTo(earned, day, a.amountCents)
+            count++
+          }
+        }
+      }
+      let cents = 0
+      for (const v of earned.values()) cents += v
+      out.push({ agreementId: a.id, projectId: a.projectId, cents, minutes: minutesSum, occurrences: count })
+    }
+    return out
+  }
+
   /** Everything accrued in `range`, per project, plus overhead not attributable to a project. */
   private compute(range: DateRange): { perProject: Map<string, Acc>; overhead: number } {
     const { usdRate } = this.settings.get()
@@ -138,29 +178,13 @@ export class FinanceService {
       return a
     }
     let overhead = 0
-    const projectMinutes = (id: string) => daily.get(id)?.minutes ?? new Map<string, number>()
 
     for (const [key, d] of daily) {
       if (!key.startsWith('cwd:')) acc(key).minutes += sumMap(d.minutes, range.from, range.to)
     }
 
     // Revenue
-    for (const a of this.repo.agreements()) {
-      const earned: DayAmounts = new Map()
-      if (a.kind === 'hourly') {
-        for (const [day, minutes] of projectMinutes(a.projectId)) {
-          if (day < range.from || day > range.to || day < a.startDate || (a.endDate && day > a.endDate)) continue
-          addTo(earned, day, (minutes * a.amountCents) / 60)
-        }
-      } else if (a.kind === 'fixed') {
-        spreadFixed(a.amountCents, a.startDate, a.endDate, range, earned)
-      } else {
-        for (const day of occurrences(a.startDate, a.endDate, a.interval ?? 'month', range.to)) {
-          if (day >= range.from) addTo(earned, day, a.amountCents)
-        }
-      }
-      for (const v of earned.values()) acc(a.projectId).earned += v
-    }
+    for (const e of this.earnedFrom(range, daily)) acc(e.projectId).earned += e.cents
     for (const p of this.repo.payments()) {
       if (p.date >= range.from && p.date <= range.to) acc(p.projectId).collected += p.amountCents
     }

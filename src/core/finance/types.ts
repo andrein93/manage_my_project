@@ -56,6 +56,17 @@ export interface AiPlan {
   createdAt: string
 }
 
+/** What one agreement earned in a range (unrounded cents), with the details statements need. */
+export interface AgreementEarning {
+  agreementId: string
+  projectId: string
+  cents: number
+  /** Minutes billed by an hourly agreement; 0 for other kinds. */
+  minutes: number
+  /** Recurring fee dates in the range; 0 for other kinds. */
+  occurrences: number
+}
+
 export interface FinanceNumbers {
   minutes: number
   earnedCents: number
