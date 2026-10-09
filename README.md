@@ -19,7 +19,7 @@ with them:
 Everything stays on your machine, in a single SQLite file.
 
 > **Status:** v0.6 — project registry, clients, categories, tasks, automatic time tracking,
-> profitability, project health, a weekly digest, five languages and optional **team sync**.
+> profitability, project health, a weekly digest, six languages and optional **team sync**.
 
 ## Requirements
 
@@ -231,7 +231,7 @@ a tiny Laravel app in [`sync-server/`](sync-server/README.md).
 
 ## Languages
 
-The dashboard is available in English, Italian, Spanish, German and French; it follows your
+The dashboard is available in English, Italian, Spanish, German, French and Simplified Chinese; it follows your
 browser language unless you
 pick one in Settings. Adding a language is adding one file — see [CONTRIBUTING](CONTRIBUTING.md).
 The CLI and AI tools answer in English.
