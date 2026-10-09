@@ -88,6 +88,7 @@ export class ProjectRepository {
       .all() as unknown as ProjectRow[]
 
     const query = filters.query?.trim().toLowerCase()
+    const fieldText = query ? this.fieldSearchText() : new Map<string, string[]>()
     const cutoff = filters.inactiveDays != null ? Date.now() - filters.inactiveDays * DAY_MS : null
 
     return rows.map(toProject).filter((p) => {
@@ -103,7 +104,7 @@ export class ProjectRepository {
         const version = p.versions[framework]
         if (!version || (major && majorOf(version) !== major)) return false
       }
-      const haystack = [p.name, p.description, p.path, ...p.tags, p.client?.name ?? '', p.category?.name ?? '']
+      const haystack = [p.name, p.description, p.path, ...p.tags, p.client?.name ?? '', p.category?.name ?? '', ...(fieldText.get(p.id) ?? [])]
       if (query && !haystack.some((v) => v.toLowerCase().includes(query))) {
         return false
       }
@@ -241,6 +242,16 @@ export class ProjectRepository {
   /** Local information only: does not touch updated_at, so it never syncs or beats a teammate's edit. */
   markMissing(id: string): void {
     this.db.prepare('UPDATE projects SET missing_since = ? WHERE id = ? AND missing_since IS NULL').run(now(), id)
+  }
+
+  /** Custom field values per project, so search also finds "Hetzner" or a domain. */
+  private fieldSearchText(): Map<string, string[]> {
+    const out = new Map<string, string[]>()
+    const rows = this.db
+      .prepare('SELECT v.project_id, v.value FROM project_field_values v JOIN project_fields f ON f.id = v.field_id AND f.deleted_at IS NULL')
+      .all() as { project_id: string; value: string }[]
+    for (const r of rows) out.set(r.project_id, [...(out.get(r.project_id) ?? []), r.value])
+    return out
   }
 
   update(id: string, patch: ProjectPatch): Project {

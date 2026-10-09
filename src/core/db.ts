@@ -295,6 +295,29 @@ export const MIGRATIONS: string[] = [
   `
   ALTER TABLE statements ADD COLUMN currency TEXT NOT NULL DEFAULT '';
   `,
+  // Custom project fields. Local only: not part of team sync.
+  `
+  CREATE TABLE project_fields (
+    id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    position REAL NOT NULL,
+    remind_days INTEGER,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  );
+  CREATE UNIQUE INDEX project_fields_name_unique ON project_fields(name COLLATE NOCASE) WHERE deleted_at IS NULL;
+
+  CREATE TABLE project_field_values (
+    project_id TEXT NOT NULL,
+    field_id TEXT NOT NULL,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (project_id, field_id)
+  );
+  `,
 ]
 
 /** Starter categories, created once when the categories table has never been used. */
