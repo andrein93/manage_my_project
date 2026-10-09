@@ -13,6 +13,8 @@ import PageHeader from '../ui/PageHeader.vue'
 import UiCard from '../ui/UiCard.vue'
 import UiSkeleton from '../ui/UiSkeleton.vue'
 import StaggerItem from '../ui/effects/StaggerItem.vue'
+import NewStatement from '../components/NewStatement.vue'
+import StatementList from '../components/StatementList.vue'
 
 const props = defineProps<{ id: string }>()
 const { t } = useI18n()
@@ -21,7 +23,15 @@ const { error, report } = useErrors()
 
 const client = ref<Client | null>(null)
 const projects = ref<Project[]>([])
-const form = ref({ name: '', email: '', notes: '' })
+const form = ref({ name: '', email: '', notes: '', billingName: '', billingAddress: '', billingTaxId: '' })
+const formOf = (c: Client) => ({
+  name: c.name,
+  email: c.email,
+  notes: c.notes,
+  billingName: c.billingName,
+  billingAddress: c.billingAddress,
+  billingTaxId: c.billingTaxId,
+})
 const saved = ref(false)
 const confirmRemove = ref(false)
 const month = ref<TimeReport | null>(null)
@@ -30,7 +40,7 @@ const lifetime = ref<FinanceReport | null>(null)
 const dirty = computed(
   () =>
     !!client.value &&
-    (form.value.name !== client.value.name || form.value.email !== client.value.email || form.value.notes !== client.value.notes),
+    JSON.stringify(form.value) !== JSON.stringify(formOf(client.value)),
 )
 
 async function load(force = false) {
@@ -43,7 +53,7 @@ async function load(force = false) {
     const { projects: list, ...rest } = data
     client.value = rest
     projects.value = list
-    form.value = { name: rest.name, email: rest.email, notes: rest.notes }
+    form.value = formOf(rest)
   } catch (e) {
     report(e)
   }
@@ -66,7 +76,7 @@ async function save() {
   try {
     const updated = await api.updateClient(client.value.id, form.value)
     client.value = updated
-    form.value = { name: updated.name, email: updated.email, notes: updated.notes }
+    form.value = formOf(updated)
     error.value = null
     saved.value = true
     setTimeout(() => (saved.value = false), 3000)
@@ -157,11 +167,33 @@ useAutoRefresh(() => load())
           <span class="mb-1.5 block text-sm font-medium">{{ t('clients.notes') }}</span>
           <textarea v-model="form.notes" class="field min-h-28" maxlength="20000" :placeholder="t('clients.notesHint')" />
         </label>
+        <fieldset class="grid gap-4 border-t border-line pt-4 sm:grid-cols-2">
+          <legend class="label mb-2">{{ t('clients.billingTitle') }}</legend>
+          <p class="text-sm text-muted sm:col-span-2">{{ t('clients.billingHint') }}</p>
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium">{{ t('clients.billingName') }}</span>
+            <input v-model="form.billingName" class="field" maxlength="2000" :placeholder="form.name" />
+          </label>
+          <label class="block">
+            <span class="mb-1.5 block text-sm font-medium">{{ t('clients.billingTaxId') }}</span>
+            <input v-model="form.billingTaxId" class="field" maxlength="2000" />
+          </label>
+          <label class="block sm:col-span-2">
+            <span class="mb-1.5 block text-sm font-medium">{{ t('clients.billingAddress') }}</span>
+            <textarea v-model="form.billingAddress" class="field min-h-20" maxlength="2000" />
+          </label>
+        </fieldset>
         <div class="flex items-center gap-3">
           <button class="btn btn-primary" :disabled="!dirty">{{ t('detail.save') }}</button>
           <span v-if="saved" class="text-sm text-fresh" role="status">{{ t('detail.saved') }}</span>
         </div>
       </UiCard>
+
+      <div class="mt-10 mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-lg font-semibold">{{ t('statement.title') }}</h2>
+        <NewStatement :client-id="client.id" />
+      </div>
+      <StatementList :client-id="client.id" />
 
       <h2 class="mt-10 mb-3 text-lg font-semibold">{{ t('clients.projects') }}</h2>
       <UiCard v-if="projects.length" spotlight as="ul" class="divide-y divide-line overflow-hidden">

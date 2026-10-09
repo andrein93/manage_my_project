@@ -10,6 +10,11 @@ import type {
   Interval,
   OwedRow,
   Payment,
+  Statement,
+  StatementLine,
+  StatementLineInput,
+  StatementStatus,
+  Billing,
 } from '../../src/core/finance/types'
 import type { CommandDoc, ToolDoc } from '../../src/server/help-types'
 import type { Digest, Overview, UpcomingItem } from '../../src/core/overview-types'
@@ -53,6 +58,7 @@ export type {
 
 export type { SyncResult, TimeEntry, TimeReport, WorkBlock }
 export type { Agreement, AgreementKind, AiPlan, AiPlanKind, Expense, FinanceReport, FinanceRow, Interval, OwedRow, Payment }
+export type { Billing, Statement, StatementLine, StatementLineInput, StatementStatus }
 export type { CommandDoc, ToolDoc }
 export type { Digest, HealthFlag, Overview, UpcomingItem }
 export type { SyncRunResult, TeamMember, TeamSyncStatus }
@@ -85,6 +91,7 @@ export interface Settings {
   weekStart: 'monday' | 'sunday'
   currency: string
   usdRate: number
+  billing: Billing
 }
 
 export interface ProjectPatch {
@@ -137,7 +144,7 @@ export const api = {
   addWorkspace: (path: string) => request<{ workspace: Workspace; scan: ScanResult }>('POST', '/workspaces', { path }),
   removeWorkspace: (id: string) => request<void>('DELETE', `/workspaces/${id}`),
   settings: () => request<Settings>('GET', '/settings'),
-  updateSettings: (patch: Partial<Settings>) => request<Settings>('PUT', '/settings', patch),
+  updateSettings: (patch: Partial<Omit<Settings, 'billing'>> & { billing?: Partial<Billing> }) => request<Settings>('PUT', '/settings', patch),
   meta: () => request<Meta>('GET', '/meta'),
 
   clients: () => request<Client[]>('GET', '/clients'),
@@ -202,5 +209,17 @@ export const api = {
       'GET',
       `/projects/${projectId}/team-time`,
     ),
+  statements: (params: { client?: string; status?: StatementStatus } = {}) => request<Statement[]>('GET', `/statements?${query(params)}`),
+  statement: (id: string) => request<Statement>('GET', `/statements/${id}`),
+  createStatement: (input: { clientId: string; from: string; to: string; language?: string }) => request<Statement>('POST', '/statements', input),
+  updateStatement: (id: string, patch: { periodFrom?: string; periodTo?: string; vatRate?: number; language?: string; notes?: string; dueDate?: string | null }) =>
+    request<Statement>('PATCH', `/statements/${id}`, patch),
+  setStatementLines: (id: string, lines: StatementLineInput[]) => request<Statement>('PUT', `/statements/${id}/lines`, { lines }),
+  refillStatement: (id: string) => request<Statement>('POST', `/statements/${id}/refill`, {}),
+  issueStatement: (id: string, issueDate?: string) => request<Statement>('POST', `/statements/${id}/issue`, issueDate ? { issueDate } : {}),
+  markStatementPaid: (id: string, date?: string) => request<Statement>('POST', `/statements/${id}/paid`, date ? { date } : {}),
+  markStatementUnpaid: (id: string) => request<Statement>('POST', `/statements/${id}/unpaid`, {}),
+  voidStatement: (id: string) => request<Statement>('POST', `/statements/${id}/void`, {}),
+  removeStatement: (id: string) => request<void>('DELETE', `/statements/${id}`),
   digest: (week: 'this' | 'last') => request<Digest & { markdown: string }>('GET', `/digest?week=${week}`),
 }

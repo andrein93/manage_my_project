@@ -185,3 +185,18 @@ describe('interfaces', () => {
     expect(await mmp('show', 'shop')).toMatch(/Versions\s+laravel 10\.48\.2, php \^8\.2/)
   })
 })
+
+describe('overview: overdue statements', () => {
+  it('lists issued statements past their due date', async () => {
+    await fx.app.scan()
+    const shop = fx.app.projects.resolve('shop').id
+    const acme = fx.app.clients.create({ name: 'Acme' })
+    fx.app.projects.update(shop, { clientId: acme.id })
+    fx.app.finance.repo.addAgreement({ projectId: shop, kind: 'fixed', amount: 500, startDate: '2026-07-01', endDate: '2026-07-31' })
+    const draft = fx.app.statements.create({ clientId: acme.id, from: '2026-07-01', to: '2026-07-31' })
+    const s = fx.app.statements.issue(draft.id, { issueDate: '2026-08-01' })
+    expect(overview(fx.app, TODAY).attention.overdueStatements).toEqual([
+      { id: s.id, number: 'PF-2026-001', clientName: 'Acme', totalCents: 61000, dueDate: '2026-08-31' },
+    ])
+  })
+})

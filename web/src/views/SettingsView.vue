@@ -9,6 +9,7 @@ import FinanceSettings from '../components/FinanceSettings.vue'
 import LanguageSettings from '../components/LanguageSettings.vue'
 import TeamSyncSettings from '../components/TeamSyncSettings.vue'
 import ThemeSettings from '../components/ThemeSettings.vue'
+import BillingSettings from '../components/BillingSettings.vue'
 import PageHeader from '../ui/PageHeader.vue'
 import UiCard from '../ui/UiCard.vue'
 import TimeSettings from '../components/TimeSettings.vue'
@@ -136,6 +137,8 @@ onMounted(load)
     </UiCard>
 
     <UiCard class="p-5"><CategoriesSettings /></UiCard>
+
+    <UiCard class="p-5"><BillingSettings /></UiCard>
 
     <UiCard class="p-5"><TimeSettings /></UiCard>
 

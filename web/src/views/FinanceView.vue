@@ -10,6 +10,7 @@ import PageHeader from '../ui/PageHeader.vue'
 import UiCard from '../ui/UiCard.vue'
 import UiEmpty from '../ui/UiEmpty.vue'
 import UiStat from '../ui/UiStat.vue'
+import StatementList from '../components/StatementList.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -26,6 +27,7 @@ const sort = ref<{ key: SortKey; desc: boolean }>({ key: 'marginCents', desc: tr
 const q = (key: string) => (typeof route.query[key] === 'string' ? (route.query[key] as string) : '')
 const period = computed(() => q('period') || 'month')
 const by = computed(() => (q('by') === 'client' ? 'client' : 'project'))
+const tab = computed(() => (q('tab') === 'statements' ? 'statements' : 'report'))
 const setQuery = (patch: Record<string, string | undefined>) => router.replace({ query: { ...route.query, ...patch } })
 
 let latest = 0
@@ -91,7 +93,27 @@ const moneyTick = (n: number) => money(Math.round(n))
 
 <template>
   <section>
-    <PageHeader :title="t('app.finance')" />
+    <PageHeader :title="t('app.finance')">
+      <template #actions>
+        <div class="inline-flex rounded-lg border border-line bg-surface-2 p-0.5 text-sm" role="tablist">
+          <button
+            v-for="x in ['report', 'statements'] as const"
+            :key="x"
+            type="button"
+            role="tab"
+            class="rounded-md px-3 py-1 transition-colors"
+            :class="tab === x ? 'bg-surface text-ink shadow-card' : 'text-muted hover:text-ink'"
+            :aria-selected="tab === x"
+            @click="setQuery({ tab: x === 'report' ? undefined : x })"
+          >
+            {{ x === 'report' ? t('statement.report') : t('statement.title') }}
+          </button>
+        </div>
+      </template>
+    </PageHeader>
+
+    <StatementList v-if="tab === 'statements'" show-client />
+    <template v-else>
 
     <div class="mb-6 flex flex-wrap items-center gap-2">
       <select class="field !w-auto" :value="period" :aria-label="t('a11y.period')" @change="setQuery({ period: ($event.target as HTMLSelectElement).value === 'month' ? undefined : ($event.target as HTMLSelectElement).value })">
@@ -189,6 +211,7 @@ const moneyTick = (n: number) => money(Math.round(n))
         </ul>
         <p v-else class="mt-3 text-sm text-muted">{{ t('finance.owedNone') }}</p>
       </UiCard>
+    </template>
     </template>
   </section>
 </template>

@@ -19,6 +19,17 @@ import {
 
 type Row = Record<string, unknown>
 
+/** The few words mmp writes into prefilled lines, per statement language (English fallback). */
+const WORDS: Record<string, { fixed: string; recurring: string; share: string; month: string; year: string; hours: string }> = {
+  en: { fixed: 'Fixed price', recurring: 'Recurring fee', share: 'share for the period', month: 'month', year: 'year', hours: 'h' },
+  it: { fixed: 'Prezzo fisso', recurring: 'Canone', share: 'quota del periodo', month: 'mese', year: 'anno', hours: 'h' },
+  es: { fixed: 'Precio fijo', recurring: 'Cuota', share: 'parte del periodo', month: 'mes', year: 'año', hours: 'h' },
+  de: { fixed: 'Festpreis', recurring: 'Wiederkehrende Gebühr', share: 'Anteil für den Zeitraum', month: 'Monat', year: 'Jahr', hours: 'Std.' },
+  fr: { fixed: 'Prix forfaitaire', recurring: 'Abonnement', share: 'part de la période', month: 'mois', year: 'an', hours: 'h' },
+  zh: { fixed: '固定价格', recurring: '定期费用', share: '本期份额', month: '月', year: '年', hours: '小时' },
+}
+const words = (language: string) => WORDS[language.split('-')[0]] ?? WORDS.en
+
 const KIND_ORDER: Record<Agreement['kind'], number> = { hourly: 0, fixed: 1, recurring: 2 }
 const MAX_LINES = 200
 
@@ -83,7 +94,7 @@ export class StatementRepository {
            VALUES (?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?)`,
         )
         .run(id, localUserId(this.db), client.id, from, to, this.settings.get().billing.vatRate, cleanLanguage(input.language), ts, ts)
-      this.writeLines(id, this.prefill(client.id, from, to))
+      this.writeLines(id, this.prefill(client.id, from, to, cleanLanguage(input.language)))
     })
     return this.get(id)
   }
@@ -126,7 +137,7 @@ export class StatementRepository {
   refill(id: string): Statement {
     const s = this.requireDraft(id)
     transaction(this.db, () => {
-      this.writeLines(id, this.prefill(s.clientId, s.periodFrom, s.periodTo))
+      this.writeLines(id, this.prefill(s.clientId, s.periodFrom, s.periodTo, s.language))
       this.touch(id)
     })
     return this.get(id)
@@ -210,7 +221,8 @@ export class StatementRepository {
 
   // ---------- internals ----------
 
-  private prefill(clientId: string, from: string, to: string) {
+  private prefill(clientId: string, from: string, to: string, language: string) {
+    const w = words(language)
     const agreements = new Map(this.financeRepo.agreements().map((a) => [a.id, a]))
     const lines = []
     for (const e of this.finance.earnedByAgreement({ from, to })) {
@@ -220,12 +232,12 @@ export class StatementRepository {
       if (!a || !project || project.client?.id !== clientId || cents === 0) continue
       if (a.kind === 'hourly') {
         const hours = Math.round((e.minutes / 60) * 100) / 100
-        lines.push({ a, name: project.name, projectId: project.id, description: `${project.name} — ${hours} h`, quantity: hours, unitCents: a.amountCents, amountCents: cents })
+        lines.push({ a, name: project.name, projectId: project.id, description: `${project.name} — ${hours} ${w.hours}`, quantity: hours, unitCents: a.amountCents, amountCents: cents })
       } else if (a.kind === 'fixed') {
-        lines.push({ a, name: project.name, projectId: project.id, description: `${project.name} — ${a.note || 'Fixed price'} (share for the period)`, quantity: 1, unitCents: cents, amountCents: cents })
+        lines.push({ a, name: project.name, projectId: project.id, description: `${project.name} — ${a.note || w.fixed} (${w.share})`, quantity: 1, unitCents: cents, amountCents: cents })
       } else {
-        const label = `${e.occurrences} × ${a.interval === 'year' ? 'year' : 'month'}`
-        lines.push({ a, name: project.name, projectId: project.id, description: `${project.name} — ${a.note || 'Recurring fee'} (${label})`, quantity: e.occurrences, unitCents: a.amountCents, amountCents: cents })
+        const label = `${e.occurrences} × ${a.interval === 'year' ? w.year : w.month}`
+        lines.push({ a, name: project.name, projectId: project.id, description: `${project.name} — ${a.note || w.recurring} (${label})`, quantity: e.occurrences, unitCents: a.amountCents, amountCents: cents })
       }
     }
     lines.sort((x, y) => x.name.localeCompare(y.name) || KIND_ORDER[x.a.kind] - KIND_ORDER[y.a.kind] || x.a.startDate.localeCompare(y.a.startDate))

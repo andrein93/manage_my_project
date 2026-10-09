@@ -2,20 +2,10 @@ import { statSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import type { DB } from './db.js'
+import type { Billing } from './finance/types.js'
 import { UserError } from './types.js'
 
-/** Your details printed on statements, and how statements are numbered. */
-export interface Billing {
-  name: string
-  address: string
-  taxId: string
-  iban: string
-  footer: string
-  numberPrefix: string
-  /** Default VAT percent shown on new statements (display only: mmp amounts are net). */
-  vatRate: number
-  dueDays: number
-}
+export type { Billing }
 
 export const DEFAULT_BILLING: Billing = { name: '', address: '', taxId: '', iban: '', footer: '', numberPrefix: 'PF-', vatRate: 22, dueDays: 30 }
 

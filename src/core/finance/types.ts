@@ -58,6 +58,19 @@ export interface AiPlan {
   createdAt: string
 }
 
+/** Your details printed on statements, and how statements are numbered. */
+export interface Billing {
+  name: string
+  address: string
+  taxId: string
+  iban: string
+  footer: string
+  numberPrefix: string
+  /** Default VAT percent shown on new statements (display only: mmp amounts are net). */
+  vatRate: number
+  dueDays: number
+}
+
 export const STATEMENT_STATUSES = ['draft', 'issued', 'paid', 'void'] as const
 export type StatementStatus = (typeof STATEMENT_STATUSES)[number]
 

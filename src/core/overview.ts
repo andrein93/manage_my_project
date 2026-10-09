@@ -67,6 +67,9 @@ export function overview(app: App, today = localToday()): Overview {
         .filter((o) => o.owedCents > 0)
         .map((o) => ({ clientId: o.clientId, clientName: o.clientName, owedCents: o.owedCents })),
       upcoming: upcoming(app, 30, today),
+      overdueStatements: app.statements
+        .overdue()
+        .map((s) => ({ id: s.id, number: s.number!, clientName: s.clientName, totalCents: s.totalCents, dueDate: s.dueDate! })),
     },
   }
 }

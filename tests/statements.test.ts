@@ -158,3 +158,18 @@ describe('statements', () => {
     expect(fx.app.statements.list({ clientId: acme.id, status: 'issued' })).toHaveLength(1)
   })
 })
+
+describe('statement prefill language', () => {
+  it('writes generated descriptions in the statement language', async () => {
+    await fx.app.scan()
+    const acme = fx.app.clients.create({ name: 'Acme' })
+    const blog = fx.app.projects.resolve('blog').id
+    fx.app.projects.update(blog, { clientId: acme.id })
+    fx.app.finance.repo.addAgreement({ projectId: blog, kind: 'recurring', amount: 200, interval: 'month', startDate: '2026-01-01' })
+    fx.app.finance.repo.addAgreement({ projectId: blog, kind: 'fixed', amount: 1000, startDate: '2026-10-01', endDate: '2026-10-31' })
+    const it_ = fx.app.statements.create({ clientId: acme.id, from: '2026-10-01', to: '2026-10-31', language: 'it' })
+    expect(it_.lines.map((l) => l.description)).toEqual(['blog — Prezzo fisso (quota del periodo)', 'blog — Canone (1 × mese)'])
+    const en = fx.app.statements.create({ clientId: acme.id, from: '2026-10-01', to: '2026-10-31', language: 'xx' })
+    expect(en.lines[1].description).toBe('blog — Recurring fee (1 × month)')
+  })
+})

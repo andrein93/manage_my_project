@@ -10,6 +10,8 @@ import ProjectsView from './views/ProjectsView.vue'
 import SettingsView from './views/SettingsView.vue'
 import TasksView from './views/TasksView.vue'
 import FinanceView from './views/FinanceView.vue'
+import StatementPrintView from './views/StatementPrintView.vue'
+import StatementView from './views/StatementView.vue'
 import OverviewView from './views/OverviewView.vue'
 import TimeView from './views/TimeView.vue'
 
@@ -25,6 +27,9 @@ const router = createRouter({
     { path: '/clients', name: 'clients', component: ClientsView },
     { path: '/clients/:id', name: 'client', component: ClientDetailView, props: true },
     { path: '/settings', name: 'settings', component: SettingsView },
+    { path: '/statements/:id', name: 'statement', component: StatementView, props: true },
+    // A document to print: no sidebar, toasts or palette (see App.vue), always light.
+    { path: '/statements/:id/print', name: 'statement-print', component: StatementPrintView, props: true, meta: { bare: true } },
   ],
 })
 

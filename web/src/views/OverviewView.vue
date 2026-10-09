@@ -58,7 +58,7 @@ const healthGroups = computed(() => {
 
 const allClear = computed(() => {
   const a = data.value?.attention
-  return !!a && !a.overdueTasks.length && !a.health.length && !a.owed.length && !a.upcoming.length
+  return !!a && !a.overdueTasks.length && !a.health.length && !a.owed.length && !a.upcoming.length && !a.overdueStatements.length
 })
 
 const maxMinutes = computed(() => Math.max(1, ...(data.value?.week.topProjects.map((p) => p.minutes) ?? [1])))
@@ -231,6 +231,22 @@ useAutoRefresh(load, 60_000)
               <RouterLink v-if="o.clientId !== 'none'" :to="{ name: 'client', params: { id: o.clientId } }" class="hover:underline">{{ o.clientName }}</RouterLink>
               <span v-else>{{ t('list.noClient') }}</span>
               <span class="font-medium tabular-nums">{{ money(o.owedCents) }}</span>
+            </StaggerItem>
+          </ul>
+        </UiCard>
+
+        <UiCard v-if="data.attention.overdueStatements.length" spotlight as="section" class="p-4">
+          <h3 class="mb-2 flex items-center gap-2 text-sm font-semibold text-danger">
+            {{ t('overview.overdueStatements') }} <UiBadge tone="danger">{{ data.attention.overdueStatements.length }}</UiBadge>
+          </h3>
+          <ul class="divide-y divide-line text-sm">
+            <StaggerItem v-for="(s, i) in data.attention.overdueStatements" :key="s.id" :index="i" as="li" class="flex items-baseline justify-between gap-3 py-2">
+              <span class="min-w-0">
+                <RouterLink :to="{ name: 'statement', params: { id: s.id } }" class="font-mono hover:underline">{{ s.number }}</RouterLink>
+                <span class="ml-2">{{ s.clientName }}</span>
+                <span class="ml-1 text-xs text-danger">{{ t('statement.overdueSince', { date: s.dueDate }) }}</span>
+              </span>
+              <span class="shrink-0 font-medium tabular-nums">{{ money(s.totalCents) }}</span>
             </StaggerItem>
           </ul>
         </UiCard>

@@ -29,6 +29,8 @@ export interface Overview {
     health: { projectId: string; projectName: string; flags: HealthFlag[] }[]
     owed: { clientId: string; clientName: string; owedCents: number }[]
     upcoming: UpcomingItem[]
+    /** Issued statements past their due date. */
+    overdueStatements: { id: string; number: string; clientName: string; totalCents: number; dueDate: string }[]
   }
 }
 

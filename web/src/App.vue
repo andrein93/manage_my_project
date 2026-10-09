@@ -126,7 +126,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 </script>
 
 <template>
-  <MotionConfig reduced-motion="user">
+  <RouterView v-if="route.meta.bare" />
+  <MotionConfig v-else reduced-motion="user">
     <div class="min-h-screen md:flex">
       <!-- Desktop sidebar -->
       <aside
