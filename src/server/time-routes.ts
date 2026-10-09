@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import type { App } from '../core/app.js'
 import { localToday } from '../core/dates.js'
+import { completedTaskCount } from '../core/overview.js'
 import { rangeFrom } from '../core/time/periods.js'
 import { GROUP_BY } from '../core/time/repository.js'
 
@@ -35,11 +36,9 @@ export function registerTimeRoutes(api: FastifyInstance, app: App): void {
 
   api.get('/time/report', async (request) => {
     const q = reportQuery.parse(request.query)
-    return app.time.repo.report(range(q), q.by ?? 'project', {
-      projectId: q.project,
-      clientId: q.client,
-      categoryId: q.category,
-    })
+    const r = range(q)
+    const filters = { projectId: q.project, clientId: q.client, categoryId: q.category }
+    return { ...app.time.repo.report(r, q.by ?? 'project', filters), tasksCompleted: completedTaskCount(app, r, filters) }
   })
 
   api.get('/time/blocks', async (request) => {

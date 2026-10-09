@@ -143,6 +143,13 @@ export function digestMarkdown(d: Digest): string {
   return lines.join('\n') + '\n'
 }
 
-function localDateOfIso(iso: string): string {
+export function localDateOfIso(iso: string): string {
   return localToday(new Date(iso))
+}
+
+/** Tasks completed in `range` (local dates), narrowed like the time report (project, client, category). */
+export function completedTaskCount(app: App, range: { from: string; to: string }, filters: { projectId?: string; clientId?: string; categoryId?: string } = {}): number {
+  return app.tasks
+    .list({ status: ['done'], all: true, ...filters })
+    .filter((t) => t.completedAt && localDateOfIso(t.completedAt) >= range.from && localDateOfIso(t.completedAt) <= range.to).length
 }

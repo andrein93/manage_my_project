@@ -166,7 +166,8 @@ export const api = {
   updateTask: (id: string, input: TaskInput) => request<Task>('PATCH', `/tasks/${id}`, input),
   removeTask: (id: string) => request<void>('DELETE', `/tasks/${id}`),
 
-  timeReport: (params: Record<string, string | undefined>) => request<TimeReport>('GET', `/time/report?${query(params)}`),
+  /** `tasksCompleted` is missing on servers older than the dashboard. */
+  timeReport: (params: Record<string, string | undefined>) => request<TimeReport & { tasksCompleted?: number }>('GET', `/time/report?${query(params)}`),
   timeBlocks: (params: Record<string, string | undefined>) =>
     request<{ blocks: WorkBlock[]; entries: TimeEntry[] }>('GET', `/time/blocks?${query(params)}`),
   timeEntries: (params: Record<string, string | undefined>) => request<TimeEntry[]>('GET', `/time/entries?${query(params)}`),

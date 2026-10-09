@@ -106,3 +106,21 @@ describe('CLI: time', () => {
     expect(await mmp('time', 'remove', id)).toBe('Removed 45m on shop (2026-10-01)')
   })
 })
+
+describe('time report: tasks completed', () => {
+  it('counts tasks completed in the range, with the same filters as the report', async () => {
+    const server = await buildServer(fx.app, { webDir: join(fx.root, 'no-web') })
+    await fx.app.scan()
+    const shop = fx.app.projects.resolve('shop').id
+    const blog = fx.app.projects.resolve('blog').id
+    const [a] = fx.app.tasks.create(shop, [{ title: 'Done in shop' }, { title: 'Still open' }])
+    const [b] = fx.app.tasks.create(blog, [{ title: 'Done in blog' }])
+    fx.app.tasks.update(a.id, { status: 'done' })
+    fx.app.tasks.update(b.id, { status: 'done' })
+    const get = async (q: string) => (await server.inject({ url: `/api/time/report?${q}` })).json().tasksCompleted
+    expect(await get('from=2026-01-01&to=2030-12-31')).toBe(2)
+    expect(await get(`from=2026-01-01&to=2030-12-31&project=${shop}`)).toBe(1)
+    expect(await get('from=2000-01-01&to=2000-01-31')).toBe(0)
+    await server.close()
+  })
+})

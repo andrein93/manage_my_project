@@ -14,6 +14,8 @@ import PageHeader from '../ui/PageHeader.vue'
 import UiCard from '../ui/UiCard.vue'
 import UiEmpty from '../ui/UiEmpty.vue'
 import NumberTicker from '../ui/effects/NumberTicker.vue'
+import StaggerItem from '../ui/effects/StaggerItem.vue'
+import UiStat from '../ui/UiStat.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -23,7 +25,7 @@ const { error, report: reportError } = useErrors()
 const PERIODS = ['today', 'week', 'last-week', 'month', 'last-month', 'custom'] as const
 const GROUPS = ['project', 'client', 'category'] as const
 
-const report = ref<TimeReport | null>(null)
+const report = ref<(TimeReport & { tasksCompleted?: number }) | null>(null)
 const entries = ref<TimeEntry[]>([])
 const status = ref<SyncStatus | null>(null)
 const meta = ref<Meta | null>(null)
@@ -198,23 +200,22 @@ const minutesTick = (n: number) => formatMinutes(Math.round(n))
     <p v-if="error" class="mb-4 rounded-md border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{{ error }}</p>
 
     <template v-if="report">
-      <UiCard class="mb-6 p-5">
-      <div class="mb-6 flex flex-wrap gap-x-12 gap-y-4">
-        <div>
-          <p class="label">{{ t('time.total') }}</p>
-          <p class="mt-1 text-3xl font-semibold tracking-tight"><NumberTicker :value="report.totals.minutes" :format="minutesTick" /></p>
-          <p v-if="report.totals.manualMinutes" class="text-xs text-muted">
-            {{ t('time.manualShare', { manual: formatMinutes(report.totals.manualMinutes) }) }}
-          </p>
-        </div>
-        <div :title="t('time.aiCostHint')">
-          <p class="label">{{ t('time.aiCost') }}</p>
-          <p class="mt-1 text-3xl font-semibold tracking-tight"><NumberTicker :value="report.totals.costUsd" :format="formatUsd" /></p>
-          <p class="text-xs text-muted">{{ t('time.aiCostHint') }}</p>
-        </div>
-      </div>
-
-      <DailyChart v-if="report.days.length > 1" :days="report.days" />
+      <UiCard spotlight as="section" class="mb-6 p-5">
+        <h2 class="label mb-4">
+          {{ t(`time.period.${filters.period}`) }}
+          <span class="ml-1 font-mono tracking-normal normal-case">{{ report.range.from }} → {{ report.range.to }}</span>
+        </h2>
+        <dl class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div>
+            <UiStat :label="t('time.total')" :value="report.totals.minutes" :format="minutesTick" />
+            <p v-if="report.totals.manualMinutes" class="mt-0.5 text-xs text-muted">
+              {{ t('time.manualShare', { manual: formatMinutes(report.totals.manualMinutes) }) }}
+            </p>
+          </div>
+          <UiStat :label="t('time.aiCost')" :value="report.totals.costUsd" :format="formatUsd" :hint="t('time.aiCostHint')" />
+          <UiStat :label="t('overview.tasksDone')" :value="report.tasksCompleted ?? 0" />
+        </dl>
+        <DailyChart v-if="report.days.length > 1" :days="report.days" />
       </UiCard>
 
       <div class="mb-3 inline-flex rounded-lg border border-line bg-surface-2 p-0.5 text-sm" role="group">
@@ -231,43 +232,40 @@ const minutesTick = (n: number) => formatMinutes(Math.round(n))
         </button>
       </div>
 
-      <UiCard v-if="report.rows.length" class="mb-10 overflow-x-auto">
-      <table class="w-full text-sm">
-        <thead class="border-b border-line text-left text-xs tracking-wider text-muted uppercase">
-          <tr>
-            <th class="py-2.5 pl-4 font-medium">{{ t('time.name') }}</th>
-            <th class="hidden w-1/3 py-2.5 font-medium sm:table-cell">{{ t('time.share') }}</th>
-            <th class="py-2.5 text-right font-medium">{{ t('time.hours') }}</th>
-            <th class="py-2.5 pr-4 text-right font-medium">{{ t('time.aiCost') }}</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-line">
-          <tr v-for="(row, i) in report.rows" :key="row.key" class="transition-colors hover:bg-surface-2/60">
-            <td class="py-2.5 pr-3 pl-4">
-              <span class="inline-flex items-center gap-2">
-                <span v-if="row.color" class="h-2.5 w-2.5 shrink-0 rounded-full" :style="{ backgroundColor: row.color }" aria-hidden="true" />
-                <RouterLink v-if="rowLink(row.key)" :to="rowLink(row.key)!" class="hover:underline">{{ row.label }}</RouterLink>
-                <span v-else>{{ row.key === 'none' ? (filters.by === 'client' ? t('list.noClient') : t('list.noCategory')) : row.label }}</span>
-              </span>
-            </td>
-            <td class="hidden py-2.5 pr-6 sm:table-cell">
-              <div class="flex items-center gap-2">
-                <div class="h-1.5 flex-1 rounded-full bg-surface-2">
-                  <Motion
-                    class="h-1.5 w-full origin-left rounded-full bg-chart"
-                    :initial="{ scaleX: 0 }"
-                    :animate="{ scaleX: row.share / maxShare }"
-                    :transition="{ duration: 0.6, ease: 'easeOut', delay: staggerDelay(i, reducedMotion) }"
-                  />
-                </div>
-                <span class="w-10 text-right text-xs text-muted tabular-nums">{{ Math.round(row.share * 100) }}%</span>
-              </div>
-            </td>
-            <td class="py-2.5 text-right tabular-nums">{{ formatMinutes(row.minutes) }}</td>
-            <td class="py-2.5 pr-4 text-right tabular-nums">{{ formatUsd(row.costUsd) }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <UiCard v-if="report.rows.length" spotlight as="section" class="mb-10 p-5">
+        <div class="mb-3 hidden grid-cols-[minmax(0,14rem)_1fr_3rem_5rem_6rem] gap-3 text-xs tracking-wider text-muted uppercase sm:grid">
+          <span>{{ t('time.name') }}</span>
+          <span>{{ t('time.share') }}</span>
+          <span />
+          <span class="text-right">{{ t('time.hours') }}</span>
+          <span class="text-right">{{ t('time.aiCost') }}</span>
+        </div>
+        <ul class="space-y-2.5 text-sm">
+          <StaggerItem
+            v-for="(row, i) in report.rows"
+            :key="row.key"
+            :index="i"
+            as="li"
+            class="grid grid-cols-[minmax(0,1fr)_5rem] items-center gap-x-3 gap-y-1 sm:grid-cols-[minmax(0,14rem)_1fr_3rem_5rem_6rem]"
+          >
+            <span class="inline-flex min-w-0 items-center gap-2">
+              <span v-if="row.color" class="size-2.5 shrink-0 rounded-full" :style="{ backgroundColor: row.color }" aria-hidden="true" />
+              <RouterLink v-if="rowLink(row.key)" :to="rowLink(row.key)!" class="truncate hover:text-action">{{ row.label }}</RouterLink>
+              <span v-else class="truncate">{{ row.key === 'none' ? (filters.by === 'client' ? t('list.noClient') : t('list.noCategory')) : row.label }}</span>
+            </span>
+            <div class="order-last col-span-2 h-1.5 rounded-full bg-surface-2 sm:order-none sm:col-span-1">
+              <Motion
+                class="h-1.5 w-full origin-left rounded-full bg-chart"
+                :initial="{ scaleX: 0 }"
+                :animate="{ scaleX: row.share / maxShare }"
+                :transition="{ duration: 0.6, ease: 'easeOut', delay: staggerDelay(i, reducedMotion) }"
+              />
+            </div>
+            <span class="hidden text-right font-mono text-xs text-muted sm:block">{{ Math.round(row.share * 100) }}%</span>
+            <span class="text-right font-mono text-xs">{{ formatMinutes(row.minutes) }}</span>
+            <span class="hidden text-right font-mono text-xs text-muted sm:block">{{ formatUsd(row.costUsd) }}</span>
+          </StaggerItem>
+        </ul>
       </UiCard>
       <UiEmpty v-else class="mb-10" :icon="Clock" :title="t('time.empty')" />
       <p v-if="report.rows.length" class="-mt-8 mb-10 text-xs text-muted">{{ t('time.parallelHint') }}</p>
