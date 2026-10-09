@@ -199,6 +199,27 @@ Record **how each project is paid** and mmp tells you whether it is worth it:
 All amounts are in one currency (Settings → Finance) and **net of VAT**. mmp is not an
 invoicing tool.
 
+### Statements
+
+A **statement** is a pro-forma you send a client for a period: it is *not* a tax invoice (make
+that in your invoicing software, copying the figures). From a client page, **New statement**
+creates a draft prefilled with what was earned in the period (hours × rate, fixed-price shares,
+recurring fees); edit, add or remove lines, then **Issue** it: it gets a number (`PF-2026-001`,
+per year, prefix in Settings → Billing details) and is frozen. **Print / PDF** opens an A4 page
+in the statement's language; use the browser's "Save as PDF". **Mark paid** records the payments
+on its projects, so "Collected" and "Owed to you" update; overdue statements show on the
+Overview. Your billing details (name, address, VAT number, IBAN, footer) go in Settings, the
+client's on the client page.
+
+```bash
+mmp statement create Acme --period last-month   # draft + print link
+mmp statement issue PF-2026-001                  # or the draft id
+mmp statement paid PF-2026-001 --date 2026-11-05
+```
+
+Or ask your AI: *"Prepare last month's statement for Acme."* It creates the draft; you review
+and issue it in the dashboard.
+
 ## Overview and project health
 
 The dashboard opens on an **overview**: this week's hours and AI cost, this month's money, and
