@@ -103,6 +103,10 @@ export interface Client {
   name: string
   email: string
   notes: string
+  /** Billing details printed on statements. */
+  billingName: string
+  billingAddress: string
+  billingTaxId: string
   projectCount: number
   openTaskCount: number
   createdAt: string
@@ -113,6 +117,9 @@ export interface ClientInput {
   name?: string
   email?: string
   notes?: string
+  billingName?: string
+  billingAddress?: string
+  billingTaxId?: string
 }
 
 export interface Category {

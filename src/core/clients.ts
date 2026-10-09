@@ -8,6 +8,9 @@ interface ClientRow {
   name: string
   email: string
   notes: string
+  billing_name: string
+  billing_address: string
+  billing_tax_id: string
   project_count: number
   open_task_count: number
   created_at: string
@@ -46,9 +49,21 @@ export class ClientRepository {
     uniqueName('client', name, () =>
       this.db
         .prepare(
-          'INSERT INTO clients (id, owner_id, name, email, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          `INSERT INTO clients (id, owner_id, name, email, notes, billing_name, billing_address, billing_tax_id, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run(id, localUserId(this.db), name, cleanText(input.email, 320), cleanText(input.notes, 20_000), ts, ts),
+        .run(
+          id,
+          localUserId(this.db),
+          name,
+          cleanText(input.email, 320),
+          cleanText(input.notes, 20_000),
+          cleanText(input.billingName, 2000),
+          cleanText(input.billingAddress, 2000),
+          cleanText(input.billingTaxId, 2000),
+          ts,
+          ts,
+        ),
     )
     return this.get(id)!
   }
@@ -58,11 +73,17 @@ export class ClientRepository {
     const name = input.name === undefined ? client.name : cleanName(input.name, 'client')
     uniqueName('client', name, () =>
       this.db
-        .prepare('UPDATE clients SET name = ?, email = ?, notes = ?, updated_at = ? WHERE id = ?')
+        .prepare(
+          `UPDATE clients SET name = ?, email = ?, notes = ?, billing_name = ?, billing_address = ?, billing_tax_id = ?, updated_at = ?
+           WHERE id = ?`,
+        )
         .run(
           name,
           input.email === undefined ? client.email : cleanText(input.email, 320),
           input.notes === undefined ? client.notes : cleanText(input.notes, 20_000),
+          input.billingName === undefined ? client.billingName : cleanText(input.billingName, 2000),
+          input.billingAddress === undefined ? client.billingAddress : cleanText(input.billingAddress, 2000),
+          input.billingTaxId === undefined ? client.billingTaxId : cleanText(input.billingTaxId, 2000),
           now(),
           id,
         ),
@@ -100,6 +121,9 @@ function toClient(row: ClientRow): Client {
     name: row.name,
     email: row.email,
     notes: row.notes,
+    billingName: row.billing_name ?? '',
+    billingAddress: row.billing_address ?? '',
+    billingTaxId: row.billing_tax_id ?? '',
     projectCount: Number(row.project_count),
     openTaskCount: Number(row.open_task_count),
     createdAt: row.created_at,

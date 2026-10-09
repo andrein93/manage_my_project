@@ -55,6 +55,20 @@ const settingsBody = z
     weekStart: z.enum(['monday', 'sunday']).optional(),
     currency: z.string().max(3).optional(),
     usdRate: z.number().optional(),
+    billing: z
+      .object({
+        name: z.string(),
+        address: z.string(),
+        taxId: z.string(),
+        iban: z.string(),
+        footer: z.string(),
+        numberPrefix: z.string(),
+        vatRate: z.number(),
+        dueDays: z.number(),
+      })
+      .partial()
+      .strict()
+      .optional(),
   })
   .strict()
 const idParams = z.object({ id: z.string().min(1) })

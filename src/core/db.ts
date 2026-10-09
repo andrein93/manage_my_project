@@ -249,6 +249,48 @@ export const MIGRATIONS: string[] = [
     value TEXT NOT NULL
   );
   `,
+  // Statements (pro-forma) and billing details. Local only: not part of team sync.
+  `
+  ALTER TABLE clients ADD COLUMN billing_name TEXT NOT NULL DEFAULT '';
+  ALTER TABLE clients ADD COLUMN billing_address TEXT NOT NULL DEFAULT '';
+  ALTER TABLE clients ADD COLUMN billing_tax_id TEXT NOT NULL DEFAULT '';
+  ALTER TABLE payments ADD COLUMN statement_id TEXT;
+
+  CREATE TABLE statements (
+    id TEXT PRIMARY KEY,
+    owner_id TEXT NOT NULL,
+    client_id TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'draft',
+    number TEXT,
+    year INTEGER,
+    seq INTEGER,
+    period_from TEXT NOT NULL,
+    period_to TEXT NOT NULL,
+    issue_date TEXT,
+    due_date TEXT,
+    paid_date TEXT,
+    vat_rate REAL NOT NULL DEFAULT 0,
+    language TEXT NOT NULL DEFAULT 'en',
+    notes TEXT NOT NULL DEFAULT '',
+    snapshot TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  );
+  CREATE UNIQUE INDEX statements_number ON statements(year, seq) WHERE seq IS NOT NULL;
+
+  CREATE TABLE statement_lines (
+    id TEXT PRIMARY KEY,
+    statement_id TEXT NOT NULL REFERENCES statements(id),
+    position INTEGER NOT NULL,
+    project_id TEXT NOT NULL,
+    agreement_id TEXT,
+    description TEXT NOT NULL,
+    quantity REAL NOT NULL,
+    unit_cents INTEGER NOT NULL,
+    amount_cents INTEGER NOT NULL
+  );
+  `,
 ]
 
 /** Starter categories, created once when the categories table has never been used. */

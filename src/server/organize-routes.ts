@@ -6,7 +6,14 @@ import { TASK_PRIORITIES, TASK_STATUSES, UserError } from '../core/types.js'
 const idParams = z.object({ id: z.string().min(1) })
 
 const clientBody = z
-  .object({ name: z.string().max(200).optional(), email: z.string().max(320).optional(), notes: z.string().max(20_000).optional() })
+  .object({
+    name: z.string().max(200).optional(),
+    email: z.string().max(320).optional(),
+    notes: z.string().max(20_000).optional(),
+    billingName: z.string().max(2000).optional(),
+    billingAddress: z.string().max(2000).optional(),
+    billingTaxId: z.string().max(2000).optional(),
+  })
   .strict()
 
 const categoryBody = z
