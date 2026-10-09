@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import type { App } from '../core/app.js'
 import { TASK_PRIORITIES, TASK_STATUSES, UserError } from '../core/types.js'
+import { FIELD_KINDS } from '../core/fields.js'
 
 const idParams = z.object({ id: z.string().min(1) })
 
@@ -52,7 +53,28 @@ const taskFields = {
 const taskCreate = z.object({ projectId: z.string().min(1), ...taskFields }).strict()
 const taskPatch = z.object({ ...taskFields, title: taskFields.title.optional() }).strict()
 
+const fieldBody = z
+  .object({ name: z.string().max(60).optional(), kind: z.enum(FIELD_KINDS).optional(), remindDays: z.number().int().nullable().optional() })
+  .strict()
+const fieldValuesBody = z.object({ values: z.record(z.string(), z.string().max(2000).nullable()) }).strict()
+
 export function registerOrganizeRoutes(api: FastifyInstance, app: App): void {
+  // Custom fields
+  api.get('/fields', async () => app.fields.list())
+  api.post('/fields', async (request, reply) => reply.code(201).send(app.fields.create(fieldBody.parse(request.body))))
+  api.patch('/fields/:id', async (request) => app.fields.update(idParams.parse(request.params).id, fieldBody.omit({ kind: true }).parse(request.body)))
+  api.post('/fields/:id/move', async (request) =>
+    app.fields.move(idParams.parse(request.params).id, z.object({ direction: z.enum(['up', 'down']) }).parse(request.body).direction),
+  )
+  api.delete('/fields/:id', async (request, reply) => {
+    app.fields.remove(idParams.parse(request.params).id)
+    return reply.code(204).send()
+  })
+  api.get('/projects/:id/fields', async (request) => app.fields.values(idParams.parse(request.params).id))
+  api.put('/projects/:id/fields', async (request) =>
+    app.fields.setValues(idParams.parse(request.params).id, fieldValuesBody.parse(request.body).values),
+  )
+
   // Clients
   api.get('/clients', async () => app.clients.list())
   api.post('/clients', async (request, reply) => reply.code(201).send(app.clients.create(clientBody.parse(request.body))))

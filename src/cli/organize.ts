@@ -11,6 +11,7 @@ import {
   type TaskStatus,
 } from '../core/types.js'
 import { formatTable } from './format.js'
+import { FIELD_KINDS, type FieldKind } from '../core/fields.js'
 
 type Out = (line: string) => void
 
@@ -45,6 +46,42 @@ function formatTask(t: Task): string {
 }
 
 export function registerOrganizeCommands(program: Command, getApp: () => App, out: Out): void {
+  // Custom fields
+  const field = program.command('field').description('custom project fields (production URL, domain expiry…)')
+  field
+    .command('list')
+    .description('list custom fields')
+    .action(() => {
+      const list = getApp().fields.list()
+      if (!list.length) return out('No custom fields. Add one with: mmp field add "Production URL" --kind url')
+      out(formatTable(['NAME', 'KIND', 'REMIND'], list.map((f) => [f.name, f.kind, f.remindDays === null ? '-' : String(f.remindDays)])))
+    })
+  field
+    .command('add <name>')
+    .description('define a field for every project')
+    .addOption(new Option('--kind <kind>', 'value kind').choices([...FIELD_KINDS]).default('text'))
+    .option('--remind <days>', 'date fields: remind this many days before (default 30)')
+    .option('--no-remind', 'date fields: never remind')
+    .action((name: string, opts: { kind: FieldKind; remind?: string | boolean }) => {
+      const remindDays = opts.remind === false ? null : typeof opts.remind === 'string' ? Number(opts.remind) : undefined
+      const f = getApp().fields.create({ name, kind: opts.kind, remindDays })
+      out(`Added field ${f.name} (${f.kind}${f.remindDays !== null ? `, remind ${f.remindDays} days before` : ''})`)
+    })
+  field
+    .command('remove <field>')
+    .description('remove a field and every project value for it')
+    .action((ref: string) => out(`Removed field ${getApp().fields.remove(getApp().fields.resolve(ref).id).name}`))
+  field
+    .command('set <project> <field> [value]')
+    .description('set a project field (no value clears it)')
+    .action((projectRef: string, fieldRef: string, value?: string) => {
+      const app = getApp()
+      const project = app.projects.resolve(projectRef)
+      const f = app.fields.resolve(fieldRef)
+      app.fields.setValues(project.id, { [f.id]: value ?? null })
+      out(value ? `${project.name}: ${f.name} = ${app.fields.values(project.id).find((v) => v.fieldId === f.id)!.value}` : `${project.name}: ${f.name} cleared`)
+    })
+
   // Clients
   const client = program.command('client').description('manage clients')
   client

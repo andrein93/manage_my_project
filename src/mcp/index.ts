@@ -76,7 +76,11 @@ export function createMcpServer(app: App): McpServer {
   server.registerTool(
     'get_project',
     { title: 'Get project', description: 'Full details of one project.', inputSchema: { ref } },
-    tool((a: { ref: string }) => app.projects.resolve(a.ref)),
+    tool((a: { ref: string }) => {
+      const project = app.projects.resolve(a.ref)
+      const fields = app.fields.values(project.id).filter((v) => v.value)
+      return { ...project, fields: Object.fromEntries(fields.map((v) => [v.name, v.value])) }
+    }),
   )
 
   server.registerTool(

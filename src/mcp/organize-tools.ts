@@ -10,6 +10,35 @@ const dueDate = z.string().describe('YYYY-MM-DD')
 
 export function registerOrganizeTools(server: McpServer, app: App): void {
   server.registerTool(
+    'list_fields',
+    {
+      title: 'List custom fields',
+      description: 'Custom project fields the user defined (e.g. production URL, hosting, domain expiry), with their kind.',
+      inputSchema: {},
+    },
+    tool(() => app.fields.list()),
+  )
+
+  server.registerTool(
+    'set_project_field',
+    {
+      title: 'Set a project field',
+      description: 'Sets a custom field on a project (empty value clears it). Dates are YYYY-MM-DD; links must be http(s).',
+      inputSchema: {
+        project: z.string().describe('Project id, path or name'),
+        field: z.string().describe('Field name or id'),
+        value: z.string().describe('New value; empty string clears it'),
+      },
+    },
+    tool((a: { project: string; field: string; value: string }) => {
+      const project = app.projects.resolve(a.project)
+      const field = app.fields.resolve(a.field)
+      const values = app.fields.setValues(project.id, { [field.id]: a.value || null })
+      return { project: project.name, fields: Object.fromEntries(values.filter((v) => v.value).map((v) => [v.name, v.value])) }
+    }),
+  )
+
+  server.registerTool(
     'list_clients',
     { title: 'List clients', description: 'All clients with their project and open-task counts.', inputSchema: {} },
     tool(() => app.clients.list()),

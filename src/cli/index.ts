@@ -186,7 +186,10 @@ export function buildCli(getApp: () => App, out: (line: string) => void = consol
     .option('--json', 'print JSON')
     .action((ref: string, opts: { json?: boolean }) => {
       const project = getApp().projects.resolve(ref)
-      out(opts.json ? JSON.stringify(project, null, 2) : formatProject(project))
+      const fields = getApp().fields.values(project.id).filter((v) => v.value)
+      if (opts.json) return out(JSON.stringify({ ...project, fields: Object.fromEntries(fields.map((v) => [v.name, v.value])) }, null, 2))
+      out(formatProject(project))
+      for (const v of fields) out(`${v.name.padEnd(9)} ${v.value}`)
     })
 
   program
