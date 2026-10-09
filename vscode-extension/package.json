@@ -10,7 +10,7 @@
     "url": "https://github.com/andrein93/manage_my_project.git"
   },
   "engines": {
-    "vscode": "^1.80.0"
+    "vscode": "^1.82.0"
   },
   "categories": [
     "Other"
@@ -19,6 +19,9 @@
     "onStartupFinished"
   ],
   "main": "./extension.js",
+  "extensionKind": [
+    "ui"
+  ],
   "contributes": {
     "commands": [
       {
@@ -36,13 +39,13 @@
         },
         "mmp.serverUrl": {
           "type": "string",
-          "default": "http://localhost:4477",
+          "default": "http://127.0.0.1:4477",
           "description": "Address of your local mmp dashboard (mmp start)."
         }
       }
     }
   },
   "scripts": {
-    "package": "npx --yes @vscode/vsce package --allow-missing-repository --skip-license"
+    "package": "npx --yes @vscode/vsce package --skip-license"
   }
 }

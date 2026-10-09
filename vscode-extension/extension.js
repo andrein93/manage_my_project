@@ -4,16 +4,18 @@ const path = require('node:path')
 const vscode = require('vscode')
 const { createHeartbeat } = require('./heartbeat.js')
 
-/** Workspace folder of a document, or the file's own folder outside a workspace. */
+/**
+ * The edited file's own folder: mmp credits the deepest registered project containing it, which
+ * also works when the workspace holds many projects (e.g. C:\laragon\www). Local files only.
+ */
 function folderOf(document) {
   if (!document || document.uri.scheme !== 'file') return null
-  const ws = vscode.workspace.getWorkspaceFolder(document.uri)
-  return ws ? ws.uri.fsPath : path.dirname(document.uri.fsPath)
+  return path.dirname(document.uri.fsPath)
 }
 
 function settings() {
   const config = vscode.workspace.getConfiguration('mmp')
-  return { enabled: config.get('enabled', true), serverUrl: String(config.get('serverUrl', 'http://localhost:4477')).replace(/\/+$/, '') }
+  return { enabled: config.get('enabled', true), serverUrl: String(config.get('serverUrl', 'http://127.0.0.1:4477')).replace(/\/+$/, '') }
 }
 
 async function send(folder) {

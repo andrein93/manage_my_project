@@ -7,3 +7,4 @@ coverage/
 
 # Local web-server proxy (see README)
 .htaccess
+*.vsix

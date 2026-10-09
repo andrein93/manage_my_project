@@ -23,9 +23,10 @@ VS Code is not focused or idle; if mmp is not running the extension stays silent
   `source = 'editor'`), so overlapping sources never double count.
 - **What counts as activity:** text edits, saves, switching editors — only while the VS Code
   window is focused. Opening VS Code and leaving it idle counts nothing.
-- **Path sent:** the workspace folder containing the file (or the file's folder if none); mmp
-  attributes it to the registered project containing it, otherwise it shows under "Activity
-  outside your projects", like Claude Code sessions.
+- **Path sent:** the edited file's own folder (review fix: a workspace folder such as
+  C:\laragon\www holds many projects); mmp credits the deepest registered project containing it,
+  otherwise it shows under "Activity outside your projects". Remote (WSL/SSH) files are not counted
+  (`extensionKind: ui`); the default server URL is http://127.0.0.1:4477; VS Code >= 1.82 (global fetch).
 - **Extension stack:** plain JavaScript (CommonJS), no build step and no runtime dependencies;
   Node's global `fetch` (VS Code ≥ 1.80). Packaged with `npx @vscode/vsce package` (documented),
   installed with `code --install-extension`.

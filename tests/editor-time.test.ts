@@ -58,6 +58,7 @@ describe('editor time', () => {
     expect((await post({ path: join(fx.root, 'blog') })).statusCode).toBe(204)
     expect((await post({ path: 'relative' })).statusCode).toBe(400)
     expect((await post({})).statusCode).toBe(400)
+    expect((await post({ path: join(fx.root, 'blog'), at: new Date().toISOString().replace('Z', '+00:00') })).statusCode).toBe(204)
     await server.close()
   })
 })

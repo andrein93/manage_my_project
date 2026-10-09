@@ -64,12 +64,14 @@ describe('VS Code extension wiring', () => {
     load(fake).activate({ subscriptions: [] })
     fake.fire('change', { document: doc('/w/shop/src/app.ts'), contentChanges: [{}] })
     fake.fire('change', { document: doc('/w/shop/src/other.ts'), contentChanges: [{}] }) // same folder, same minute
+    // A workspace holding several projects: the file's own folder decides the project.
+    fake.fire('change', { document: doc('/w/all/blog/index.php'), contentChanges: [{}] })
     fake.fire('change', { document: doc('untitled', 'untitled'), contentChanges: [{}] }) // not a file
     fake.fire('change', { document: doc('/w/shop/x.ts'), contentChanges: [] }) // no edit
     await new Promise((r) => setTimeout(r, 0))
-    expect(calls).toHaveLength(1)
+    expect(calls).toHaveLength(2)
     expect(calls[0].url).toBe('http://localhost:9999/api/time/heartbeat')
-    expect(calls[0].body.path).toBe('/w/shop')
+    expect(calls.map((c) => c.body.path.split('\\').join('/'))).toEqual(['/w/shop/src', '/w/all/blog'])
     expect(Number.isNaN(Date.parse(calls[0].body.at))).toBe(false)
   })
 
@@ -85,5 +87,18 @@ describe('VS Code extension wiring', () => {
     off.fire('save', doc('/w/shop/a.ts'))
     await new Promise((r) => setTimeout(r, 0))
     expect(fetch).not.toHaveBeenCalled()
+  })
+})
+
+describe('VS Code extension manifest', () => {
+  const manifest = require('../vscode-extension/package.json') as {
+    engines: { vscode: string }
+    extensionKind?: string[]
+    contributes: { configuration: { properties: Record<string, { default: unknown }> } }
+  }
+  it('targets VS Code with global fetch, runs locally and talks to 127.0.0.1', () => {
+    expect(manifest.engines.vscode).toBe('^1.82.0')
+    expect(manifest.extensionKind).toEqual(['ui'])
+    expect(manifest.contributes.configuration.properties['mmp.serverUrl'].default).toBe('http://127.0.0.1:4477')
   })
 })
