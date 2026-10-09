@@ -2,6 +2,8 @@
 import type { HealthFlag } from './types.js'
 
 export interface UpcomingItem {
+  /** The expense or agreement this charge comes from. */
+  sourceId: string
   date: string
   /** pay = a cost coming up; invoice = a recurring fee to bill. */
   direction: 'pay' | 'invoice'

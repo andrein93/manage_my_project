@@ -2,9 +2,9 @@ import type { FastifyInstance } from 'fastify'
 import { z } from 'zod'
 import type { App } from '../core/app.js'
 import { digest, digestMarkdown, overview, upcoming } from '../core/overview.js'
-import { notify } from './notify.js'
+import { notify, type Send } from './notify.js'
 
-export function registerExtrasRoutes(api: FastifyInstance, app: App, notifier: (title: string, body: string) => Promise<boolean> = notify): void {
+export function registerExtrasRoutes(api: FastifyInstance, app: App, notifier: Send = notify): void {
   // Reminders and notifications
   const reminderKey = z.object({ key: z.string().min(1).max(500) }).strict()
   api.get('/reminders', async () => app.reminders.list(app.today()))
@@ -17,7 +17,7 @@ export function registerExtrasRoutes(api: FastifyInstance, app: App, notifier: (
     return reply.code(204).send()
   })
   api.post('/notifications/test', async () => ({
-    sent: await notifier('mmp', 'Desktop notifications work. You will see reminders here.'),
+    sent: await notifier('mmp', 'Desktop notifications work. You will see reminders here.', `http://localhost:${app.config.port}/`),
   }))
 
   api.get('/overview', async () => overview(app))

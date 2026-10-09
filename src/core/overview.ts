@@ -16,13 +16,13 @@ export function upcoming(app: App, days = 30, today = localToday()): UpcomingIte
   for (const e of app.finance.repo.expenses()) {
     const dates = e.interval ? occurrences(e.startDate, e.endDate, e.interval, until) : [e.startDate]
     for (const date of dates.filter((d) => d >= today && d <= until)) {
-      items.push({ date, direction: 'pay', label: e.note, projectId: e.projectId, projectName: e.projectName, amountCents: e.amountCents })
+      items.push({ sourceId: e.id, date, direction: 'pay', label: e.note, projectId: e.projectId, projectName: e.projectName, amountCents: e.amountCents })
     }
   }
   for (const a of app.finance.repo.agreements()) {
     if (a.kind !== 'recurring' || !a.interval) continue
     for (const date of occurrences(a.startDate, a.endDate, a.interval, until).filter((d) => d >= today)) {
-      items.push({ date, direction: 'invoice', label: a.note, projectId: a.projectId, projectName: a.projectName, amountCents: a.amountCents })
+      items.push({ sourceId: a.id, date, direction: 'invoice', label: a.note, projectId: a.projectId, projectName: a.projectName, amountCents: a.amountCents })
     }
   }
   return items.sort((x, y) => x.date.localeCompare(y.date) || x.direction.localeCompare(y.direction))

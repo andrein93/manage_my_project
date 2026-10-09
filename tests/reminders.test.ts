@@ -39,7 +39,7 @@ describe('reminders', () => {
       `statement_overdue:${statement.id}:${statement.dueDate}`,
       `task_overdue:${late.id}:2026-10-01`,
       `task_due_today:${today.id}:${TODAY}`,
-      expect.stringMatching(/^charge_soon:pay:/),
+      expect.stringMatching(/^charge_soon:[0-9a-f-]+:2026-10-10$/),
       `field_date:${id('blog')}:${expiry.id}:2026-10-15`,
     ])
     expect(list[1]).toMatchObject({ severity: 'danger', title: 'Overdue task: Late invoice fix', href: `/projects/${id('shop')}`, date: '2026-10-01' })
@@ -172,5 +172,40 @@ describe('review fixes', () => {
     fx.app.reminders.prune(TODAY)
     const keys = (fx.app.db.prepare('SELECT key FROM reminder_state ORDER BY key').all() as { key: string }[]).map((r) => r.key)
     expect(keys).toEqual(['ghost:recent', active].sort())
+  })
+})
+
+describe('polish', () => {
+  it('two identical expenses are two reminders, keyed by their own id', () => {
+    const shop = id('shop')
+    const a = fx.app.finance.repo.addExpense({ amount: 15, startDate: '2026-10-09', note: 'Hosting', projectId: shop })
+    const b = fx.app.finance.repo.addExpense({ amount: 15, startDate: '2026-10-09', note: 'Hosting', projectId: shop })
+    const keys = fx.app.reminders.list(TODAY).map((r) => r.key)
+    expect(keys.sort()).toEqual([`charge_soon:${a.id}:2026-10-09`, `charge_soon:${b.id}:2026-10-09`].sort())
+  })
+})
+
+describe('notification links', () => {
+  it('Windows: clicking the toast opens the link', () => {
+    const script = (link?: string) => Buffer.from(buildNotifyCommand('win32', 'T', 'B', link).args[3], 'base64').toString('utf16le')
+    expect(script('http://localhost:4477/projects/a?x=1&y=2')).toContain(
+      '<toast activationType="protocol" launch="http://localhost:4477/projects/a?x=1&amp;y=2">',
+    )
+    expect(script()).toContain('<toast>')
+  })
+
+  it("each notification links to the reminder's page; a grouped one to the dashboard", async () => {
+    const { sendDueNotifications } = await import('../src/server/notify.js')
+    fx.app.settings.update({ notifications: { desktop: true } })
+    const base = `http://localhost:${fx.app.config.port}`
+    const links: (string | undefined)[] = []
+    const send = async (_t: string, _b: string, link?: string) => (links.push(link), true)
+    fx.app.tasks.create(id('shop'), [{ title: 'Call Acme', dueDate: TODAY }])
+    await sendDueNotifications(fx.app, TODAY, send)
+    expect(links).toEqual([`${base}/projects/${id('shop')}`])
+    seed()
+    links.length = 0
+    await sendDueNotifications(fx.app, TODAY, send)
+    expect(links).toEqual([`${base}/`])
   })
 })

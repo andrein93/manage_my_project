@@ -118,7 +118,7 @@ export class ReminderService {
     for (const c of upcoming(app, CHARGE_DAYS, today)) {
       const label = c.label || (c.direction === 'pay' ? 'Expense' : 'Recurring fee')
       out.push({
-        key: `charge_soon:${c.direction}:${c.projectId ?? 'shared'}:${label}:${c.date}:${c.amountCents}`,
+        key: `charge_soon:${c.sourceId}:${c.date}`,
         kind: 'charge_soon',
         severity: 'warning',
         date: c.date,

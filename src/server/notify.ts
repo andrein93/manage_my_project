@@ -31,11 +31,18 @@ const appleScriptString = (s: string) => `"${s.replace(/\\/g, '\\\\').replace(/"
  * The command that shows a desktop notification. Text never reaches a shell: on Windows the
  * whole script is passed base64-encoded, on macOS as one -e argument, on Linux as plain args.
  */
-export function buildNotifyCommand(platform: NodeJS.Platform, rawTitle: string, rawBody: string): { cmd: string; args: string[] } {
+export function buildNotifyCommand(
+  platform: NodeJS.Platform,
+  rawTitle: string,
+  rawBody: string,
+  /** Opened on click (Windows only; other systems' notifiers cannot open links). */
+  link?: string,
+): { cmd: string; args: string[] } {
   const title = clean(rawTitle)
   const body = clean(rawBody)
   if (platform === 'win32') {
-    const toast = `<toast><visual><binding template="ToastGeneric"><text>${xml(title)}</text><text>${xml(body)}</text></binding></visual></toast>`
+    const open = link ? ` activationType="protocol" launch="${xml(link)}"` : ''
+    const toast = `<toast${open}><visual><binding template="ToastGeneric"><text>${xml(title)}</text><text>${xml(body)}</text></binding></visual></toast>`
     const script = [
       '[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null',
       '[Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null',
@@ -52,14 +59,14 @@ export function buildNotifyCommand(platform: NodeJS.Platform, rawTitle: string, 
 }
 
 /** Shows a desktop notification; resolves false (never throws) when the system refuses. */
-export function notify(title: string, body: string, platform: NodeJS.Platform = process.platform): Promise<boolean> {
-  const { cmd, args } = buildNotifyCommand(platform, title, body)
+export function notify(title: string, body: string, link?: string, platform: NodeJS.Platform = process.platform): Promise<boolean> {
+  const { cmd, args } = buildNotifyCommand(platform, title, body, link)
   return new Promise((resolve) => {
     execFile(cmd, args, { timeout: 15_000, windowsHide: true }, (error) => resolve(!error))
   })
 }
 
-type Send = (title: string, body: string) => Promise<boolean>
+export type Send = (title: string, body: string, link?: string) => Promise<boolean>
 
 /**
  * Sends today's new reminders as desktop notifications (when enabled in Settings): one each for
@@ -70,18 +77,19 @@ export async function sendDueNotifications(app: App, today: string, send: Send =
   if (!app.settings.get().notifications.desktop) return 0
   const due = app.reminders.dueForNotification(today)
   if (!due.length) return 0
+  const base = `http://localhost:${app.config.port}`
   if (due.length >= 3) {
     const body = due
       .slice(0, 3)
       .map((r) => r.title)
       .join('\n')
-    if (!(await send(`mmp: ${due.length} things need you`, due.length > 3 ? `${body}\n…` : body))) return 0
+    if (!(await send(`mmp: ${due.length} things need you`, due.length > 3 ? `${body}\n…` : body, `${base}/`))) return 0
     app.reminders.markNotified(due.map((r) => r.key), today)
     return due.length
   }
   let sent = 0
   for (const r of due) {
-    if (!(await send(r.title, r.detail))) continue
+    if (!(await send(r.title, r.detail, `${base}${r.href}`))) continue
     app.reminders.markNotified([r.key], today)
     sent++
   }

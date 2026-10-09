@@ -5,7 +5,7 @@ import Fastify, { type FastifyInstance } from 'fastify'
 import { ZodError } from 'zod'
 import type { App } from '../core/app.js'
 import { UserError } from '../core/types.js'
-import { sendDueNotifications } from './notify.js'
+import { notify, sendDueNotifications, type Send } from './notify.js'
 import { systemOpener, type Opener } from './open.js'
 import { registerOrganizeRoutes } from './organize-routes.js'
 import { registerRoutes } from './routes.js'
@@ -23,12 +23,13 @@ export interface ServerOptions {
   /** Import time activity on start and every few minutes (default true for startServer). */
   backgroundSync?: boolean
   /** Desktop notifier (tests pass a fake one). */
-  notify?: (title: string, body: string) => Promise<boolean>
+  notify?: Send
 }
 
 const SYNC_INTERVAL_MS = 5 * 60_000
 const TEAM_SYNC_INTERVAL_MS = 2 * 60_000
-const NOTIFY_INTERVAL_MS = 15 * 60_000
+/** Cheap (a few queries); short so turning notifications on shows them within a minute. */
+const NOTIFY_INTERVAL_MS = 60_000
 
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]'])
 const MUTATING = new Set(['POST', 'PUT', 'PATCH'])
@@ -133,10 +134,17 @@ export async function startServer(app: App, options: ServerOptions = {}): Promis
     teamTimer.unref()
     // Desktop notifications (Settings → Notifications); the setting is read on every run.
     let notifyFailed = false
+    let refusedLogged = false
+    const send: Send = async (title, body, link) => {
+      const ok = await (options.notify ?? notify)(title, body, link)
+      if (!ok && !refusedLogged) server.log.warn('The system refused a desktop notification; will retry.')
+      refusedLogged ||= !ok
+      return ok
+    }
     const notifyRun = () =>
       Promise.resolve()
         .then(() => app.reminders.prune(app.today()))
-        .then(() => sendDueNotifications(app, app.today(), options.notify))
+        .then(() => sendDueNotifications(app, app.today(), send))
         .catch((error) => {
           if (!notifyFailed) server.log.error(error)
           notifyFailed = true
