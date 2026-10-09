@@ -77,6 +77,18 @@ describe('HTTP API', () => {
     expect(meta.json()).toMatchObject({ stacks: ['php', 'static'], counts: { active: 3 } })
   })
 
+  it('exposes the build stamp id in meta', async () => {
+    await server.close()
+    mkdirSync(join(fx.installDir, 'dist'), { recursive: true })
+    writeFileSync(join(fx.installDir, 'dist', 'build.json'), JSON.stringify({ id: 'b-42', version: '0.7.0', builtAt: 'x' }))
+    server = await buildServer(fx.app, { webDir: join(fx.installDir, 'web') })
+    expect((await server.inject({ url: '/api/meta' })).json().build).toBe('b-42')
+  })
+
+  it('reports no build in dev (no stamp)', async () => {
+    expect((await server.inject({ url: '/api/meta' })).json().build).toBeNull()
+  })
+
   it('adds manual projects', async () => {
     fx.write({ 'elsewhere/x/a.txt': '' })
     const res = await server.inject({ method: 'POST', url: '/api/projects', headers: json, payload: { path: join(fx.root, 'elsewhere', 'x') } })

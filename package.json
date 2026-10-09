@@ -11,7 +11,7 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "build": "npm run build:server && npm run build:web",
+    "build": "npm run build:server && npm run build:web && node scripts/stamp-build.mjs",
     "build:server": "tsc -p tsconfig.json",
     "build:web": "vite build --config web/vite.config.ts",
     "dev:server": "tsc -p tsconfig.json --watch",
@@ -55,6 +55,7 @@
   "files": [
     "bin",
     "dist",
+    "scripts",
     "README.md",
     "LICENSE"
   ]

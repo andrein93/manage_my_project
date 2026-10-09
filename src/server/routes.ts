@@ -5,6 +5,7 @@ import { z } from 'zod'
 import type { App } from '../core/app.js'
 import { PROJECT_STATUSES, UserError } from '../core/types.js'
 import { majorOf } from '../core/detect/versions.js'
+import { readBuildInfo } from '../build-info.js'
 import { VERSION } from '../version.js'
 import { vscodeUrl, type Opener } from './open.js'
 
@@ -59,6 +60,8 @@ const settingsBody = z
 const idParams = z.object({ id: z.string().min(1) })
 
 export function registerRoutes(api: FastifyInstance, app: App, opener: Opener): void {
+  // The build this server started with; the dashboard compares it to notice a restart on a new build.
+  const build = readBuildInfo(app.config.installDir)?.id ?? null
   const getProject = (id: string) => {
     const project = app.projects.get(id)
     if (!project) throw new UserError(`Project not found: ${id}`, 'not_found')
@@ -134,6 +137,7 @@ export function registerRoutes(api: FastifyInstance, app: App, opener: Opener): 
     const all = app.projects.list({ all: true })
     return {
       version: VERSION,
+      build,
       mcpCommand: `claude mcp add --scope user mmp -- node "${join(app.config.installDir, 'bin', 'mmp.js').replace(/\\/g, '/')}" mcp`,
       statuses: PROJECT_STATUSES,
       stacks: [...new Set(all.flatMap((p) => p.stack))].sort(),
