@@ -31,7 +31,8 @@ async function load() {
   try {
     const [o, d] = await Promise.all([api.overview(), api.digest('this')])
     if (request !== latest) return
-    data.value = o
+    // A server older than this page lacks newer fields (e.g. before restarting after an update): default them.
+    data.value = { ...o, attention: { ...o.attention, overdueStatements: o.attention.overdueStatements ?? [] } }
     digestData.value = d
     error.value = null
   } catch (e) {
