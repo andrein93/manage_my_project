@@ -4,7 +4,16 @@ import type { App } from '../core/app.js'
 import { localToday } from '../core/dates.js'
 import { resolveClientFilter } from '../core/filters.js'
 import { formatCents } from '../core/finance/money.js'
-import { AGREEMENT_KINDS, INTERVALS, type AgreementKind, type FinanceNumbers, type Interval } from '../core/finance/types.js'
+import {
+  AGREEMENT_KINDS,
+  INTERVALS,
+  STATEMENT_STATUSES,
+  type AgreementKind,
+  type FinanceNumbers,
+  type Interval,
+  type Statement,
+  type StatementStatus,
+} from '../core/finance/types.js'
 import { formatMinutes } from '../core/time/duration.js'
 import { PERIODS, rangeFrom } from '../core/time/periods.js'
 import { tool } from './tool.js'
@@ -25,7 +34,93 @@ function readable(n: FinanceNumbers, currency: string) {
   }
 }
 
+/** A statement as the model should read it: readable money, no cents arithmetic. */
+function readableStatement(app: App, s: Statement) {
+  const m = (c: number) => formatCents(c, s.currency)
+  return {
+    id: s.id,
+    number: s.number,
+    status: s.overdue ? 'overdue' : s.status,
+    client: s.clientName,
+    period: { from: s.periodFrom, to: s.periodTo },
+    issueDate: s.issueDate,
+    dueDate: s.dueDate,
+    paidDate: s.paidDate,
+    lines: s.lines.map((l) => ({ project: l.projectName, description: l.description, quantity: l.quantity, unitPrice: m(l.unitCents), amount: m(l.amountCents) })),
+    subtotal: m(s.subtotalCents),
+    vat: `${m(s.vatCents)} (${s.vatRate}%)`,
+    total: m(s.totalCents),
+    printUrl: `http://localhost:${app.config.port}/statements/${s.id}/print`,
+  }
+}
+
 export function registerFinanceTools(server: McpServer, app: App): void {
+  server.registerTool(
+    'create_statement',
+    {
+      title: 'Create a statement',
+      description:
+        'Prepares a draft pro-forma statement (not a fiscal invoice) for a client, prefilled with what was earned in a period ' +
+        '(hours × rate, fixed-price shares, recurring fees). The user reviews and edits it in the dashboard before issuing. ' +
+        'Default period: last month. Returns the lines, totals and a link to print it as PDF.',
+      inputSchema: {
+        client: z.string().describe('Client name or id'),
+        period: z.enum(PERIODS).optional(),
+        from: day.optional(),
+        to: day.optional(),
+      },
+    },
+    tool(async (a: { client: string; period?: string; from?: string; to?: string }) => {
+      await app.time.freshen()
+      const client = app.clients.resolve(a.client)
+      const range = rangeFrom(
+        { period: a.from || a.to ? undefined : a.period ?? 'last-month', from: a.from, to: a.to },
+        app.statements.currentDay(),
+        app.settings.get().weekStart,
+      )
+      return readableStatement(app, app.statements.create({ clientId: client.id, from: range.from, to: range.to }))
+    }),
+  )
+
+  server.registerTool(
+    'list_statements',
+    {
+      title: 'List statements',
+      description: 'Statements (pro-forma), newest first, with status (draft, issued, overdue, paid, void) and totals.',
+      inputSchema: {
+        client: z.string().optional().describe('Client name or id'),
+        status: z.enum(STATEMENT_STATUSES).optional(),
+      },
+    },
+    tool((a: { client?: string; status?: StatementStatus }) =>
+      app.statements
+        .list({ clientId: a.client ? app.clients.resolve(a.client).id : undefined, status: a.status })
+        .map((s) => readableStatement(app, s)),
+    ),
+  )
+
+  server.registerTool(
+    'issue_statement',
+    {
+      title: 'Issue a statement',
+      description: 'Gives a draft statement its number and freezes it. Ask the user before issuing: it cannot be edited afterwards.',
+      inputSchema: { statement: z.string().describe('Statement number (e.g. PF-2026-003) or id'), issue_date: day.optional() },
+    },
+    tool((a: { statement: string; issue_date?: string }) =>
+      readableStatement(app, app.statements.issue(app.statements.resolve(a.statement), { issueDate: a.issue_date })),
+    ),
+  )
+
+  server.registerTool(
+    'mark_statement_paid',
+    {
+      title: 'Mark a statement paid',
+      description: 'Marks an issued statement as paid and records the payments (net of VAT) on its projects.',
+      inputSchema: { statement: z.string().describe('Statement number or id'), date: day.optional() },
+    },
+    tool((a: { statement: string; date?: string }) => readableStatement(app, app.statements.markPaid(app.statements.resolve(a.statement), { date: a.date }))),
+  )
+
   server.registerTool(
     'finance_report',
     {
