@@ -519,5 +519,26 @@
     "overdueSince": "自 {date} 起逾期",
     "unsaved": "有未保存的更改",
     "issueConfirm": "再次点击以开具"
+  },
+  "fields": {
+    "title": "自定义字段",
+    "hint": "每个项目都有的字段：生产环境 URL、托管、域名到期…… 日期字段可以提前提醒你。",
+    "name": "字段名称",
+    "namePlaceholder": "例如 生产环境 URL",
+    "kind": "类型",
+    "kinds": {
+      "text": "文本",
+      "url": "链接",
+      "date": "日期",
+      "number": "数字"
+    },
+    "remind": "提前",
+    "daysBefore": "天提醒",
+    "never": "从不",
+    "add": "添加字段",
+    "removeConfirm": "再次点击：将删除所有值",
+    "projectTitle": "字段",
+    "manage": "管理字段",
+    "none": "还没有自定义字段。请在设置中定义（例如生产环境 URL、域名到期）。"
   }
 }

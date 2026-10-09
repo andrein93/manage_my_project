@@ -519,5 +519,26 @@
     "overdueSince": "Überfällig seit {date}",
     "unsaved": "Ungespeicherte Änderungen",
     "issueConfirm": "Erneut klicken zum Ausstellen"
+  },
+  "fields": {
+    "title": "Eigene Felder",
+    "hint": "Felder für jedes Projekt: Produktions-URL, Hosting, Domain-Ablauf… Datumsfelder können dich vorher erinnern.",
+    "name": "Feldname",
+    "namePlaceholder": "z. B. Produktions-URL",
+    "kind": "Typ",
+    "kinds": {
+      "text": "Text",
+      "url": "Link",
+      "date": "Datum",
+      "number": "Zahl"
+    },
+    "remind": "Erinnern",
+    "daysBefore": "Tage vorher",
+    "never": "nie",
+    "add": "Feld hinzufügen",
+    "removeConfirm": "Erneut klicken: Werte werden gelöscht",
+    "projectTitle": "Felder",
+    "manage": "Felder verwalten",
+    "none": "Noch keine eigenen Felder. Lege sie in den Einstellungen an (z. B. Produktions-URL, Domain-Ablauf)."
   }
 }

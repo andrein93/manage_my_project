@@ -519,5 +519,26 @@
     "overdueSince": "Vencido desde el {date}",
     "unsaved": "Tienes cambios sin guardar",
     "issueConfirm": "Haz clic de nuevo para emitir"
+  },
+  "fields": {
+    "title": "Campos personalizados",
+    "hint": "Campos que tiene cada proyecto: URL de producción, hosting, vencimiento del dominio… Los campos de fecha pueden avisarte antes.",
+    "name": "Nombre del campo",
+    "namePlaceholder": "p. ej. URL de producción",
+    "kind": "Tipo",
+    "kinds": {
+      "text": "Texto",
+      "url": "Enlace",
+      "date": "Fecha",
+      "number": "Número"
+    },
+    "remind": "Avisar",
+    "daysBefore": "días antes",
+    "never": "nunca",
+    "add": "Añadir campo",
+    "removeConfirm": "Haz clic de nuevo: se borrarán los valores",
+    "projectTitle": "Campos",
+    "manage": "Gestionar campos",
+    "none": "Aún no hay campos personalizados. Defínelos en Ajustes (p. ej. URL de producción, vencimiento del dominio)."
   }
 }

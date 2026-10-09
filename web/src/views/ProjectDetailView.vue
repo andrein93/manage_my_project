@@ -8,6 +8,7 @@ import CategoryDot from '../components/CategoryDot.vue'
 import FreshnessStrip from '../components/FreshnessStrip.vue'
 import ProjectTasks from '../components/ProjectTasks.vue'
 import ProjectMoney from '../components/ProjectMoney.vue'
+import ProjectFields from '../components/ProjectFields.vue'
 import { uiLocale } from '../i18n'
 import ProjectTime from '../components/ProjectTime.vue'
 import TagEditor from '../components/TagEditor.vue'
@@ -212,6 +213,7 @@ useAutoRefresh(() => load())
         <UiCard class="p-5"><ProjectTasks :project-id="project.id" /></UiCard>
         <UiCard class="p-5"><ProjectTime :project-id="project.id" /></UiCard>
         <UiCard class="p-5"><ProjectMoney :project-id="project.id" /></UiCard>
+        <UiCard class="p-5"><ProjectFields :project-id="project.id" /></UiCard>
       </div>
 
       <div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">

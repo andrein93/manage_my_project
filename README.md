@@ -164,6 +164,15 @@ first 6–8 characters, like git commits.
   optional due date. Each project page has a list and a kanban board; the **Tasks** page shows
   every open task grouped by due date (overdue, today, next 7 days, later, no date).
 - Removing a client or a category never removes projects; they just lose the label.
+- **Custom fields** record what mmp cannot detect: production URL, hosting, domain expiry,
+  contract end… Define them once in Settings (text, link, date or number) and fill them on each
+  project page; the project search also looks at their values. Date fields remind you a set
+  number of days before (30 by default). They stay on this computer (not team-synced).
+
+```bash
+mmp field add "Domain expiry" --kind date --remind 21
+mmp field set shop "domain expiry" 2027-03-01
+```
 
 ## Time tracking
 

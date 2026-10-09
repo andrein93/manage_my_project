@@ -17,6 +17,10 @@ import type {
   Billing,
 } from '../../src/core/finance/types'
 import type { CommandDoc, ToolDoc } from '../../src/server/help-types'
+import { FIELD_KINDS, type FieldKind, type FieldValue, type ProjectField, type UpcomingFieldDate } from '../../src/core/field-types'
+
+export { FIELD_KINDS }
+export type { FieldKind, FieldValue, ProjectField, UpcomingFieldDate }
 import type { Digest, Overview, UpcomingItem } from '../../src/core/overview-types'
 import type { HealthFlag } from '../../src/core/types'
 import type { SyncRunResult, SyncStatus as TeamSyncStatus, TeamMember } from '../../src/core/sync/types'
@@ -210,6 +214,14 @@ export const api = {
       'GET',
       `/projects/${projectId}/team-time`,
     ),
+  fields: () => request<ProjectField[]>('GET', '/fields'),
+  createField: (input: { name: string; kind: FieldKind; remindDays?: number | null }) => request<ProjectField>('POST', '/fields', input),
+  updateField: (id: string, input: { name?: string; remindDays?: number | null }) => request<ProjectField>('PATCH', `/fields/${id}`, input),
+  moveField: (id: string, direction: 'up' | 'down') => request<ProjectField[]>('POST', `/fields/${id}/move`, { direction }),
+  removeField: (id: string) => request<void>('DELETE', `/fields/${id}`),
+  projectFields: (projectId: string) => request<FieldValue[]>('GET', `/projects/${projectId}/fields`),
+  setProjectFields: (projectId: string, values: Record<string, string | null>) =>
+    request<FieldValue[]>('PUT', `/projects/${projectId}/fields`, { values }),
   statements: (params: { client?: string; status?: StatementStatus } = {}) => request<Statement[]>('GET', `/statements?${query(params)}`),
   statement: (id: string) => request<Statement>('GET', `/statements/${id}`),
   createStatement: (input: { clientId: string; from: string; to: string; language?: string }) => request<Statement>('POST', '/statements', input),

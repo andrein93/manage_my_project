@@ -519,5 +519,26 @@
     "overdueSince": "Scaduto dal {date}",
     "unsaved": "Hai modifiche non salvate",
     "issueConfirm": "Clicca di nuovo per emettere"
+  },
+  "fields": {
+    "title": "Campi personalizzati",
+    "hint": "Campi presenti in ogni progetto: URL di produzione, hosting, scadenza del dominio… I campi data possono ricordarti la scadenza in anticipo.",
+    "name": "Nome del campo",
+    "namePlaceholder": "es. URL di produzione",
+    "kind": "Tipo",
+    "kinds": {
+      "text": "Testo",
+      "url": "Link",
+      "date": "Data",
+      "number": "Numero"
+    },
+    "remind": "Avvisa",
+    "daysBefore": "giorni prima",
+    "never": "mai",
+    "add": "Aggiungi campo",
+    "removeConfirm": "Clicca di nuovo: i valori verranno eliminati",
+    "projectTitle": "Campi",
+    "manage": "Gestisci campi",
+    "none": "Nessun campo personalizzato. Definiscili in Impostazioni (es. URL di produzione, scadenza del dominio)."
   }
 }

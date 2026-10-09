@@ -519,5 +519,26 @@
     "overdueSince": "En retard depuis le {date}",
     "unsaved": "Modifications non enregistrées",
     "issueConfirm": "Cliquez à nouveau pour émettre"
+  },
+  "fields": {
+    "title": "Champs personnalisés",
+    "hint": "Champs présents dans chaque projet : URL de production, hébergement, expiration du domaine… Les champs date peuvent vous prévenir à l'avance.",
+    "name": "Nom du champ",
+    "namePlaceholder": "ex. URL de production",
+    "kind": "Type",
+    "kinds": {
+      "text": "Texte",
+      "url": "Lien",
+      "date": "Date",
+      "number": "Nombre"
+    },
+    "remind": "Rappeler",
+    "daysBefore": "jours avant",
+    "never": "jamais",
+    "add": "Ajouter un champ",
+    "removeConfirm": "Cliquez à nouveau : les valeurs seront supprimées",
+    "projectTitle": "Champs",
+    "manage": "Gérer les champs",
+    "none": "Aucun champ personnalisé. Définissez-les dans les Paramètres (ex. URL de production, expiration du domaine)."
   }
 }

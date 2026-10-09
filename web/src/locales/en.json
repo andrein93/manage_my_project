@@ -519,5 +519,26 @@
     "overdueSince": "Overdue since {date}",
     "unsaved": "You have unsaved changes",
     "issueConfirm": "Click again to issue"
+  },
+  "fields": {
+    "title": "Custom fields",
+    "hint": "Fields every project gets: production URL, hosting, domain expiry… Date fields can remind you before the date.",
+    "name": "Field name",
+    "namePlaceholder": "e.g. Production URL",
+    "kind": "Kind",
+    "kinds": {
+      "text": "Text",
+      "url": "Link",
+      "date": "Date",
+      "number": "Number"
+    },
+    "remind": "Remind",
+    "daysBefore": "days before",
+    "never": "never",
+    "add": "Add field",
+    "removeConfirm": "Click again: values are deleted",
+    "projectTitle": "Fields",
+    "manage": "Manage fields",
+    "none": "No custom fields yet. Define them in Settings (e.g. production URL, domain expiry)."
   }
 }
