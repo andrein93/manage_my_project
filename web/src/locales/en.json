@@ -541,5 +541,30 @@
     "projectTitle": "Fields",
     "manage": "Manage fields",
     "none": "No custom fields yet. Define them in Settings (e.g. production URL, domain expiry)."
+  },
+  "reminders": {
+    "title": "Reminders",
+    "open": "Reminders: none | Reminders: 1 | Reminders: {n}",
+    "empty": "Nothing needs you right now.",
+    "dismiss": "Dismiss",
+    "snooze": "Snooze until tomorrow",
+    "due": "due {date}",
+    "inDays": "today | in 1 day | in {n} days",
+    "daysAgo": "today | 1 day ago | {n} days ago",
+    "settingsLink": "Notification settings",
+    "settingsTitle": "Notifications",
+    "settingsHint": "Reminders cover overdue tasks and statements, tasks due today, charges in the next 3 days and custom date fields. With desktop notifications on, a running \"mmp start\" shows each new reminder once a day.",
+    "desktop": "Desktop notifications",
+    "test": "Send a test notification",
+    "testSent": "Sent — did it appear?",
+    "testFailed": "Your system refused the notification.",
+    "kinds": {
+      "task_overdue": "Overdue: {task}",
+      "task_due_today": "Due today: {task}",
+      "statement_overdue": "Statement {number} is overdue",
+      "toPay": "To pay: {label}",
+      "toInvoice": "To invoice: {label}",
+      "fieldDate": "{field}: {date}"
+    }
   }
 }

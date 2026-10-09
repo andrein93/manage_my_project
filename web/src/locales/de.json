@@ -541,5 +541,30 @@
     "projectTitle": "Felder",
     "manage": "Felder verwalten",
     "none": "Noch keine eigenen Felder. Lege sie in den Einstellungen an (z. B. Produktions-URL, Domain-Ablauf)."
+  },
+  "reminders": {
+    "title": "Erinnerungen",
+    "open": "Erinnerungen: keine | Erinnerungen: 1 | Erinnerungen: {n}",
+    "empty": "Gerade braucht nichts deine Aufmerksamkeit.",
+    "dismiss": "Ausblenden",
+    "snooze": "Bis morgen zurückstellen",
+    "due": "fällig {date}",
+    "inDays": "heute | in 1 Tag | in {n} Tagen",
+    "daysAgo": "heute | vor 1 Tag | vor {n} Tagen",
+    "settingsLink": "Benachrichtigungseinstellungen",
+    "settingsTitle": "Benachrichtigungen",
+    "settingsHint": "Erinnerungen umfassen überfällige Aufgaben und Abrechnungen, heute fällige Aufgaben, Zahlungen in den nächsten 3 Tagen und eigene Datumsfelder. Mit Desktop-Benachrichtigungen zeigt ein laufendes \"mmp start\" jede neue Erinnerung einmal am Tag.",
+    "desktop": "Desktop-Benachrichtigungen",
+    "test": "Testbenachrichtigung senden",
+    "testSent": "Gesendet — ist sie erschienen?",
+    "testFailed": "Das System hat die Benachrichtigung abgelehnt.",
+    "kinds": {
+      "task_overdue": "Überfällig: {task}",
+      "task_due_today": "Heute fällig: {task}",
+      "statement_overdue": "Abrechnung {number} überfällig",
+      "toPay": "Zu zahlen: {label}",
+      "toInvoice": "Abzurechnen: {label}",
+      "fieldDate": "{field}: {date}"
+    }
   }
 }

@@ -541,5 +541,30 @@
     "projectTitle": "Campi",
     "manage": "Gestisci campi",
     "none": "Nessun campo personalizzato. Definiscili in Impostazioni (es. URL di produzione, scadenza del dominio)."
+  },
+  "reminders": {
+    "title": "Promemoria",
+    "open": "Promemoria: nessuno | Promemoria: 1 | Promemoria: {n}",
+    "empty": "Al momento niente richiede la tua attenzione.",
+    "dismiss": "Archivia",
+    "snooze": "Rimanda a domani",
+    "due": "scadenza {date}",
+    "inDays": "oggi | tra 1 giorno | tra {n} giorni",
+    "daysAgo": "oggi | 1 giorno fa | {n} giorni fa",
+    "settingsLink": "Impostazioni notifiche",
+    "settingsTitle": "Notifiche",
+    "settingsHint": "I promemoria comprendono attività e riepiloghi scaduti, attività in scadenza oggi, spese nei prossimi 3 giorni e i campi data personalizzati. Con le notifiche desktop attive, \"mmp start\" mostra ogni nuovo promemoria una volta al giorno.",
+    "desktop": "Notifiche desktop",
+    "test": "Invia una notifica di prova",
+    "testSent": "Inviata: è comparsa?",
+    "testFailed": "Il sistema ha rifiutato la notifica.",
+    "kinds": {
+      "task_overdue": "In ritardo: {task}",
+      "task_due_today": "Scade oggi: {task}",
+      "statement_overdue": "Riepilogo {number} scaduto",
+      "toPay": "Da pagare: {label}",
+      "toInvoice": "Da fatturare: {label}",
+      "fieldDate": "{field}: {date}"
+    }
   }
 }

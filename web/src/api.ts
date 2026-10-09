@@ -18,6 +18,9 @@ import type {
 } from '../../src/core/finance/types'
 import type { CommandDoc, ToolDoc } from '../../src/server/help-types'
 import { FIELD_KINDS, type FieldKind, type FieldValue, type ProjectField, type UpcomingFieldDate } from '../../src/core/field-types'
+import type { Reminder } from '../../src/core/reminder-types'
+
+export type { Reminder }
 
 export { FIELD_KINDS }
 export type { FieldKind, FieldValue, ProjectField, UpcomingFieldDate }
@@ -96,6 +99,7 @@ export interface Settings {
   currency: string
   usdRate: number
   billing: Billing
+  notifications: { desktop: boolean }
 }
 
 export interface ProjectPatch {
@@ -214,6 +218,10 @@ export const api = {
       'GET',
       `/projects/${projectId}/team-time`,
     ),
+  reminders: () => request<Reminder[]>('GET', '/reminders'),
+  dismissReminder: (key: string) => request<void>('POST', '/reminders/dismiss', { key }),
+  snoozeReminder: (key: string) => request<void>('POST', '/reminders/snooze', { key }),
+  testNotification: () => request<{ sent: boolean }>('POST', '/notifications/test', {}),
   fields: () => request<ProjectField[]>('GET', '/fields'),
   createField: (input: { name: string; kind: FieldKind; remindDays?: number | null }) => request<ProjectField>('POST', '/fields', input),
   updateField: (id: string, input: { name?: string; remindDays?: number | null }) => request<ProjectField>('PATCH', `/fields/${id}`, input),

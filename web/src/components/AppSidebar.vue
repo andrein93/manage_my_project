@@ -11,15 +11,18 @@ export interface NavLink {
 
 <script setup lang="ts">
 import { Motion } from 'motion-v'
-import { Moon, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Sun } from 'lucide-vue-next'
+import { Bell, Moon, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Sun } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { themePreference, toggleTheme } from '../theme'
 import UiKbd from '../ui/UiKbd.vue'
 
 // Each mounted sidebar needs its own layout id, or the active pill animates between them.
-withDefaults(defineProps<{ links: NavLink[]; collapsed: boolean; scanning: boolean; layoutId?: string }>(), { layoutId: 'nav-active' })
-const emit = defineEmits<{ toggle: []; rescan: []; search: []; navigate: [] }>()
+withDefaults(defineProps<{ links: NavLink[]; collapsed: boolean; scanning: boolean; layoutId?: string; reminderCount?: number }>(), {
+  layoutId: 'nav-active',
+  reminderCount: 0,
+})
+const emit = defineEmits<{ toggle: []; rescan: []; search: []; navigate: []; reminders: [] }>()
 const { t } = useI18n()
 const route = useRoute()
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
@@ -48,6 +51,25 @@ const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigat
         <span class="flex-1 text-left">{{ t('ui.search') }}</span>
         <UiKbd>{{ isMac ? '⌘' : 'Ctrl' }} K</UiKbd>
       </template>
+    </button>
+
+    <button
+      class="relative mb-2 flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-muted transition-colors hover:bg-surface-2 hover:text-ink"
+      :class="{ 'justify-center px-0': collapsed }"
+      :aria-label="t('reminders.open', { n: reminderCount }, reminderCount)"
+      :title="collapsed ? t('reminders.title') : undefined"
+      @click="emit('reminders')"
+    >
+      <Bell class="size-4 shrink-0" aria-hidden="true" />
+      <span v-if="!collapsed" class="flex-1 text-left">{{ t('reminders.title') }}</span>
+      <span
+        v-if="reminderCount"
+        class="grid h-5 min-w-5 place-items-center rounded-full bg-danger px-1 text-[11px] font-semibold text-white tabular-nums"
+        :class="{ 'absolute -top-1 right-1 h-4 min-w-4 text-[10px]': collapsed }"
+        aria-hidden="true"
+      >
+        {{ reminderCount > 99 ? '99+' : reminderCount }}
+      </span>
     </button>
 
     <nav class="flex flex-col gap-0.5">

@@ -541,5 +541,30 @@
     "projectTitle": "Champs",
     "manage": "Gérer les champs",
     "none": "Aucun champ personnalisé. Définissez-les dans les Paramètres (ex. URL de production, expiration du domaine)."
+  },
+  "reminders": {
+    "title": "Rappels",
+    "open": "Rappels : aucun | Rappels : 1 | Rappels : {n}",
+    "empty": "Rien ne requiert votre attention pour l'instant.",
+    "dismiss": "Ignorer",
+    "snooze": "Reporter à demain",
+    "due": "échéance {date}",
+    "inDays": "aujourd'hui | dans 1 jour | dans {n} jours",
+    "daysAgo": "aujourd'hui | il y a 1 jour | il y a {n} jours",
+    "settingsLink": "Paramètres des notifications",
+    "settingsTitle": "Notifications",
+    "settingsHint": "Les rappels couvrent les tâches et relevés en retard, les tâches dues aujourd'hui, les frais des 3 prochains jours et les champs date personnalisés. Avec les notifications de bureau, \"mmp start\" affiche chaque nouveau rappel une fois par jour.",
+    "desktop": "Notifications de bureau",
+    "test": "Envoyer une notification de test",
+    "testSent": "Envoyée — est-elle apparue ?",
+    "testFailed": "Le système a refusé la notification.",
+    "kinds": {
+      "task_overdue": "En retard : {task}",
+      "task_due_today": "À rendre aujourd'hui : {task}",
+      "statement_overdue": "Relevé {number} en retard",
+      "toPay": "À payer : {label}",
+      "toInvoice": "À facturer : {label}",
+      "fieldDate": "{field} : {date}"
+    }
   }
 }

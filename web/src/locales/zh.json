@@ -541,5 +541,30 @@
     "projectTitle": "字段",
     "manage": "管理字段",
     "none": "还没有自定义字段。请在设置中定义（例如生产环境 URL、域名到期）。"
+  },
+  "reminders": {
+    "title": "提醒",
+    "open": "提醒：无 | 提醒：1 条 | 提醒：{n} 条",
+    "empty": "目前没有需要你处理的事项。",
+    "dismiss": "忽略",
+    "snooze": "推迟到明天",
+    "due": "到期 {date}",
+    "inDays": "今天 | 1 天后 | {n} 天后",
+    "daysAgo": "今天 | 1 天前 | {n} 天前",
+    "settingsLink": "通知设置",
+    "settingsTitle": "通知",
+    "settingsHint": "提醒包括逾期的任务和对账单、今天到期的任务、未来 3 天内的费用以及自定义日期字段。开启桌面通知后，运行中的 \"mmp start\" 每天对每条新提醒通知一次。",
+    "desktop": "桌面通知",
+    "test": "发送测试通知",
+    "testSent": "已发送 — 看到了吗？",
+    "testFailed": "系统拒绝了该通知。",
+    "kinds": {
+      "task_overdue": "已逾期：{task}",
+      "task_due_today": "今天到期：{task}",
+      "statement_overdue": "对账单 {number} 已逾期",
+      "toPay": "待付款：{label}",
+      "toInvoice": "待开票：{label}",
+      "fieldDate": "{field}：{date}"
+    }
   }
 }

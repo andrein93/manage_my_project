@@ -541,5 +541,30 @@
     "projectTitle": "Campos",
     "manage": "Gestionar campos",
     "none": "Aún no hay campos personalizados. Defínelos en Ajustes (p. ej. URL de producción, vencimiento del dominio)."
+  },
+  "reminders": {
+    "title": "Recordatorios",
+    "open": "Recordatorios: ninguno | Recordatorios: 1 | Recordatorios: {n}",
+    "empty": "Ahora mismo nada requiere tu atención.",
+    "dismiss": "Descartar",
+    "snooze": "Posponer hasta mañana",
+    "due": "vence {date}",
+    "inDays": "hoy | en 1 día | en {n} días",
+    "daysAgo": "hoy | hace 1 día | hace {n} días",
+    "settingsLink": "Ajustes de notificaciones",
+    "settingsTitle": "Notificaciones",
+    "settingsHint": "Los recordatorios incluyen tareas y resúmenes vencidos, tareas que vencen hoy, cargos en los próximos 3 días y campos de fecha personalizados. Con las notificaciones de escritorio activas, \"mmp start\" muestra cada recordatorio nuevo una vez al día.",
+    "desktop": "Notificaciones de escritorio",
+    "test": "Enviar una notificación de prueba",
+    "testSent": "Enviada: ¿apareció?",
+    "testFailed": "El sistema rechazó la notificación.",
+    "kinds": {
+      "task_overdue": "Atrasada: {task}",
+      "task_due_today": "Vence hoy: {task}",
+      "statement_overdue": "Resumen {number} vencido",
+      "toPay": "A pagar: {label}",
+      "toInvoice": "A facturar: {label}",
+      "fieldDate": "{field}: {date}"
+    }
   }
 }

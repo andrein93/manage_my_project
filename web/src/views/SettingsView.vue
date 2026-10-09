@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { api, type Workspace } from '../api'
 import CategoriesSettings from '../components/CategoriesSettings.vue'
 import FieldsSettings from '../components/FieldsSettings.vue'
+import NotificationSettings from '../components/NotificationSettings.vue'
 import CommandReference from '../components/CommandReference.vue'
 import FinanceSettings from '../components/FinanceSettings.vue'
 import LanguageSettings from '../components/LanguageSettings.vue'
@@ -140,6 +141,8 @@ onMounted(load)
     <UiCard class="p-5"><CategoriesSettings /></UiCard>
 
     <UiCard class="p-5"><FieldsSettings /></UiCard>
+
+    <UiCard class="p-5"><NotificationSettings /></UiCard>
 
     <UiCard class="p-5"><BillingSettings /></UiCard>
 

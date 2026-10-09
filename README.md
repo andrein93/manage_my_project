@@ -255,6 +255,16 @@ locally; mmp never contacts package registries.
 
 "Copy weekly report" on the overview (or `mmp digest`) gives you a Markdown summary of the week.
 
+### Reminders and notifications
+
+The bell in the sidebar lists what needs you today: overdue tasks and statements, tasks due
+today, charges to pay or invoice in the next 3 days, and custom date fields about to expire
+(a domain, a contract). Dismiss a reminder (it comes back only if something new happens) or
+snooze it until tomorrow. Turn on **desktop notifications** in Settings → Notifications: a
+running `mmp start` then shows each new reminder once a day (grouped when there are several),
+using the system's own notifications (Windows toast, macOS Notification Center, `notify-send`
+on Linux). `mmp reminders` and the AI (*"what needs my attention today?"*) give the same list.
+
 ## Team sync (optional)
 
 mmp stays local-first, but a small team can share work through a **sync server you host**:

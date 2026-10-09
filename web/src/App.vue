@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { AnimatePresence, Motion, MotionConfig } from 'motion-v'
-import { CheckSquare, CircleArrowUp, Clock, FolderGit2, LayoutDashboard, Menu, Search, Settings, Users, Wallet, X } from 'lucide-vue-next'
+import { Bell, CheckSquare, CircleArrowUp, Clock, FolderGit2, LayoutDashboard, Menu, Search, Settings, Users, Wallet, X } from 'lucide-vue-next'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
-import { api } from './api'
+import { api, type Reminder } from './api'
 import AppSidebar, { type NavLink } from './components/AppSidebar.vue'
 import CommandPalette from './components/CommandPalette.vue'
+import RemindersPanel from './components/RemindersPanel.vue'
 import { scanTick, useErrors } from './composables'
 import { finePointer } from './motion'
 import { isPaletteShortcut } from './palette'
@@ -37,6 +38,23 @@ function toggleSidebar() {
 
 const drawerOpen = ref(false)
 const paletteOpen = ref(false)
+
+// Reminders: refreshed with the build check (focus, every minute) and after scans.
+const remindersOpen = ref(false)
+const reminders = ref<Reminder[]>([])
+async function loadReminders() {
+  try {
+    reminders.value = await api.reminders()
+  } catch {
+    // Server restarting or older than the dashboard: keep the last list.
+  }
+}
+function openReminders() {
+  drawerOpen.value = false
+  remindersOpen.value = true
+  loadReminders()
+}
+watch(scanTick, loadReminders)
 
 const drawer = ref<{ $el: HTMLElement } | null>(null)
 const menuButton = ref<HTMLButtonElement | null>(null)
@@ -103,6 +121,7 @@ onMounted(() => window.addEventListener('keydown', onKeydown))
 const seenBuild = ref<string | null | undefined>(undefined)
 const newVersion = ref<string | null>(null)
 async function checkBuild() {
+  loadReminders()
   try {
     const meta = await api.meta()
     if (seenBuild.value === undefined) seenBuild.value = meta.build
@@ -134,7 +153,16 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
         class="sticky top-0 hidden h-screen shrink-0 border-r border-line bg-paper transition-[width] duration-200 md:block"
         :class="collapsed ? 'w-14' : 'w-60'"
       >
-        <AppSidebar :links="links" :collapsed="collapsed" :scanning="scanning" @toggle="toggleSidebar" @rescan="rescan" @search="paletteOpen = true" />
+        <AppSidebar
+          :links="links"
+          :collapsed="collapsed"
+          :scanning="scanning"
+          :reminder-count="reminders.length"
+          @toggle="toggleSidebar"
+          @rescan="rescan"
+          @search="paletteOpen = true"
+          @reminders="openReminders"
+        />
       </aside>
 
       <!-- Mobile drawer -->
@@ -165,6 +193,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
             :collapsed="false"
             :scanning="scanning"
             layout-id="nav-active-drawer"
+            :reminder-count="reminders.length"
+            @reminders="openReminders"
             @rescan="rescan"
             @search="openPaletteFromDrawer"
             @navigate="drawerOpen = false"
@@ -193,7 +223,15 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
             <Menu class="size-5" aria-hidden="true" />
           </button>
           <span class="font-semibold tracking-tight">mmp</span>
-          <button class="ml-auto flex items-center gap-1.5 rounded-md p-1.5 text-sm text-muted hover:bg-surface-2 hover:text-ink" :aria-label="t('ui.search')" @click="paletteOpen = true">
+          <button
+            class="relative ml-auto rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-ink"
+            :aria-label="t('reminders.open', { n: reminders.length }, reminders.length)"
+            @click="openReminders"
+          >
+            <Bell class="size-5" aria-hidden="true" />
+            <span v-if="reminders.length" class="absolute top-0.5 right-0.5 size-2 rounded-full bg-danger" aria-hidden="true" />
+          </button>
+          <button class="flex items-center gap-1.5 rounded-md p-1.5 text-sm text-muted hover:bg-surface-2 hover:text-ink" :aria-label="t('ui.search')" @click="paletteOpen = true">
             <Search class="size-5" aria-hidden="true" />
             <UiKbd v-if="finePointer">Ctrl K</UiKbd>
           </button>
@@ -218,5 +256,6 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
     </div>
     <UiToastStack />
     <CommandPalette :open="paletteOpen" :links="links" @close="paletteOpen = false" @rescan="rescan" />
+    <RemindersPanel :open="remindersOpen" :reminders="reminders" @close="remindersOpen = false" @changed="loadReminders" />
   </MotionConfig>
 </template>
