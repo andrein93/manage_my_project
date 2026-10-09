@@ -437,5 +437,9 @@
     },
     "themeToLight": "切换到浅色主题",
     "themeToDark": "切换到深色主题"
+  },
+  "update": {
+    "available": "mmp 已更新到 v{version}。",
+    "reload": "重新加载"
   }
 }

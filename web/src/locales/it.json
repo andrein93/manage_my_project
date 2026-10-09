@@ -437,5 +437,9 @@
     },
     "themeToLight": "Passa al tema chiaro",
     "themeToDark": "Passa al tema scuro"
+  },
+  "update": {
+    "available": "mmp è stato aggiornato alla v{version}.",
+    "reload": "Ricarica"
   }
 }

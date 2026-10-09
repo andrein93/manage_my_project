@@ -437,5 +437,9 @@
     },
     "themeToLight": "Switch to light theme",
     "themeToDark": "Switch to dark theme"
+  },
+  "update": {
+    "available": "mmp was updated to v{version}.",
+    "reload": "Reload"
   }
 }

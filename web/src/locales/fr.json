@@ -437,5 +437,9 @@
       "select": "pour ouvrir",
       "close": "pour fermer"
     }
+  },
+  "update": {
+    "available": "mmp a été mis à jour en v{version}.",
+    "reload": "Recharger"
   }
 }

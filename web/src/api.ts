@@ -65,6 +65,8 @@ export interface SyncStatus {
 
 export interface Meta {
   version: string
+  /** Stamp id of the build the server runs; null on a dev server. */
+  build: string | null
   mcpCommand: string
   statuses: ProjectStatus[]
   stacks: string[]

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { AnimatePresence, Motion, MotionConfig } from 'motion-v'
-import { CheckSquare, Clock, FolderGit2, LayoutDashboard, Menu, Search, Settings, Users, Wallet, X } from 'lucide-vue-next'
+import { CheckSquare, CircleArrowUp, Clock, FolderGit2, LayoutDashboard, Menu, Search, Settings, Users, Wallet, X } from 'lucide-vue-next'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
@@ -12,6 +12,7 @@ import { finePointer } from './motion'
 import { isPaletteShortcut } from './palette'
 import { readPref, writePref } from './prefs'
 import { pushToast } from './toasts'
+import { isNewBuild } from './update'
 import UiKbd from './ui/UiKbd.vue'
 import UiToastStack from './ui/UiToastStack.vue'
 
@@ -97,6 +98,30 @@ function onKeydown(e: KeyboardEvent) {
   }
 }
 onMounted(() => window.addEventListener('keydown', onKeydown))
+
+// Notice when the server was restarted on a new build (mmp update, or a manual rebuild).
+const seenBuild = ref<string | null | undefined>(undefined)
+const newVersion = ref<string | null>(null)
+async function checkBuild() {
+  try {
+    const meta = await api.meta()
+    if (seenBuild.value === undefined) seenBuild.value = meta.build
+    else if (isNewBuild(seenBuild.value, meta.build)) newVersion.value = meta.version
+  } catch {
+    // Server restarting or offline: try again later.
+  }
+}
+const reload = () => location.reload()
+let buildTimer: ReturnType<typeof setInterval> | undefined
+onMounted(() => {
+  checkBuild()
+  window.addEventListener('focus', checkBuild)
+  buildTimer = setInterval(checkBuild, 60_000)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('focus', checkBuild)
+  clearInterval(buildTimer)
+})
 onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 </script>
 
@@ -150,6 +175,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
       </AnimatePresence>
 
       <div class="min-w-0 flex-1">
+        <div v-if="newVersion" class="flex items-center gap-3 border-b border-action/30 bg-action/10 px-4 py-2 text-sm sm:px-8" role="status">
+          <CircleArrowUp class="size-4 shrink-0 text-action" aria-hidden="true" />
+          <span class="flex-1">{{ t('update.available', { version: newVersion }) }}</span>
+          <button class="btn btn-sm btn-primary" @click="reload">{{ t('update.reload') }}</button>
+        </div>
         <div class="sticky top-0 z-30 flex items-center gap-3 border-b border-line bg-paper/80 px-4 py-2.5 backdrop-blur md:hidden">
           <button
             ref="menuButton"
