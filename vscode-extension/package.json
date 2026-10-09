@@ -1,0 +1,48 @@
+{
+  "name": "mmp-time",
+  "displayName": "mmp — editor time",
+  "description": "Tells your local mmp (manage my projects) which project you are editing, so hand-written code counts in the Time page.",
+  "version": "0.1.0",
+  "publisher": "mmp",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andrein93/manage_my_project.git"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "mmp.showStatus",
+        "title": "mmp: Show editor time status"
+      }
+    ],
+    "configuration": {
+      "title": "mmp",
+      "properties": {
+        "mmp.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Send editing activity to mmp."
+        },
+        "mmp.serverUrl": {
+          "type": "string",
+          "default": "http://localhost:4477",
+          "description": "Address of your local mmp dashboard (mmp start)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "package": "npx --yes @vscode/vsce package --allow-missing-repository --skip-license"
+  }
+}

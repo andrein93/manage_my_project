@@ -190,6 +190,15 @@ mmp estimates your working time **without timers and without changing your Claud
 - Calls and meetings can be logged manually from the Time page, the CLI or your AI.
 - The first import of a long history takes a few seconds and runs in the background.
 
+### Editor time (VS Code)
+
+Coding by hand, without the AI and before a commit, is counted with the small extension in
+[`vscode-extension/`](vscode-extension/README.md): while VS Code is focused and you edit, it
+tells your local mmp which project folder you are in, at most once a minute. Those minutes join
+the Claude Code and git ones (shown as "Editor" in work blocks), never counted twice. Install it
+with `npm run package` in that folder, then `code --install-extension mmp-time-0.1.0.vsix`.
+Other editors can call `POST /api/time/heartbeat` the same way.
+
 ## Money
 
 Record **how each project is paid** and mmp tells you whether it is worth it:
